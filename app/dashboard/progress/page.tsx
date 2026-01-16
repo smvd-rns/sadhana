@@ -1,0 +1,605 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { SadhanaReport } from '@/types';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Calendar, TrendingUp, BookOpen, Clock, Share2, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, subDays, startOfWeek, endOfWeek, parseISO } from 'date-fns';
+
+export default function ProgressPage() {
+  const { userData } = useAuth();
+  const [reports, setReports] = useState<SadhanaReport[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'all' | 'custom'>('month');
+  const [customDateRange, setCustomDateRange] = useState({
+    from: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+    to: format(new Date(), 'yyyy-MM-dd'),
+  });
+  const [showCustomRange, setShowCustomRange] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const reportsPerPage = 10;
+  const maxPages = 10;
+
+  const loadReports = async () => {
+    if (userData) {
+      setLoading(true);
+      // For 'all', fetch 6 months of data (180 days)
+      const limit = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'custom' ? 365 : 180;
+      const allReports = await getUserSadhanaReports(userData.id, limit);
+
+      // Filter by custom date range if selected
+      if (timeRange === 'custom') {
+        const filtered = allReports.filter(report => {
+          const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+          const fromDate = new Date(customDateRange.from);
+          const toDate = new Date(customDateRange.to);
+          return reportDate >= fromDate && reportDate <= toDate;
+        });
+        setReports(filtered);
+      } else {
+        setReports(allReports);
+      }
+      setLoading(false);
+      setCurrentPage(1); // Reset to first page when data changes
+    }
+  };
+
+  useEffect(() => {
+    loadReports();
+  }, [userData, timeRange]);
+
+  // Generate WhatsApp message
+  const generateWhatsAppMessage = () => {
+    if (reports.length === 0) return '';
+
+    // Get date range
+    const sortedReports = [...reports].sort((a, b) => {
+      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    const firstDate = sortedReports[0].date instanceof Date ? sortedReports[0].date : new Date(sortedReports[0].date);
+    const lastDate = sortedReports[sortedReports.length - 1].date instanceof Date ? sortedReports[sortedReports.length - 1].date : new Date(sortedReports[sortedReports.length - 1].date);
+
+    // Calculate totals
+    const totalJapa = reports.reduce((sum, r) => sum + (r.japa || 0), 0);
+    const totalHearing = reports.reduce((sum, r) => sum + (r.hearing || 0), 0);
+    const totalReading = reports.reduce((sum, r) => sum + (r.reading || 0), 0);
+    const totalToBed = reports.reduce((sum, r) => sum + (r.toBed || 0), 0);
+    const totalWakeUp = reports.reduce((sum, r) => sum + (r.wakeUp || 0), 0);
+    const totalDailyFilling = reports.reduce((sum, r) => sum + (r.dailyFilling || 0), 0);
+    const totalDaySleep = reports.reduce((sum, r) => sum + (r.daySleep || 0), 0);
+
+    // Get book name from most recent report
+    const bookName = sortedReports.reverse().find(r => r.bookName)?.bookName || 'N/A';
+
+    // Calculate percentages
+    const avgSoulPercent = reports.length > 0
+      ? (reports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
+      : '0.0';
+    const avgBodyPercent = reports.length > 0
+      ? (reports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
+      : '0.0';
+
+    const maxMarks = reports.length * 10;
+
+    // Determine report title based on time range
+    const reportTitle = timeRange === 'week' ? 'Weekly' :
+      timeRange === 'month' ? 'Monthly' :
+        timeRange === 'custom' ? 'Custom Period' :
+          'Overall';
+
+    const message = `Hare Krishna
+${reportTitle} Sadhana Report (${format(firstDate, 'd MMM yyyy')} - ${format(lastDate, 'd MMM yyyy')}):
+
+Japa (${totalJapa}/${maxMarks})
+Hearing (${totalHearing}/${maxMarks})
+Reading (${totalReading}/${maxMarks})
+Book Name: ${bookName}
+To Bed (${totalToBed}/${maxMarks})
+Wake Up (${totalWakeUp}/${maxMarks})
+Daily Filling (${totalDailyFilling}/${maxMarks})
+Day Sleep (${totalDaySleep}/${maxMarks})
+
+Soul %: ${avgSoulPercent}%
+Body %: ${avgBodyPercent}%`;
+
+    return encodeURIComponent(message);
+  };
+
+  // Export to CSV
+  const exportToCSV = () => {
+    if (reports.length === 0) return;
+
+    const headers = ['Date', 'Japa', 'Hearing', 'Reading', 'Book Name', 'To Bed', 'Wake Up', 'Daily Filling', 'Day Sleep', 'Body %', 'Soul %'];
+
+    const csvData = reports.map(report => {
+      const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+      return [
+        format(reportDate, 'yyyy-MM-dd'),
+        report.japa || 0,
+        report.hearing || 0,
+        report.reading || 0,
+        report.bookName || '',
+        report.toBed || 0,
+        report.wakeUp || 0,
+        report.dailyFilling || 0,
+        report.daySleep || 0,
+        report.bodyPercent ? report.bodyPercent.toFixed(1) : '0',
+        report.soulPercent ? report.soulPercent.toFixed(1) : '0',
+      ].join(',');
+    });
+
+    const csv = [headers.join(','), ...csvData].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sadhana_report_${customDateRange.from}_to_${customDateRange.to}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 max-w-md w-full p-10 text-center transform transition-all">
+          <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-orange-100 rounded-full blur-xl opacity-50 animate-pulse"></div>
+            <div className="relative animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-orange-500 border-x-transparent mx-auto shadow-lg"></div>
+          </div>
+
+          <h2 className="text-3xl font-display font-bold mb-4 text-orange-700 tracking-wide">
+            Hare Krishna
+          </h2>
+
+          <div className="space-y-2">
+            <p className="text-xl text-gray-800 font-serif">
+              Loading your progress...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate statistics
+  const totalJapa = reports.reduce((sum, r) => sum + (r.japa || 0), 0);
+  const avgJapa = reports.length > 0 ? (totalJapa / reports.length).toFixed(1) : 0;
+  const avgBodyPercent = reports.length > 0
+    ? (reports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
+    : 0;
+  const avgSoulPercent = reports.length > 0
+    ? (reports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
+    : 0;
+
+  // Calculate spiritual progress rating based on average Soul %
+  const avgSoulPercentNum = parseFloat(avgSoulPercent.toString());
+  let spiritualRating = '';
+  let ratingColor = '';
+  let ratingBgColor = '';
+
+  if (avgSoulPercentNum >= 80) {
+    spiritualRating = 'Excellent';
+    ratingColor = 'text-green-600';
+    ratingBgColor = 'bg-green-100';
+  } else if (avgSoulPercentNum >= 50) {
+    spiritualRating = 'Good Progress';
+    ratingColor = 'text-blue-600';
+    ratingBgColor = 'bg-blue-100';
+  } else {
+    spiritualRating = 'Needs Improvement';
+    ratingColor = 'text-red-600';
+    ratingBgColor = 'bg-red-100';
+  }
+
+  const sortedReports = [...reports].sort((a, b) => {
+    const dateA = a.date instanceof Date ? a.date : new Date(a.date);
+    const dateB = b.date instanceof Date ? b.date : new Date(b.date);
+    return dateB.getTime() - dateA.getTime();
+  });
+
+  // Prepare chart data for daily view (Spiritual Practices)
+  // For 'all' time range, show last 30 days only in the chart
+  const spiritualPracticesData = timeRange === 'all'
+    ? reports.slice(0, 30)
+    : reports;
+
+  const chartData = spiritualPracticesData
+    .map((report) => {
+      const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+      return {
+        date: format(reportDate, 'MMM d'),
+        japa: report.japa || 0,
+        hearing: report.hearing || 0,
+        reading: report.reading || 0,
+        bodyPercent: report.bodyPercent || 0,
+        soulPercent: report.soulPercent || 0,
+      };
+    });
+
+  // Prepare weekly aggregated data for Body & Soul percentage chart
+  // For 'all' time range, use all 6 months of data
+  const weeklyData: { [key: string]: { reports: SadhanaReport[], weekStart: Date, weekEnd: Date } } = {};
+
+  reports.forEach((report) => {
+    const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+    const weekStart = startOfWeek(reportDate, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(reportDate, { weekStartsOn: 1 }); // Sunday
+    const weekKey = format(weekStart, 'yyyy-MM-dd');
+
+    if (!weeklyData[weekKey]) {
+      weeklyData[weekKey] = { reports: [], weekStart, weekEnd };
+    }
+    weeklyData[weekKey].reports.push(report);
+  });
+
+  const weeklyChartData = Object.values(weeklyData)
+    .map(({ reports: weekReports, weekStart, weekEnd }) => {
+      const avgBodyPercent = weekReports.length > 0
+        ? weekReports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / weekReports.length
+        : 0;
+      const avgSoulPercent = weekReports.length > 0
+        ? weekReports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / weekReports.length
+        : 0;
+
+      return {
+        week: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`,
+        bodyPercent: Math.round(avgBodyPercent * 10) / 10,
+        soulPercent: Math.round(avgSoulPercent * 10) / 10,
+      };
+    })
+    .sort((a, b) => {
+      // Sort by week start date
+      const dateA = new Date(a.week.split(' - ')[0]);
+      const dateB = new Date(b.week.split(' - ')[0]);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+  const stats = [
+    {
+      name: 'Spiritual Progress',
+      value: spiritualRating,
+      icon: TrendingUp,
+      color: ratingColor,
+      bgColor: ratingBgColor,
+    },
+    {
+      name: 'Avg Japa/Day',
+      value: avgJapa.toString(),
+      icon: BookOpen,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+    },
+    {
+      name: 'Avg Soul %',
+      value: `${avgSoulPercent}%`,
+      icon: Clock,
+      color: 'text-orange-700',
+      bgColor: 'bg-orange-50',
+    },
+    {
+      name: 'Avg Body %',
+      value: `${avgBodyPercent}%`,
+      icon: Calendar,
+      color: 'text-amber-700',
+      bgColor: 'bg-amber-50',
+    },
+  ];
+
+  // Pagination for recent reports - newest first, max 10 pages (100 reports)
+  const maxReportsToShow = 100; // 10 pages * 10 per page
+  const paginatedReports = sortedReports.slice(0, maxReportsToShow);
+  const totalPages = Math.min(Math.ceil(paginatedReports.length / reportsPerPage), maxPages);
+  const startIndex = (currentPage - 1) * reportsPerPage;
+  const endIndex = startIndex + reportsPerPage;
+  const currentReports = paginatedReports.slice(startIndex, endIndex);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100 py-4 sm:py-8 px-2 sm:px-4">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header */}
+        <div className="text-center mb-4 sm:mb-8">
+          <p className="text-base sm:text-lg md:text-xl font-serif text-orange-700 font-semibold mb-2">
+            Hare Krishna
+          </p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-display bg-gradient-to-r from-orange-600 via-orange-700 to-amber-600 bg-clip-text text-transparent mb-2 sm:mb-3 py-1">
+            Progress Dashboard
+          </h1>
+          <p className="text-sm sm:text-base md:text-lg text-gray-700 font-medium">
+            Track your spiritual journey over time
+          </p>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center justify-between">
+            {/* Time Range Filters */}
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-center sm:justify-start">
+              <button
+                onClick={() => { setTimeRange('week'); setShowCustomRange(false); }}
+                className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold transition-all ${timeRange === 'week'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  }`}
+              >
+                Week
+              </button>
+              <button
+                onClick={() => { setTimeRange('month'); setShowCustomRange(false); }}
+                className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold transition-all ${timeRange === 'month'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  }`}
+              >
+                Month
+              </button>
+              <button
+                onClick={() => { setTimeRange('all'); setShowCustomRange(false); }}
+                className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold transition-all ${timeRange === 'all'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setShowCustomRange(!showCustomRange)}
+                className={`px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold transition-all flex items-center gap-2 ${timeRange === 'custom'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                  : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                  }`}
+              >
+                <Filter className="h-3 w-3 sm:h-4 sm:w-4" />
+                Custom
+              </button>
+            </div>
+
+            {/* Share & Export Buttons */}
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => window.open(`https://wa.me/?text=${generateWhatsAppMessage()}`, '_blank')}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold bg-green-500 text-white hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-lg"
+              >
+                <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Share</span>
+              </button>
+              <button
+                onClick={exportToCSV}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold bg-blue-500 text-white hover:bg-blue-600 transition-all flex items-center justify-center gap-2 shadow-lg"
+              >
+                <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span>Export</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Custom Date Range Picker */}
+          {showCustomRange && (
+            <div className="mt-4 p-3 sm:p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">From Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.from}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, from: e.target.value })}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">To Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.to}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, to: e.target.value })}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => { setTimeRange('custom'); loadReports(); }}
+                className="mt-3 sm:mt-4 w-full px-3 sm:px-4 py-2 text-sm sm:text-base rounded-xl font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg"
+              >
+                Apply Date Range
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.name} className={`${stat.bgColor} backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border-2 border-orange-200 p-3 sm:p-4 md:p-6`}>
+                <div className="flex flex-col items-center text-center">
+                  <Icon className={`h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 ${stat.color} mb-2`} />
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.name}</p>
+                  <p className={`text-xl sm:text-2xl md:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Spiritual Practices Chart */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
+              Spiritual Practices {timeRange === 'all' && '(6 Months)'}
+            </h2>
+            {chartData.length > 0 ? (
+              <div className="w-full overflow-x-auto">
+                <div style={{ minWidth: chartData.length > 15 ? `${chartData.length * 40}px` : '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
+                      <XAxis dataKey="date" stroke="#9a3412" angle={-15} textAnchor="end" height={60} />
+                      <YAxis stroke="#9a3412" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
+                        labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
+                        label="Date"
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="japa" stroke="#ea580c" strokeWidth={3} name="Japa" />
+                      <Line type="monotone" dataKey="hearing" stroke="#3b82f6" strokeWidth={3} name="Hearing" />
+                      <Line type="monotone" dataKey="reading" stroke="#10b981" strokeWidth={3} name="Reading" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                No data available
+              </div>
+            )}
+          </div>
+
+          {/* Body & Soul Percentage */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
+              Body & Soul % {timeRange === 'all' && '(6 Months)'}
+            </h2>
+            {weeklyChartData.length > 0 ? (
+              <div className="w-full overflow-x-auto">
+                <div style={{ minWidth: weeklyChartData.length > 10 ? `${weeklyChartData.length * 80}px` : '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
+                      <XAxis dataKey="week" stroke="#9a3412" angle={-15} textAnchor="end" height={80} />
+                      <YAxis domain={[0, 100]} stroke="#9a3412" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
+                        labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
+                        label="Week"
+                      />
+                      <Legend />
+                      <Bar dataKey="soulPercent" fill="#f59e0b" name="Soul %" />
+                      <Bar dataKey="bodyPercent" fill="#8b5cf6" name="Body %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                No data available
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Reports Table with Pagination */}
+        {paginatedReports.length > 0 && (
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4">Recent Reports</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-orange-200">
+                <thead className="bg-orange-50">
+                  <tr>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Japa
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Hearing
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Reading
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Soul %
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Body %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-orange-100">
+                  {currentReports.map((report) => {
+                    const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+                    return (
+                      <tr key={report.id} className="hover:bg-orange-50 transition-colors">
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                          {format(reportDate, 'MMM d, yyyy')}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.japa || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.hearing || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.reading || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
+                          {report.soulPercent ? `${report.soulPercent.toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
+                          {report.bodyPercent ? `${report.bodyPercent.toFixed(1)}%` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-orange-200 pt-4">
+                <div className="text-xs sm:text-sm text-gray-700">
+                  Showing <span className="font-semibold">{startIndex + 1}</span> to <span className="font-semibold">{Math.min(endIndex, paginatedReports.length)}</span> of{' '}
+                  <span className="font-semibold">{paginatedReports.length}</span> reports
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </button>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all ${currentPage === page
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                          : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

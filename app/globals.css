@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Ensure form inputs have visible text */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  color: rgb(17, 24, 39) !important; /* text-gray-900 */
+  background-color: white !important;
+}
+
+input[type="text"]::placeholder,
+input[type="email"]::placeholder,
+input[type="password"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+  color: rgb(156, 163, 175) !important; /* text-gray-400 */
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Hare Krishna Mahamantra Animation */
+@keyframes mantra-glow {
+  0%, 100% {
+    opacity: 0.9;
+    text-shadow: 0 0 8px rgba(217, 119, 6, 0.5), 0 0 12px rgba(217, 119, 6, 0.3);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 20px rgba(217, 119, 6, 0.8), 0 0 30px rgba(251, 146, 60, 0.6), 0 0 40px rgba(234, 179, 8, 0.4);
+  }
+}
+
+@keyframes mantra-fade {
+  0%, 100% {
+    opacity: 0.85;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.02);
+  }
+}
+
+@keyframes mantra-color {
+  0% {
+    color: rgb(154, 52, 18); /* orange-800 - very dark */
+    text-shadow: 0 0 10px rgba(217, 119, 6, 0.6), 0 0 20px rgba(217, 119, 6, 0.3);
+  }
+  25% {
+    color: rgb(251, 146, 60); /* orange-400 - bright */
+    text-shadow: 0 0 15px rgba(251, 146, 60, 0.8), 0 0 25px rgba(251, 146, 60, 0.5);
+  }
+  50% {
+    color: rgb(250, 204, 21); /* yellow-400 - very bright */
+    text-shadow: 0 0 20px rgba(250, 204, 21, 0.9), 0 0 35px rgba(234, 179, 8, 0.6);
+  }
+  75% {
+    color: rgb(217, 119, 6); /* amber-600 - medium */
+    text-shadow: 0 0 12px rgba(217, 119, 6, 0.7), 0 0 22px rgba(217, 119, 6, 0.4);
+  }
+  100% {
+    color: rgb(154, 52, 18); /* orange-800 - very dark */
+    text-shadow: 0 0 10px rgba(217, 119, 6, 0.6), 0 0 20px rgba(217, 119, 6, 0.3);
+  }
+}
+
+@keyframes mantra-color-2 {
+  0% {
+    color: rgb(217, 119, 6); /* amber-600 */
+    text-shadow: 0 0 10px rgba(217, 119, 6, 0.6), 0 0 20px rgba(217, 119, 6, 0.3);
+  }
+  25% {
+    color: rgb(250, 204, 21); /* yellow-400 - very bright */
+    text-shadow: 0 0 18px rgba(250, 204, 21, 0.9), 0 0 30px rgba(234, 179, 8, 0.6);
+  }
+  50% {
+    color: rgb(154, 52, 18); /* orange-800 - very dark */
+    text-shadow: 0 0 12px rgba(180, 83, 9, 0.7), 0 0 22px rgba(180, 83, 9, 0.4);
+  }
+  75% {
+    color: rgb(251, 146, 60); /* orange-400 - bright */
+    text-shadow: 0 0 15px rgba(251, 146, 60, 0.8), 0 0 25px rgba(251, 146, 60, 0.5);
+  }
+  100% {
+    color: rgb(217, 119, 6); /* amber-600 */
+    text-shadow: 0 0 10px rgba(217, 119, 6, 0.6), 0 0 20px rgba(217, 119, 6, 0.3);
+  }
+}
+
+@keyframes mantra-color-3 {
+  0% {
+    color: rgb(250, 204, 21); /* yellow-400 - very bright */
+    text-shadow: 0 0 15px rgba(250, 204, 21, 0.8), 0 0 28px rgba(234, 179, 8, 0.5);
+  }
+  25% {
+    color: rgb(154, 52, 18); /* orange-800 - very dark */
+    text-shadow: 0 0 11px rgba(180, 83, 9, 0.7), 0 0 21px rgba(180, 83, 9, 0.4);
+  }
+  50% {
+    color: rgb(251, 146, 60); /* orange-400 - bright */
+    text-shadow: 0 0 17px rgba(251, 146, 60, 0.9), 0 0 28px rgba(251, 146, 60, 0.6);
+  }
+  75% {
+    color: rgb(217, 119, 6); /* amber-600 */
+    text-shadow: 0 0 10px rgba(217, 119, 6, 0.6), 0 0 20px rgba(217, 119, 6, 0.3);
+  }
+  100% {
+    color: rgb(250, 204, 21); /* yellow-400 - very bright */
+    text-shadow: 0 0 15px rgba(250, 204, 21, 0.8), 0 0 28px rgba(234, 179, 8, 0.5);
+  }
+}
+
+@keyframes mantra-color-4 {
+  0% {
+    color: rgb(245, 158, 11); /* amber-500 - medium bright */
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.7), 0 0 22px rgba(245, 158, 11, 0.4);
+  }
+  25% {
+    color: rgb(250, 204, 21); /* yellow-400 - very bright */
+    text-shadow: 0 0 20px rgba(250, 204, 21, 0.9), 0 0 35px rgba(234, 179, 8, 0.6);
+  }
+  50% {
+    color: rgb(154, 52, 18); /* orange-800 - very dark */
+    text-shadow: 0 0 10px rgba(180, 83, 9, 0.6), 0 0 20px rgba(180, 83, 9, 0.3);
+  }
+  75% {
+    color: rgb(251, 146, 60); /* orange-400 - bright */
+    text-shadow: 0 0 16px rgba(251, 146, 60, 0.8), 0 0 26px rgba(251, 146, 60, 0.5);
+  }
+  100% {
+    color: rgb(245, 158, 11); /* amber-500 - medium bright */
+    text-shadow: 0 0 12px rgba(245, 158, 11, 0.7), 0 0 22px rgba(245, 158, 11, 0.4);
+  }
+}
+
+.animate-mantra-glow {
+  animation: mantra-glow 2.5s ease-in-out infinite, mantra-color 4s ease-in-out infinite;
+}
+
+.animate-mantra-fade {
+  animation: mantra-fade 3s ease-in-out infinite, mantra-color-2 4.5s ease-in-out infinite;
+}
+
+.animate-mantra-fade-delay-1 {
+  animation: mantra-fade 3.5s ease-in-out infinite, mantra-color-3 5s ease-in-out infinite;
+  animation-delay: 0.8s;
+}
+
+.animate-mantra-fade-delay-1-5 {
+  animation: mantra-fade 3.2s ease-in-out infinite, mantra-color-4 4.8s ease-in-out infinite;
+  animation-delay: 1.2s;
+}
+
+/* Responsive design utilities */
+@media (max-width: 640px) {
+  .mobile-hidden {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) {
+  .mobile-only {
+    display: none;
+  }
+}
+
+/* Toast notification animation */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
+}
+

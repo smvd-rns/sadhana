@@ -1,0 +1,89 @@
+// Utility functions to manage cities in Supabase database
+// These functions call API routes which interact with Supabase
+import { supabase } from '@/lib/supabase/config';
+
+export interface CityData {
+  name: string;
+  state: string;
+}
+
+export interface CitiesData {
+  [state: string]: string[]; // State name -> array of city names
+}
+
+// Get cities from Supabase via API
+export const getCitiesFromLocal = async (): Promise<CitiesData> => {
+  try {
+    const response = await fetch('/api/cities/get');
+    if (!response.ok) {
+      // If file doesn't exist, return empty object
+      return {};
+    }
+    const data = await response.json();
+    return data as CitiesData;
+  } catch (error) {
+    console.error('Error loading cities from local file:', error);
+    return {};
+  }
+};
+
+// Get cities for a specific state from Supabase
+export const getCitiesByStateFromLocal = async (state: string): Promise<string[]> => {
+  const citiesData = await getCitiesFromLocal();
+  return citiesData[state] || [];
+};
+
+// Add a city to Supabase (admin only - server-side)
+export const addCityToLocal = async (state: string, cityName: string): Promise<boolean> => {
+  try {
+    // Get the current session token to authenticate the API request
+    let authHeader = '';
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeader = `Bearer ${session.access_token}`;
+      }
+    }
+
+    // This will be handled by an API route since we can't write to public files from client
+    const response = await fetch('/api/cities/add', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader && { 'Authorization': authHeader }),
+      },
+      body: JSON.stringify({ state, cityName }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error adding city to local file:', error);
+    return false;
+  }
+};
+
+// Delete a city from Supabase (admin only - server-side)
+export const deleteCityFromLocal = async (state: string, cityName: string): Promise<boolean> => {
+  try {
+    // Get the current session token to authenticate the API request
+    let authHeader = '';
+    if (supabase) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authHeader = `Bearer ${session.access_token}`;
+      }
+    }
+
+    const response = await fetch('/api/cities/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(authHeader && { 'Authorization': authHeader }),
+      },
+      body: JSON.stringify({ state, cityName }),
+    });
+    return response.ok;
+  } catch (error) {
+    console.error('Error deleting city from local file:', error);
+    return false;
+  }
+};

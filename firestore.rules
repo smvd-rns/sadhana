@@ -1,0 +1,196 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the resource
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Helper function to get user role (supports both single role and array)
+    function getUserRole() {
+      return isAuthenticated() ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role : null;
+    }
+    
+    // Helper function to normalize role (handles both string/array and number/array)
+    function normalizeRole(role) {
+      return role is list ? role : [role];
+    }
+    
+    // Helper function to check if a role number represents an admin (4-8)
+    function isAdminRoleNumber(roleNum) {
+      return roleNum is int && roleNum >= 4 && roleNum <= 8;
+    }
+    
+    // Helper function to check if a role number represents super admin (8)
+    function isSuperAdminRoleNumber(roleNum) {
+      return roleNum is int && roleNum == 8;
+    }
+    
+    // Helper function to check if user has a specific role (supports both string and number formats)
+    function hasRole(userRole, targetRole) {
+      let roles = normalizeRole(userRole);
+      
+      // Check if roles are numbers (new format) or strings
+      // Map target role string to number: super_admin=8, zonal_admin=7, state_admin=6, city_admin=5, center_admin=4, senior_counselor=3, counselor=2, student=1
+      let targetNum = targetRole == 'super_admin' ? 8 :
+                     targetRole == 'zonal_admin' ? 7 :
+                     targetRole == 'state_admin' ? 6 :
+                     targetRole == 'city_admin' ? 5 :
+                     targetRole == 'center_admin' ? 4 :
+                     targetRole == 'senior_counselor' ? 3 :
+                     targetRole == 'counselor' ? 2 :
+                     targetRole == 'student' ? 1 : 0;
+      
+      // Check if roles are numbers (new format) - check for number match
+      // Or check for string match (old format)
+      return (roles.size() > 0 && roles[0] is int && targetNum in roles) ||
+             (roles.size() > 0 && roles[0] is string && targetRole in roles);
+    }
+    
+    // Helper function to check if user has any of the admin roles (supports both string and number formats)
+    function isAdmin(userRole) {
+      let roles = normalizeRole(userRole);
+      return userRole != null && 
+             roles.size() > 0 && (
+               // Check if roles are numbers (new format) - Admin roles are 4-8
+               (roles[0] is int && roles[0] >= 4 && roles[0] <= 8) ||
+               (roles.size() > 1 && roles[1] is int && roles[1] >= 4 && roles[1] <= 8) ||
+               (roles.size() > 2 && roles[2] is int && roles[2] >= 4 && roles[2] <= 8) ||
+               (roles.size() > 3 && roles[3] is int && roles[3] >= 4 && roles[3] <= 8) ||
+               // Check if roles are strings (old format)
+               (roles[0] is string && (roles[0] == 'super_admin' || roles[0] == 'zonal_admin' || 
+                roles[0] == 'state_admin' || roles[0] == 'city_admin' || roles[0] == 'center_admin')) ||
+               (roles.size() > 1 && roles[1] is string && (roles[1] == 'super_admin' || roles[1] == 'zonal_admin' || 
+                roles[1] == 'state_admin' || roles[1] == 'city_admin' || roles[1] == 'center_admin')) ||
+               (roles.size() > 2 && roles[2] is string && (roles[2] == 'super_admin' || roles[2] == 'zonal_admin' || 
+                roles[2] == 'state_admin' || roles[2] == 'city_admin' || roles[2] == 'center_admin'))
+             );
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId) || 
+        (isAuthenticated() && isAdmin(getUserRole()));
+      allow delete: if isAuthenticated() && hasRole(getUserRole(), 'super_admin');
+    }
+    
+    // Sadhana Reports collection
+    match /sadhanaReports/{reportId} {
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin(getUserRole()) ||
+        hasRole(getUserRole(), 'senior_counselor') ||
+        hasRole(getUserRole(), 'counselor')
+      );
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId) || 
+        (isAuthenticated() && hasRole(getUserRole(), 'super_admin'));
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.senderId ||
+        request.auth.uid in resource.data.recipientIds ||
+        isAdmin(getUserRole())
+      );
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.senderId ||
+        isAdmin(getUserRole())
+      );
+      allow delete: if isAuthenticated() && (
+        request.auth.uid == resource.data.senderId ||
+        hasRole(getUserRole(), 'super_admin')
+      );
+    }
+    
+    // Groups collection
+    match /groups/{groupId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid in resource.data.memberIds ||
+        request.auth.uid in resource.data.adminIds ||
+        isAdmin(getUserRole())
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.uid in resource.data.adminIds ||
+        isAdmin(getUserRole())
+      );
+      allow delete: if isAuthenticated() && (
+        hasRole(getUserRole(), 'super_admin') ||
+        hasRole(getUserRole(), 'zonal_admin') ||
+        hasRole(getUserRole(), 'state_admin')
+      );
+    }
+    
+    // Events collection
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin(getUserRole());
+      allow update: if isAuthenticated() && isAdmin(getUserRole());
+      allow delete: if isAuthenticated() && (
+        hasRole(getUserRole(), 'super_admin') ||
+        hasRole(getUserRole(), 'zonal_admin') ||
+        hasRole(getUserRole(), 'state_admin')
+      );
+    }
+    
+    // Resources collection
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isAdmin(getUserRole());
+      allow update: if isAuthenticated() && isAdmin(getUserRole());
+      allow delete: if isAuthenticated() && (
+        hasRole(getUserRole(), 'super_admin') ||
+        hasRole(getUserRole(), 'zonal_admin') ||
+        hasRole(getUserRole(), 'state_admin')
+      );
+    }
+    
+    // Centers collection
+    match /centers/{centerId} {
+      // Allow public read (needed for registration form before authentication)
+      allow read: if true;
+      // Allow public create (needed for registration form - users can add their center during registration)
+      allow create: if true;
+      // Only admins can update or delete
+      allow update: if isAuthenticated() && isAdmin(getUserRole());
+      allow delete: if isAuthenticated() && hasRole(getUserRole(), 'super_admin');
+    }
+    
+    // Cities collection
+    match /cities/{cityId} {
+      // Allow public read (needed for registration form before authentication)
+      allow read: if true;
+      // Allow public create (needed for registration form - users can add their city during registration)
+      allow create: if true;
+      // Only admins can update or delete
+      allow update: if isAuthenticated() && isAdmin(getUserRole());
+      allow delete: if isAuthenticated() && isAdmin(getUserRole());
+    }
+    
+    // Counselor Requests collection
+    match /counselorRequests/{requestId} {
+      // Users can read their own requests
+      allow read: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        hasRole(getUserRole(), 'super_admin')
+      );
+      // Users can create their own requests
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      // Only super admin can update (approve/reject)
+      allow update: if isAuthenticated() && hasRole(getUserRole(), 'super_admin');
+      // Only super admin can delete
+      allow delete: if isAuthenticated() && hasRole(getUserRole(), 'super_admin');
+    }
+  }
+}
