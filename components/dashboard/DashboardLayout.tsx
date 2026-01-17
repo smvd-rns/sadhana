@@ -113,8 +113,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      router.push('/auth/login');
-      router.refresh(); // Clear any client-side state
+      // Force a full page reload to ensure all auth state is cleared and prevent
+      // the login page from redirecting back to dashboard due to stale state
+      window.location.href = '/auth/login';
     }
   };
 

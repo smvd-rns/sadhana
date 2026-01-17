@@ -2702,7 +2702,7 @@ export default function ProfilePage() {
                 ].map((camp, index) => (
                   <label
                     key={camp.key}
-                    className={`animate-on-scroll group flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 border-2 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ${formData[camp.key as keyof typeof formData] as boolean
+                    className={`group flex items-center space-x-2 sm:space-x-3 p-3 sm:p-4 border-2 rounded-lg sm:rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 ${formData[camp.key as keyof typeof formData] as boolean
                       ? 'border-emerald-500 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-lg ring-2 ring-emerald-200 scale-105'
                       : 'border-gray-200 bg-white hover:border-emerald-300 hover:bg-emerald-50 hover:shadow-md'
                       }`}
