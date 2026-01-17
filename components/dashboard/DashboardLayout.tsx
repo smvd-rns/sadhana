@@ -108,8 +108,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/login');
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      router.push('/login');
+      router.refresh(); // Clear any client-side state
+    }
   };
 
   // Compute navigation based on user roles (using useMemo to avoid render-time mutations)
@@ -317,7 +323,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
             <button
               onClick={handleLogout}
-              className="group flex items-center justify-center w-full px-4 py-3 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg font-semibold border border-red-200 hover:border-red-500"
+              className="group flex items-center justify-center w-full px-4 py-3 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg font-semibold border border-red-200 hover:border-red-500 relative z-50 cursor-pointer"
             >
               <LogOut className="h-5 w-5 mr-3 group-hover:rotate-12 transition-transform duration-300" />
               <span className="font-serif tracking-wide">Logout</span>
@@ -329,19 +335,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md shadow-sm h-16 flex items-center px-4 lg:px-8 flex-shrink-0 border-b border-gray-200/60">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-lg transition-all"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex-1" />
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md shadow-sm h-16 flex items-center px-4 lg:px-8 flex-shrink-0 border-b border-gray-200/60 justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-gray-500 hover:text-gray-700 p-2 hover:bg-gray-100 rounded-lg transition-all"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+            <span className="lg:hidden font-display font-bold text-lg text-orange-700">
+              ISKCON Platform
+            </span>
+          </div>
 
-          {/* User Profile & Logout - Desktop Only */}
-          <div className="hidden lg:flex items-stretch gap-3">
+          <div className="flex-1 lg:block hidden" />
+
+          {/* User Profile & Logout - Visible on both Mobile and Desktop now, adapted styling */}
+          <div className="flex items-center gap-2 lg:gap-3">
             {/* User Profile */}
-            <div className="flex items-center gap-2.5 px-3 py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg hover:from-orange-100 hover:to-amber-100 transition-all duration-200 border border-orange-100/50">
+            <div className="flex items-center gap-2 lg:gap-2.5 px-2 py-1.5 lg:px-3 lg:py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg hover:from-orange-100 hover:to-amber-100 transition-all duration-200 border border-orange-100/50">
               {userData?.profileImage && (
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-30"></div>
@@ -355,8 +367,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   />
                 </div>
               )}
-              <div className="flex flex-col">
-                <p className="text-sm font-semibold text-gray-800 leading-tight">
+              <div className="hidden sm:flex flex-col">
+                <p className="text-sm font-semibold text-gray-800 leading-tight max-w-[100px] truncate">
                   {userData?.name}
                 </p>
                 <p className="text-xs text-gray-500 leading-tight">
@@ -368,10 +380,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="group flex items-center gap-2 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200 font-medium border border-red-100 hover:border-red-500 hover:shadow-md"
+              className="group flex items-center justify-center lg:gap-2 w-10 h-10 lg:w-auto lg:h-auto lg:px-3 lg:py-2 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white rounded-lg transition-all duration-200 font-medium border border-red-100 hover:border-red-500 hover:shadow-md"
+              title="Logout"
             >
-              <LogOut className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
-              <span className="text-sm">Logout</span>
+              <LogOut className="h-5 w-5 lg:h-4 lg:w-4 group-hover:rotate-12 transition-transform duration-200" />
+              <span className="hidden lg:inline text-sm">Logout</span>
             </button>
           </div>
         </div>

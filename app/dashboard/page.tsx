@@ -136,7 +136,7 @@ export default function DashboardPage() {
                 <Calendar className="h-5 w-5 sm:h-6 sm:w-6 mr-2 sm:mr-3" />
                 Recent Sadhana Reports
               </h2>
-              <div className="flex gap-1 sm:gap-2 md:gap-3">
+              <div className="flex flex-wrap gap-2 mt-2 sm:mt-0">
                 {(() => {
                   const avgSoul = recentReports.slice(0, 5).length > 0
                     ? (recentReports.slice(0, 5).reduce((sum, r) => sum + (r.soulPercent || 0), 0) / recentReports.slice(0, 5).length)
@@ -151,33 +151,34 @@ export default function DashboardPage() {
 
                   if (avgSoul >= 80) {
                     rating = 'Excellent';
+                    ratingBg = 'bg-primary-100'; // Changed to primary/theme consistent color if needed, or keep green
                     ratingBg = 'bg-green-100';
                     ratingText = 'text-green-700';
                   } else if (avgSoul >= 50) {
-                    rating = 'Good Progress';
+                    rating = 'Good'; // Shortened text
                     ratingBg = 'bg-blue-100';
                     ratingText = 'text-blue-700';
                   } else {
-                    rating = 'Needs Improvement';
+                    rating = 'Improve'; // Shortened text
                     ratingBg = 'bg-red-100';
                     ratingText = 'text-red-700';
                   }
 
                   return (
                     <>
-                      <div className={`${ratingBg} px-2 sm:px-3 py-1 rounded-lg border ${ratingBg.replace('100', '200')}`}>
+                      <div className={`${ratingBg} px-2 py-1 rounded-lg border ${ratingBg.replace('100', '200')} flex-shrink-0`}>
                         <p className={`text-xs font-semibold ${ratingText} whitespace-nowrap`}>
                           {rating}
                         </p>
                       </div>
-                      <div className="bg-orange-100 px-2 sm:px-3 py-1 rounded-lg border border-orange-200">
+                      <div className="bg-orange-100 px-2 py-1 rounded-lg border border-orange-200 flex-shrink-0">
                         <p className="text-xs font-semibold text-orange-700 whitespace-nowrap">
-                          <span className="hidden sm:inline">Avg </span>Soul: {avgSoul.toFixed(1)}%
+                          Soul: {avgSoul.toFixed(1)}%
                         </p>
                       </div>
-                      <div className="bg-purple-100 px-2 sm:px-3 py-1 rounded-lg border border-purple-200">
+                      <div className="bg-purple-100 px-2 py-1 rounded-lg border border-purple-200 flex-shrink-0">
                         <p className="text-xs font-semibold text-purple-700 whitespace-nowrap">
-                          <span className="hidden sm:inline">Avg </span>Body: {avgBody.toFixed(1)}%
+                          Body: {avgBody.toFixed(1)}%
                         </p>
                       </div>
                     </>

@@ -20,7 +20,7 @@ export interface CentersData {
 // Get centers from Supabase via API
 export const getCentersFromLocal = async (): Promise<CentersData> => {
   try {
-    const response = await fetch('/api/centers/get');
+    const response = await fetch('/api/centers/get', { cache: 'no-store' });
     if (!response.ok) {
       // If file doesn't exist, return empty object
       return {};
@@ -42,14 +42,14 @@ export const getCentersByLocationFromLocal = async (state?: string, city?: strin
     if (state) params.append('state', state);
     if (city) params.append('city', city);
     if (params.toString()) url += `?${params.toString()}`;
-    
-    const response = await fetch(url);
+
+    const response = await fetch(url, { cache: 'no-store' });
     if (!response.ok) {
       return [];
     }
-    
+
     const centersData: CentersData = await response.json();
-    
+
     // Convert to array format (flatten the nested structure)
     const allCenters: CenterData[] = [];
     Object.values(centersData).forEach(stateData => {
@@ -57,7 +57,7 @@ export const getCentersByLocationFromLocal = async (state?: string, city?: strin
         allCenters.push(...cityCenters);
       });
     });
-    
+
     return allCenters;
   } catch (error) {
     console.error('Error loading centers from Supabase:', error);

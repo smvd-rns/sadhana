@@ -126,8 +126,8 @@ export default function MessagesPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Messages List */}
-          <div className="lg:col-span-1 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 overflow-hidden">
+          {/* Messages List - Hidden on mobile if message selected */}
+          <div className={`lg:col-span-1 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 overflow-hidden ${selectedMessage ? 'hidden lg:block' : 'block'}`}>
             {/* Tabs */}
             <div className="flex border-b-2 border-gray-200">
               <button
@@ -265,10 +265,19 @@ export default function MessagesPage() {
             </div>
           </div>
 
-          {/* Message Detail */}
-          <div className="lg:col-span-2 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 lg:p-8">
+          {/* Message Detail - Full width on mobile when selected, hidden when not */}
+          <div className={`lg:col-span-2 bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 lg:p-8 ${!selectedMessage ? 'hidden lg:block' : 'block'}`}>
             {selectedMessage ? (
               <div>
+                {/* Mobile Back Button */}
+                <button
+                  onClick={() => setSelectedMessage(null)}
+                  className="lg:hidden mb-4 flex items-center text-gray-600 hover:text-orange-600 transition-colors"
+                >
+                  <X className="h-5 w-5 mr-1" />
+                  <span className="font-medium">Back to Messages</span>
+                </button>
+
                 <div className="flex flex-col sm:flex-row items-start justify-between mb-4 gap-3">
                   <div className="w-full sm:w-auto">
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
