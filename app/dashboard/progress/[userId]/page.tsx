@@ -610,479 +610,478 @@ Body %: ${avgBodyPercent}%`;
               Share
             </button>
           </div>
+
+          {/* Custom Date Range Picker */}
+          {showCustomRange && (
+            <div className="mt-4 p-3 sm:p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">From Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.from}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      setCustomDateRange(prev => ({ ...prev, from: e.target.value }));
+                      setTimeRange('custom');
+                    }}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">To Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.to}
+                    max={format(new Date(), 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      setCustomDateRange(prev => ({ ...prev, to: e.target.value }));
+                      setTimeRange('custom');
+                    }}
+                    className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => { setTimeRange('custom'); loadReports(); }}
+                className="mt-3 sm:mt-4 w-full px-3 sm:px-4 py-2 text-sm sm:text-base rounded-xl font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg"
+              >
+                Apply Date Range
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Custom Date Range Picker */}
-        {showCustomRange && (
-          <div className="mt-4 p-3 sm:p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">From Date</label>
-                <input
-                  type="date"
-                  value={customDateRange.from}
-                  max={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={(e) => {
-                    setCustomDateRange(prev => ({ ...prev, from: e.target.value }));
-                    setTimeRange('custom');
-                  }}
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-bold text-gray-800 mb-2">To Date</label>
-                <input
-                  type="date"
-                  value={customDateRange.to}
-                  max={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={(e) => {
-                    setCustomDateRange(prev => ({ ...prev, to: e.target.value }));
-                    setTimeRange('custom');
-                  }}
-                  className="w-full px-3 sm:px-4 py-2 text-sm sm:text-base border-2 border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-900 bg-white font-medium"
-                />
+        {/* User Details Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Camps & Books */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 space-y-6">
+            {/* Camps Attained */}
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
+                <Tent className="h-5 w-5" />
+                Camps Attained
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {CAMP_MAPPING.filter(camp => student[camp.key]).length > 0 ? (
+                  CAMP_MAPPING.filter(camp => student[camp.key]).map(camp => (
+                    <span key={camp.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-green-100 text-green-700 border border-green-200">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {camp.label}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">No camps recorded yet</span>
+                )}
               </div>
             </div>
-            <button
-              onClick={() => { setTimeRange('custom'); loadReports(); }}
-              className="mt-3 sm:mt-4 w-full px-3 sm:px-4 py-2 text-sm sm:text-base rounded-xl font-semibold bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg"
-            >
-              Apply Date Range
-            </button>
+
+            {/* SP Books Reading */}
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
+                <BookOpenCheck className="h-5 w-5" />
+                SP Books Read
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {BOOK_MAPPING.filter(book => student[book.key]).length > 0 ? (
+                  BOOK_MAPPING.filter(book => student[book.key]).map(book => (
+                    <span key={book.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {book.label}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">No books recorded yet</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Education & Work */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 space-y-6">
+            {/* Education */}
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                Education
+              </h3>
+              <div className="space-y-3">
+                {student.education && student.education.length > 0 ? (
+                  student.education.map((edu, idx) => (
+                    <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
+                      <span className="font-semibold text-gray-800">{edu.institution}</span>
+                      <span className="text-gray-600">{edu.field}</span>
+                      {edu.year && <span className="text-gray-500 text-xs">{edu.year}</span>}
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">No education details added</span>
+                )}
+              </div>
+            </div>
+
+            {/* Work Experience */}
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Work Experience
+              </h3>
+              <div className="space-y-3">
+                {student.workExperience && student.workExperience.length > 0 ? (
+                  student.workExperience.map((work, idx) => (
+                    <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
+                      <span className="font-semibold text-gray-800">{work.company}</span>
+                      <span className="text-gray-600">{work.position}</span>
+                      <span className="text-gray-500 text-xs">
+                        {work.current ? 'Current' : `${work.startDate ? format(new Date(work.startDate), 'MMM yyyy') : ''} - ${work.endDate ? format(new Date(work.endDate), 'MMM yyyy') : ''}`}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-sm italic">No work experience added</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          {stats.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div key={stat.name} className={`${stat.bgColor} backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border-2 border-orange-200 p-3 sm:p-4 md:p-6`}>
+                <div className="flex flex-col items-center text-center">
+                  <Icon className={`h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 ${stat.color} mb-2`} />
+                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.name}</p>
+                  <p className={`text-xl sm:text-2xl md:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Progress Bars Section */}
+        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+          <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
+            Overall Progress
+          </h2>
+          <div className="space-y-4 sm:space-y-6">
+            {/* Soul Percentage Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm sm:text-base font-semibold text-gray-700">Soul Progress</span>
+                <span className="text-sm sm:text-base font-bold text-orange-700">{avgSoulPercent}%</span>
+              </div>
+              <div className="w-full bg-orange-100 rounded-full h-4 sm:h-6 overflow-hidden shadow-inner">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${avgSoulPercentNum >= 80
+                    ? 'bg-gradient-to-r from-green-500 to-green-600'
+                    : avgSoulPercentNum >= 50
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                      : 'bg-gradient-to-r from-red-500 to-red-600'
+                    }`}
+                  style={{ width: `${Math.min(100, Math.max(0, avgSoulPercentNum))}%` }}
+                >
+                  <div className="h-full bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                {avgSoulPercentNum >= 80
+                  ? 'Excellent spiritual practice!'
+                  : avgSoulPercentNum >= 50
+                    ? 'Good progress, keep it up!'
+                    : 'Focus on Japa, Hearing, and Reading'}
+              </p>
+            </div>
+
+            {/* Body Percentage Progress Bar */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm sm:text-base font-semibold text-gray-700">Body Progress</span>
+                <span className="text-sm sm:text-base font-bold text-amber-700">{avgBodyPercent}%</span>
+              </div>
+              <div className="w-full bg-amber-100 rounded-full h-4 sm:h-6 overflow-hidden shadow-inner">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, parseFloat(avgBodyPercent)))}%` }}
+                >
+                  <div className="h-full bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                Based on To Bed, Wake Up, Daily Filling, and Day Sleep
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Spiritual Practices Chart */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
+              Spiritual Practices {timeRange === 'all' && '(6 Months)'}
+            </h2>
+            {chartData.length > 0 ? (
+              <div className="w-full overflow-x-auto">
+                <div style={{ minWidth: chartData.length > 15 ? `${chartData.length * 40}px` : '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
+                      <XAxis dataKey="date" stroke="#9a3412" angle={-15} textAnchor="end" height={60} />
+                      <YAxis stroke="#9a3412" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
+                        labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
+                        label="Date"
+                      />
+                      <Legend />
+                      <Line type="monotone" dataKey="japa" stroke="#ea580c" strokeWidth={3} name="Japa" />
+                      <Line type="monotone" dataKey="hearing" stroke="#3b82f6" strokeWidth={3} name="Hearing" />
+                      <Line type="monotone" dataKey="reading" stroke="#10b981" strokeWidth={3} name="Reading" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                No data available
+              </div>
+            )}
+          </div>
+
+          {/* Body & Soul Percentage */}
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
+              Body & Soul % {timeRange === 'all' && '(6 Months)'}
+            </h2>
+            {weeklyChartData.length > 0 ? (
+              <div className="w-full overflow-x-auto">
+                <div style={{ minWidth: weeklyChartData.length > 10 ? `${weeklyChartData.length * 80}px` : '100%' }}>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={weeklyChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
+                      <XAxis dataKey="week" stroke="#9a3412" angle={-15} textAnchor="end" height={80} />
+                      <YAxis domain={[0, 100]} stroke="#9a3412" />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
+                        labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
+                        label="Week"
+                      />
+                      <Legend />
+                      <Bar dataKey="soulPercent" fill="#f59e0b" name="Soul %" />
+                      <Bar dataKey="bodyPercent" fill="#8b5cf6" name="Body %" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                No data available
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Recent Reports Table with Pagination */}
+        {paginatedReports.length > 0 && (
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
+            <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4">Recent Reports</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-orange-200">
+                <thead className="bg-orange-50">
+                  <tr>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Japa
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Hearing
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Reading
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Soul %
+                    </th>
+                    <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
+                      Body %
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-orange-100">
+                  {currentReports.map((report) => {
+                    const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+                    return (
+                      <tr key={report.id} className="hover:bg-orange-50 transition-colors">
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
+                          {format(reportDate, 'MMM d, yyyy')}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.japa || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.hearing || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
+                          {report.reading || 0}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
+                          {report.soulPercent ? `${report.soulPercent.toFixed(1)}%` : '—'}
+                        </td>
+                        <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
+                          {report.bodyPercent ? `${report.bodyPercent.toFixed(1)}%` : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex flex-col sm:flex-row items-center justify-between border-t border-orange-200 pt-4 gap-4">
+                <div className="text-xs sm:text-sm text-gray-700">
+                  Showing <span className="font-semibold">{startIndex + 1}</span> to <span className="font-semibold">{Math.min(endIndex, paginatedReports.length)}</span> of{' '}
+                  <span className="font-semibold">{paginatedReports.length}</span> reports
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Previous</span>
+                  </button>
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all ${currentPage === page
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
+                          : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {reports.length === 0 && !loading && (
+          <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-8 text-center">
+            <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 text-sm sm:text-base">No reports found for the selected time range.</p>
           </div>
         )}
       </div>
 
-      {/* User Details Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-        {/* Camps & Books */}
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 space-y-6">
-          {/* Camps Attained */}
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
-              <Tent className="h-5 w-5" />
-              Camps Attained
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {CAMP_MAPPING.filter(camp => student[camp.key]).length > 0 ? (
-                CAMP_MAPPING.filter(camp => student[camp.key]).map(camp => (
-                  <span key={camp.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-green-100 text-green-700 border border-green-200">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {camp.label}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-500 text-sm italic">No camps recorded yet</span>
-              )}
-            </div>
-          </div>
-
-          {/* SP Books Reading */}
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
-              <BookOpenCheck className="h-5 w-5" />
-              SP Books Read
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {BOOK_MAPPING.filter(book => student[book.key]).length > 0 ? (
-                BOOK_MAPPING.filter(book => student[book.key]).map(book => (
-                  <span key={book.label} className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs sm:text-sm font-medium bg-blue-100 text-blue-700 border border-blue-200">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {book.label}
-                  </span>
-                ))
-              ) : (
-                <span className="text-gray-500 text-sm italic">No books recorded yet</span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Education & Work */}
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6 space-y-6">
-          {/* Education */}
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
-              <GraduationCap className="h-5 w-5" />
-              Education
-            </h3>
-            <div className="space-y-3">
-              {student.education && student.education.length > 0 ? (
-                student.education.map((edu, idx) => (
-                  <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
-                    <span className="font-semibold text-gray-800">{edu.institution}</span>
-                    <span className="text-gray-600">{edu.field}</span>
-                    {edu.year && <span className="text-gray-500 text-xs">{edu.year}</span>}
-                  </div>
-                ))
-              ) : (
-                <span className="text-gray-500 text-sm italic">No education details added</span>
-              )}
-            </div>
-          </div>
-
-          {/* Work Experience */}
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-orange-700 mb-3 flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Work Experience
-            </h3>
-            <div className="space-y-3">
-              {student.workExperience && student.workExperience.length > 0 ? (
-                student.workExperience.map((work, idx) => (
-                  <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
-                    <span className="font-semibold text-gray-800">{work.company}</span>
-                    <span className="text-gray-600">{work.position}</span>
-                    <span className="text-gray-500 text-xs">
-                      {work.current ? 'Current' : `${work.startDate ? format(new Date(work.startDate), 'MMM yyyy') : ''} - ${work.endDate ? format(new Date(work.endDate), 'MMM yyyy') : ''}`}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <span className="text-gray-500 text-sm italic">No work experience added</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <div key={stat.name} className={`${stat.bgColor} backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border-2 border-orange-200 p-3 sm:p-4 md:p-6`}>
-              <div className="flex flex-col items-center text-center">
-                <Icon className={`h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 ${stat.color} mb-2`} />
-                <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.name}</p>
-                <p className={`text-xl sm:text-2xl md:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Progress Bars Section */}
-      <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
-        <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
-          <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
-          Overall Progress
-        </h2>
-        <div className="space-y-4 sm:space-y-6">
-          {/* Soul Percentage Progress Bar */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm sm:text-base font-semibold text-gray-700">Soul Progress</span>
-              <span className="text-sm sm:text-base font-bold text-orange-700">{avgSoulPercent}%</span>
-            </div>
-            <div className="w-full bg-orange-100 rounded-full h-4 sm:h-6 overflow-hidden shadow-inner">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${avgSoulPercentNum >= 80
-                  ? 'bg-gradient-to-r from-green-500 to-green-600'
-                  : avgSoulPercentNum >= 50
-                    ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                    : 'bg-gradient-to-r from-red-500 to-red-600'
-                  }`}
-                style={{ width: `${Math.min(100, Math.max(0, avgSoulPercentNum))}%` }}
+      {/* Profile Photo Modal */}
+      {
+        showProfilePhoto && student?.profileImage && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowProfilePhoto(false)}>
+            <div className="relative max-w-2xl w-full bg-white rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+              <button
+                onClick={() => setShowProfilePhoto(false)}
+                className="absolute -top-4 -right-4 bg-white text-gray-800 rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
               >
-                <div className="h-full bg-white/20 animate-pulse"></div>
-              </div>
-            </div>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              {avgSoulPercentNum >= 80
-                ? 'Excellent spiritual practice!'
-                : avgSoulPercentNum >= 50
-                  ? 'Good progress, keep it up!'
-                  : 'Focus on Japa, Hearing, and Reading'}
-            </p>
-          </div>
+                <X className="h-6 w-6" />
+              </button>
+              {(() => {
+                const getGoogleDriveImageUrl = (urlOrId: string) => {
+                  if (!urlOrId) return '';
+                  const cleanUrl = urlOrId.trim();
 
-          {/* Body Percentage Progress Bar */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm sm:text-base font-semibold text-gray-700">Body Progress</span>
-              <span className="text-sm sm:text-base font-bold text-amber-700">{avgBodyPercent}%</span>
-            </div>
-            <div className="w-full bg-amber-100 rounded-full h-4 sm:h-6 overflow-hidden shadow-inner">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 to-amber-600 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, Math.max(0, parseFloat(avgBodyPercent)))}%` }}
-              >
-                <div className="h-full bg-white/20 animate-pulse"></div>
-              </div>
-            </div>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              Based on To Bed, Wake Up, Daily Filling, and Day Sleep
-            </p>
-          </div>
-        </div>
-      </div>
+                  // 1. Pass-through for known working formats or direct image files
+                  if (
+                    cleanUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) ||
+                    cleanUrl.includes('lh3.googleusercontent.com') ||
+                    cleanUrl.includes('drive.google.com/uc?')
+                  ) {
+                    return cleanUrl;
+                  }
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Spiritual Practices Chart */}
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
-          <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
-            <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
-            Spiritual Practices {timeRange === 'all' && '(6 Months)'}
-          </h2>
-          {chartData.length > 0 ? (
-            <div className="w-full overflow-x-auto">
-              <div style={{ minWidth: chartData.length > 15 ? `${chartData.length * 40}px` : '100%' }}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
-                    <XAxis dataKey="date" stroke="#9a3412" angle={-15} textAnchor="end" height={60} />
-                    <YAxis stroke="#9a3412" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
-                      labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
-                      label="Date"
+                  // 2. Try to extract ID using stronger regex
+                  let fileId = '';
+                  const idPatterns = [
+                    /\/d\/([a-zA-Z0-9_-]+)/, // /d/ID
+                    /id=([a-zA-Z0-9_-]+)/,   // id=ID
+                    /^([a-zA-Z0-9_-]+)$/     // Is just ID
+                  ];
+
+                  for (const pattern of idPatterns) {
+                    const match = cleanUrl.match(pattern);
+                    if (match && match[1]) {
+                      fileId = match[1];
+                      break;
+                    }
+                  }
+
+                  // 3. If ID found, return UC link
+                  if (fileId) {
+                    return `https://drive.google.com/uc?export=view&id=${fileId}`;
+                  }
+
+                  // 4. Fallback: If it's a URL but matched nothing, return original
+                  if (cleanUrl.startsWith('http')) {
+                    return cleanUrl;
+                  }
+
+                  // 5. Last resort, treat as ID
+                  return `https://drive.google.com/uc?export=view&id=${cleanUrl}`;
+                };
+
+                const finalUrl = getGoogleDriveImageUrl(student.profileImage);
+
+                return (
+                  <div className="flex flex-col items-center gap-3">
+                    <img
+                      src={finalUrl}
+                      alt={`${student.name}'s profile`}
+                      className="w-full h-auto rounded-xl object-contain max-h-[80vh]"
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        // Fallback just in case
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
-                    <Legend />
-                    <Line type="monotone" dataKey="japa" stroke="#ea580c" strokeWidth={3} name="Japa" />
-                    <Line type="monotone" dataKey="hearing" stroke="#3b82f6" strokeWidth={3} name="Hearing" />
-                    <Line type="monotone" dataKey="reading" stroke="#10b981" strokeWidth={3} name="Reading" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              No data available
-            </div>
-          )}
-        </div>
-
-        {/* Body & Soul Percentage */}
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
-          <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4 flex items-center">
-            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 mr-2" />
-            Body & Soul % {timeRange === 'all' && '(6 Months)'}
-          </h2>
-          {weeklyChartData.length > 0 ? (
-            <div className="w-full overflow-x-auto">
-              <div style={{ minWidth: weeklyChartData.length > 10 ? `${weeklyChartData.length * 80}px` : '100%' }}>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={weeklyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
-                    <XAxis dataKey="week" stroke="#9a3412" angle={-15} textAnchor="end" height={80} />
-                    <YAxis domain={[0, 100]} stroke="#9a3412" />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#fff7ed', border: '2px solid #fb923c', borderRadius: '12px', padding: '10px' }}
-                      labelStyle={{ fontWeight: 'bold', color: '#9a3412', marginBottom: '5px' }}
-                      label="Week"
-                    />
-                    <Legend />
-                    <Bar dataKey="soulPercent" fill="#f59e0b" name="Soul %" />
-                    <Bar dataKey="bodyPercent" fill="#8b5cf6" name="Body %" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-gray-500">
-              No data available
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Recent Reports Table with Pagination */}
-      {paginatedReports.length > 0 && (
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-3 sm:p-4 md:p-6">
-          <h2 className="text-base sm:text-xl md:text-2xl font-bold text-orange-700 mb-3 sm:mb-4">Recent Reports</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-orange-200">
-              <thead className="bg-orange-50">
-                <tr>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Japa
-                  </th>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Hearing
-                  </th>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Reading
-                  </th>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Soul %
-                  </th>
-                  <th className="px-2 sm:px-3 md:px-6 py-2 sm:py-3 text-left text-xs font-bold text-orange-800 uppercase tracking-wider">
-                    Body %
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-orange-100">
-                {currentReports.map((report) => {
-                  const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
-                  return (
-                    <tr key={report.id} className="hover:bg-orange-50 transition-colors">
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium text-gray-900">
-                        {format(reportDate, 'MMM d, yyyy')}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                        {report.japa || 0}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                        {report.hearing || 0}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                        {report.reading || 0}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
-                        {report.soulPercent ? `${report.soulPercent.toFixed(1)}%` : '—'}
-                      </td>
-                      <td className="px-2 sm:px-3 md:px-6 py-2 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-orange-700">
-                        {report.bodyPercent ? `${report.bodyPercent.toFixed(1)}%` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between border-t border-orange-200 pt-4 gap-4">
-              <div className="text-xs sm:text-sm text-gray-700">
-                Showing <span className="font-semibold">{startIndex + 1}</span> to <span className="font-semibold">{Math.min(endIndex, paginatedReports.length)}</span> of{' '}
-                <span className="font-semibold">{paginatedReports.length}</span> reports
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                >
-                  <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-                  <span className="hidden sm:inline">Previous</span>
-                </button>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg font-semibold transition-all ${currentPage === page
-                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-lg'
-                        : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
-                        }`}
+                    <a
+                      href={finalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-orange-600 hover:text-orange-800 font-medium text-sm bg-orange-50 px-4 py-2 rounded-full transition-colors"
                     >
-                      {page}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-                >
-                  <span className="hidden sm:inline">Next</span>
-                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
-                </button>
-              </div>
+                      <span>Open original image in new tab</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                );
+              })()}
             </div>
-          )}
-        </div>
-      )}
-
-      {reports.length === 0 && !loading && (
-        <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-8 text-center">
-          <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600 text-sm sm:text-base">No reports found for the selected time range.</p>
-        </div>
-      )}
-    </div>
-
-      {/* Profile Photo Modal */ }
-  {
-    showProfilePhoto && student?.profileImage && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowProfilePhoto(false)}>
-        <div className="relative max-w-2xl w-full bg-white rounded-2xl p-2 shadow-2xl animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={() => setShowProfilePhoto(false)}
-            className="absolute -top-4 -right-4 bg-white text-gray-800 rounded-full p-2 shadow-lg hover:bg-gray-100 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
-          {(() => {
-            const getGoogleDriveImageUrl = (urlOrId: string) => {
-              if (!urlOrId) return '';
-              const cleanUrl = urlOrId.trim();
-
-              // 1. Pass-through for known working formats or direct image files
-              if (
-                cleanUrl.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i) ||
-                cleanUrl.includes('lh3.googleusercontent.com') ||
-                cleanUrl.includes('drive.google.com/uc?')
-              ) {
-                return cleanUrl;
-              }
-
-              // 2. Try to extract ID using stronger regex
-              let fileId = '';
-              const idPatterns = [
-                /\/d\/([a-zA-Z0-9_-]+)/, // /d/ID
-                /id=([a-zA-Z0-9_-]+)/,   // id=ID
-                /^([a-zA-Z0-9_-]+)$/     // Is just ID
-              ];
-
-              for (const pattern of idPatterns) {
-                const match = cleanUrl.match(pattern);
-                if (match && match[1]) {
-                  fileId = match[1];
-                  break;
-                }
-              }
-
-              // 3. If ID found, return UC link
-              if (fileId) {
-                return `https://drive.google.com/uc?export=view&id=${fileId}`;
-              }
-
-              // 4. Fallback: If it's a URL but matched nothing, return original
-              if (cleanUrl.startsWith('http')) {
-                return cleanUrl;
-              }
-
-              // 5. Last resort, treat as ID
-              return `https://drive.google.com/uc?export=view&id=${cleanUrl}`;
-            };
-
-            const finalUrl = getGoogleDriveImageUrl(student.profileImage);
-
-            return (
-              <div className="flex flex-col items-center gap-3">
-                <img
-                  src={finalUrl}
-                  alt={`${student.name}'s profile`}
-                  className="w-full h-auto rounded-xl object-contain max-h-[80vh]"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    // Fallback just in case
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-                <a
-                  href={finalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-orange-600 hover:text-orange-800 font-medium text-sm bg-orange-50 px-4 py-2 rounded-full transition-colors"
-                >
-                  <span>Open original image in new tab</span>
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            );
-          })()}
-        </div>
-      </div>
-    )
-  }
+          </div>
+        )
+      }
     </div >
   );
 }
