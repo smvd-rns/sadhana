@@ -113,6 +113,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Clear all local storage to ensure no auth tokens persist
+      if (typeof window !== 'undefined') {
+        window.localStorage.clear();
+      }
+
       // Force a full page reload to ensure all auth state is cleared and prevent
       // the login page from redirecting back to dashboard due to stale state
       window.location.href = '/auth/login';

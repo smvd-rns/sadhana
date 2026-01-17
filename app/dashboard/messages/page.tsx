@@ -250,7 +250,7 @@ export default function MessagesPage() {
                           e.stopPropagation();
                           togglePin(message.id, isPinned);
                         }}
-                        className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100 ${isPinned
+                        className={`absolute top-2 right-2 p-1.5 rounded-lg transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 ${isPinned
                           ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-700'
                           : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                           }`}

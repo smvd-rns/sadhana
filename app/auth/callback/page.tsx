@@ -20,9 +20,9 @@ function CallbackContent() {
       return false;
     }
 
-    console.log('Checking if user exists in users table...');
-    console.log('User ID:', user.id);
-    console.log('User email:', user.email);
+    // console.log('Checking if user exists in users table...');
+    // console.log('User ID:', user.id);
+    // console.log('User email:', user.email);
 
     // Check if user already exists in users table
     const { data: existingUser, error: checkError } = await supabase
@@ -39,7 +39,7 @@ function CallbackContent() {
     }
 
     if (existingUser) {
-      console.log('User already exists in users table');
+      // console.log('User already exists in users table');
 
       // Check if user has completed all required fields
       const { data: userData, error: fetchError } = await supabase
@@ -66,7 +66,7 @@ function CallbackContent() {
       return true;
     }
 
-    console.log('User does not exist in users table, creating...');
+    // console.log('User does not exist in users table, creating...');
 
     // Create user record directly using the authenticated client
     const { data: insertedUser, error: insertError } = await supabase
@@ -94,7 +94,7 @@ function CallbackContent() {
 
       // If it's a duplicate error, user was created between check and insert
       if (insertError.code === '23505') {
-        console.log('User already exists (race condition)');
+        // console.log('User already exists (race condition)');
         // User was created between check and insert, check if they need completion
         const { data: userData } = await supabase
           .from('users')
@@ -116,7 +116,7 @@ function CallbackContent() {
         return true;
       } else {
         // Try calling the API route as fallback (uses service role key)
-        console.log('Trying API route fallback...');
+        // console.log('Trying API route fallback...');
         try {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
           const accessToken = currentSession?.access_token;
@@ -136,7 +136,7 @@ function CallbackContent() {
 
           if (createUserResponse.ok) {
             const result = await createUserResponse.json();
-            console.log('✅ User record created via API route:', result);
+            // console.log('✅ User record created via API route:', result);
             return true; // New user, needs completion
           } else {
             const errorData = await createUserResponse.json();
@@ -148,7 +148,7 @@ function CallbackContent() {
         return true; // Assume needs completion if error
       }
     } else {
-      console.log('✅ User record created successfully in users table:', insertedUser);
+      // console.log('✅ User record created successfully in users table:', insertedUser);
       // New user created - they need to complete profile
       return true; // Indicates redirect to completion form is needed
     }
@@ -164,9 +164,9 @@ function CallbackContent() {
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
 
-        console.log('OAuth Callback - Code:', code ? 'Present' : 'Missing');
-        console.log('OAuth Callback - Error:', errorParam);
-        console.log('OAuth Callback - Full URL:', window.location.href);
+        // console.log('OAuth Callback - Code:', code ? 'Present' : 'Missing');
+        // console.log('OAuth Callback - Error:', errorParam);
+        // console.log('OAuth Callback - Full URL:', window.location.href);
 
         // Check for OAuth errors
         if (errorParam) {
@@ -180,7 +180,7 @@ function CallbackContent() {
         }
 
         if (!code) {
-          console.log('No code parameter - checking if session exists (hash-based redirect)');
+          // console.log('No code parameter - checking if session exists (hash-based redirect)');
           // Supabase might have already processed the OAuth and set the session
           // This happens when using hash-based redirects
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -190,7 +190,7 @@ function CallbackContent() {
           }
 
           if (session) {
-            console.log('Session found from hash redirect, user ID:', session.user?.id);
+            // console.log('Session found from hash redirect, user ID:', session.user?.id);
             // Session exists, now create user record if needed
             const { data: { user }, error: userError } = await supabase.auth.getUser();
 
@@ -245,7 +245,7 @@ function CallbackContent() {
         }
 
         // Exchange code for session
-        console.log('Exchanging code for session...');
+        // console.log('Exchanging code for session...');
         const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
         if (exchangeError) {
@@ -257,8 +257,8 @@ function CallbackContent() {
           throw new Error('No session created after code exchange');
         }
 
-        console.log('Session created successfully');
-        console.log('Session user ID:', data.session.user?.id);
+        // console.log('Session created successfully');
+        // console.log('Session user ID:', data.session.user?.id);
 
         // Get the user from the session and create user record
         const { data: { user }, error: userError } = await supabase.auth.getUser();
