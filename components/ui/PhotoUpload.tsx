@@ -35,7 +35,7 @@ export default function PhotoUpload({
     // Use thumbnail URL for display
     return getSmallThumbnailUrl(url) || url;
   };
-  
+
   // Declare all state and refs first, before useEffect
   const [preview, setPreview] = useState<string | null>(getPreviewUrl(currentImageUrl));
   const [uploading, setUploading] = useState(false);
@@ -44,7 +44,7 @@ export default function PhotoUpload({
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastUploadedUrlRef = useRef<string | null>(null); // Track the last URL we uploaded to prevent preview reset
-  
+
   // Update preview when currentImageUrl changes (e.g., after page refresh)
   // But don't override if we just uploaded a new photo
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function PhotoUpload({
     if (lastUploadedUrlRef.current && currentImageUrl === lastUploadedUrlRef.current) {
       return; // Don't update, we already have the correct preview set
     }
-    
+
     if (currentImageUrl) {
       // Convert to thumbnail URL for display
       const thumbnailUrl = getSmallThumbnailUrl(currentImageUrl);
@@ -70,7 +70,7 @@ export default function PhotoUpload({
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault(); // Prevent any default form behavior
     e.stopPropagation(); // Stop event bubbling
-    
+
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -107,9 +107,28 @@ export default function PhotoUpload({
     };
     reader.readAsDataURL(file);
 
-    // Upload to Google Drive
-    await uploadFile(file);
-    
+    // Compress and Upload
+    try {
+      setUploading(true);
+      // Optional: Set a "Compressing..." state here if you want granular UI updates
+
+      const { compressImage } = await import('@/lib/utils/image-compression');
+      const compressedFile = await compressImage(file, { maxWidth: 1000, quality: 0.7 });
+
+      console.log(`Original size: ${(file.size / 1024).toFixed(2)}KB, Compressed size: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+
+      // Upload the compressed file
+      await uploadFile(compressedFile);
+    } catch (error: any) {
+      console.error('Compression/Upload error:', error);
+      onUploadError(error.message || 'Failed to process image');
+      setUploading(false); // Ensure uploading state is reset
+      // Reset preview on error if no previous image
+      if (!currentImageUrl) {
+        setPreview(null);
+      }
+    }
+
     // Don't reset file input here - keep it so user can change photo if needed
   };
 
@@ -123,7 +142,7 @@ export default function PhotoUpload({
       const formData = new FormData();
       formData.append('file', file);
       formData.append('userName', userName);
-      
+
       // Add location data if provided (for folder structure)
       if (state) formData.append('state', state);
       if (city) formData.append('city', city);
@@ -141,38 +160,38 @@ export default function PhotoUpload({
 
       const data = await response.json();
       console.log('Upload response:', data);
-      
+
       if (data.success && data.data) {
         // Use directImageUrl (for embedding) or webViewLink (for viewing) from Google Drive
         // directImageUrl format: https://drive.google.com/uc?export=view&id=FILE_ID
         const imageUrl = data.data.directImageUrl || data.data.webViewLink || data.data.webContentLink || data.data.fileId;
-        
+
         console.log('Extracted image URL:', imageUrl);
-        
+
         if (!imageUrl) {
           throw new Error('Upload failed: No image URL returned');
         }
-        
+
         // Store this URL as the last uploaded URL to prevent useEffect from resetting preview
         lastUploadedUrlRef.current = imageUrl;
-        
+
         // Update preview with thumbnail URL for display (but store full URL)
         const thumbnailUrl = getSmallThumbnailUrl(imageUrl);
         const displayUrl = thumbnailUrl || imageUrl;
         setPreview(displayUrl);
-        
+
         // Call the callback with the full image URL (for storage)
         console.log('Calling onUploadComplete with URL:', imageUrl);
         onUploadComplete(imageUrl);
         setUploadProgress(100);
         setUploadSuccess(true); // Mark upload as successful
         setShowSuccessMessage(true); // Show success message
-        
+
         // Auto-hide success message after 3 seconds
         setTimeout(() => {
           setShowSuccessMessage(false);
         }, 3000);
-        
+
         // Clear the ref after parent has updated (2 seconds should be enough)
         // This allows useEffect to handle future prop changes normally
         setTimeout(() => {
@@ -232,11 +251,11 @@ export default function PhotoUpload({
       <label className="block text-sm font-medium text-gray-700 mb-1">
         Profile Photo {required && <span className="text-red-500">*</span>}
       </label>
-      
+
       {showMessage && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
           <p className="text-sm text-blue-800">
-            <span className="font-semibold">Hare Krishna!</span> Please upload your own personal photo (not a Deity photo). 
+            <span className="font-semibold">Hare Krishna!</span> Please upload your own personal photo (not a Deity photo).
             This helps senior authorities to identify devotees when needed.
           </p>
         </div>
@@ -249,7 +268,7 @@ export default function PhotoUpload({
           </p>
         </div>
       )}
-      
+
       <div className="flex items-center space-x-4">
         {/* Preview */}
         {preview && (
@@ -257,11 +276,10 @@ export default function PhotoUpload({
             <img
               src={preview}
               alt="Profile preview"
-              className={`w-20 h-20 rounded-full object-cover border-2 transition-all ${
-                uploadSuccess 
-                  ? 'border-green-500 ring-2 ring-green-200' 
+              className={`w-20 h-20 rounded-full object-cover border-2 transition-all ${uploadSuccess
+                  ? 'border-green-500 ring-2 ring-green-200'
                   : 'border-gray-300'
-              }`}
+                }`}
               onError={(e) => {
                 // If thumbnail fails, try the original URL
                 const target = e.target as HTMLImageElement;
@@ -305,18 +323,17 @@ export default function PhotoUpload({
             disabled={isUploadDisabled}
             required={required && !isLocationRequired}
           />
-          
+
           <button
             type="button"
             onClick={handleClick}
             disabled={isUploadDisabled}
-            className={`flex items-center space-x-2 px-4 py-2 border rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-              uploadSuccess
+            className={`flex items-center space-x-2 px-4 py-2 border rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${uploadSuccess
                 ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100 shadow-sm'
                 : required && !preview && !isLocationRequired
-                ? 'border-primary-400 bg-primary-50 text-primary-700 hover:bg-primary-100'
-                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
-            }`}
+                  ? 'border-primary-400 bg-primary-50 text-primary-700 hover:bg-primary-100'
+                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+              }`}
           >
             {uploading ? (
               <>
@@ -346,7 +363,7 @@ export default function PhotoUpload({
           </p>
         </div>
       )}
-      
+
       <p className="text-xs text-gray-500">
         Maximum file size: 5MB. Supported formats: JPEG, PNG, GIF, WebP
       </p>

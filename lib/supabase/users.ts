@@ -43,6 +43,15 @@ export const getUsersByRole = async (role: UserRole) => {
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -159,6 +168,15 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -359,6 +377,15 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -458,6 +485,15 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -564,6 +600,15 @@ export const getUsersByZone = async (zone: string) => {
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -670,6 +715,15 @@ export const getUsersByState = async (state: string) => {
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
@@ -776,6 +830,15 @@ export const getUsersByCity = async (city: string) => {
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
+        // Spiritual fields
+        initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
+        initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
+        spiritualMasterName: user.spiritual_master_name || user.hierarchy?.spiritualMasterName,
+        aspiringSpiritualMasterName: user.aspiring_spiritual_master_name || user.hierarchy?.aspiringSpiritualMasterName,
+        chantingSince: user.chanting_since || user.hierarchy?.chantingSince,
+        rounds: user.rounds || user.hierarchy?.rounds,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        royalMember: user.royal_member || user.hierarchy?.royalMember,
       };
 
       return {
