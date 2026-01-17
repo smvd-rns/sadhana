@@ -137,7 +137,7 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
                                 className="w-full px-4 py-3 bg-blue-50 hover:bg-blue-100 flex items-center justify-between transition-colors"
                             >
                                 <div className="flex items-center gap-2">
-                                    {isStateExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                                    {isStateExpanded ? <ChevronDown className="h-5 w-5 text-blue-700" /> : <ChevronRight className="h-5 w-5 text-blue-700" />}
                                     <span className="font-bold text-blue-900">{state}</span>
                                 </div>
                                 <span className="px-3 py-1 bg-blue-200 text-blue-900 text-sm font-semibold rounded-full">
@@ -162,7 +162,7 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
                                                     className="w-full px-4 py-2 bg-green-50 hover:bg-green-100 flex items-center justify-between transition-colors"
                                                 >
                                                     <div className="flex items-center gap-2">
-                                                        {isCityExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                        {isCityExpanded ? <ChevronDown className="h-4 w-4 text-green-700" /> : <ChevronRight className="h-4 w-4 text-green-700" />}
                                                         <span className="font-semibold text-green-900">{city}</span>
                                                     </div>
                                                     <span className="px-2 py-0.5 bg-green-200 text-green-900 text-xs font-semibold rounded-full">
@@ -182,7 +182,7 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
                                                                     </div>
                                                                     <div className="space-y-1">
                                                                         {users.map((user: User) => (
-                                                                            <div key={user.id} className="px-3 py-2 bg-white rounded text-sm">
+                                                                            <div key={user.id} className="px-3 py-2 bg-white rounded text-sm text-gray-900 font-medium border border-gray-100">
                                                                                 {user.name}
                                                                             </div>
                                                                         ))}
@@ -280,8 +280,8 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
                         <button
                             onClick={() => setActiveTab('unread')}
                             className={`flex-1 px-6 py-4 font-semibold transition-colors ${activeTab === 'unread'
-                                    ? 'bg-red-50 text-red-700 border-b-4 border-red-500'
-                                    : 'text-gray-600 hover:bg-gray-50'
+                                ? 'bg-red-50 text-red-700 border-b-4 border-red-500'
+                                : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             <div className="flex items-center justify-center gap-2">
@@ -292,8 +292,8 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
                         <button
                             onClick={() => setActiveTab('read')}
                             className={`flex-1 px-6 py-4 font-semibold transition-colors ${activeTab === 'read'
-                                    ? 'bg-green-50 text-green-700 border-b-4 border-green-500'
-                                    : 'text-gray-600 hover:bg-gray-50'
+                                ? 'bg-green-50 text-green-700 border-b-4 border-green-500'
+                                : 'text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             <div className="flex items-center justify-center gap-2">

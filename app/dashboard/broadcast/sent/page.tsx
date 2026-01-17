@@ -216,113 +216,92 @@ export default function SentMessagesPage() {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-blue-200">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-blue-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600 font-medium">Total Messages</p>
-                                <p className="text-3xl font-bold text-blue-600">{totalStats.totalMessages}</p>
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Messages</p>
+                                <p className="text-xl sm:text-3xl font-bold text-blue-600">{totalStats.totalMessages}</p>
                             </div>
-                            <Mail className="h-12 w-12 text-blue-400" />
+                            <Mail className="h-8 w-8 sm:h-12 sm:w-12 text-blue-400" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-purple-200">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-purple-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600 font-medium">Total Recipients</p>
-                                <p className="text-3xl font-bold text-purple-600">{totalStats.totalRecipients}</p>
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Recipients</p>
+                                <p className="text-xl sm:text-3xl font-bold text-purple-600">{totalStats.totalRecipients}</p>
                             </div>
-                            <Users className="h-12 w-12 text-purple-400" />
+                            <Users className="h-8 w-8 sm:h-12 sm:w-12 text-purple-400" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-green-200">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-green-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600 font-medium">Total Read</p>
-                                <p className="text-3xl font-bold text-green-600">{totalStats.totalRead}</p>
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Total Read</p>
+                                <p className="text-xl sm:text-3xl font-bold text-green-600">{totalStats.totalRead}</p>
                             </div>
-                            <Eye className="h-12 w-12 text-green-400" />
+                            <Eye className="h-8 w-8 sm:h-12 sm:w-12 text-green-400" />
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-xl p-6 shadow-lg border-2 border-orange-200">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 shadow-lg border-2 border-orange-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-gray-600 font-medium">Avg Read Rate</p>
-                                <p className="text-3xl font-bold text-orange-600">{totalStats.avgReadRate}%</p>
+                                <p className="text-xs sm:text-sm text-gray-600 font-medium">Avg Read Rate</p>
+                                <p className="text-xl sm:text-3xl font-bold text-orange-600">{totalStats.avgReadRate}%</p>
                             </div>
-                            <TrendingUp className="h-12 w-12 text-orange-400" />
+                            <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-orange-400" />
                         </div>
                     </div>
                 </div>
 
                 {/* Filters & Controls */}
                 <div className="bg-white rounded-xl p-4 shadow-lg border border-gray-200">
-                    <div className="flex flex-col gap-4">
-                        {/* Search and Category */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search messages..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
-                                />
-                            </div>
+                    <div className="flex flex-col md:flex-row gap-4">
+                        {/* Search Bar */}
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search messages..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none"
+                            />
+                        </div>
 
+                        {/* Filters Grid */}
+                        <div className="grid grid-cols-2 gap-3 md:min-w-[400px]">
+                            {/* Category - Spans 1 col on mobile */}
                             <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
-                                className="px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white"
+                                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none bg-white text-sm"
                             >
                                 <option value="">All Categories</option>
                                 <option value="spiritual">Spiritual</option>
                                 <option value="administrative">Administrative</option>
                                 <option value="events">Events</option>
                             </select>
+
+                            {/* Sort By - Spans 1 col on mobile */}
+                            <select
+                                value={sortBy}
+                                onChange={(e) => setSortBy(e.target.value as any)}
+                                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-sm"
+                            >
+                                <option value="date-desc">Newest First</option>
+                                <option value="date-asc">Oldest First</option>
+                                <option value="read-desc">Most Read</option>
+                                <option value="read-asc">Least Read</option>
+                            </select>
                         </div>
 
-                        {/* Date Range and Sort */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4 border-gray-100">
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-gray-600 ml-1">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-gray-900"
-                                />
-                            </div>
 
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-gray-600 ml-1">End Date</label>
-                                <input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                    className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white text-gray-900"
-                                />
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-semibold text-gray-600 ml-1">Sort By</label>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) => setSortBy(e.target.value as any)}
-                                    className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none bg-white"
-                                >
-                                    <option value="date-desc">Newest First</option>
-                                    <option value="date-asc">Oldest First</option>
-                                    <option value="read-high">High Read Rate</option>
-                                    <option value="read-low">Low Read Rate</option>
-                                    <option value="recipients-high">Most Recipients</option>
-                                </select>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
@@ -339,7 +318,7 @@ export default function SentMessagesPage() {
                                 key={message.id}
                                 className="bg-white rounded-xl p-6 shadow-lg border-2 border-gray-200 hover:border-orange-400 hover:shadow-xl transition-all relative group"
                             >
-                                <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="absolute top-4 right-4 z-10 opacity-100 transition-opacity">
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -374,7 +353,7 @@ export default function SentMessagesPage() {
                                                 </span>
                                             </div>
                                             <p className="text-gray-600 line-clamp-2 mb-3">{message.content}</p>
-                                            <div className="flex items-center gap-4 text-sm text-gray-500">
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-gray-500">
                                                 <div className="flex items-center gap-1">
                                                     <Calendar className="h-4 w-4" />
                                                     {format(new Date(message.createdAt), 'MMM d, yyyy h:mm a')}
@@ -386,7 +365,7 @@ export default function SentMessagesPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex sm:flex-col gap-4 sm:gap-2 sm:items-end min-w-[100px]">
+                                        <div className="flex sm:flex-col gap-4 sm:gap-2 sm:items-end min-w-[100px] sm:pt-8">
                                             <div className="text-center">
                                                 <div className="text-3xl font-bold text-green-600">{message.readPercentage}%</div>
                                                 <div className="text-xs text-gray-500">Read Rate</div>
