@@ -279,12 +279,7 @@ function LoginContent() {
           </button>
         </div>
 
-        <p className="mt-5 sm:mt-6 md:mt-8 text-center text-xs sm:text-sm md:text-base text-gray-600 px-2">
-          Don't have an account?{' '}
-          <Link href="/auth/register" className="text-amber-600 hover:text-amber-700 font-semibold hover:underline transition-colors">
-            Register here
-          </Link>
-        </p>
+
 
         {/* Hare Krishna Mahamantra */}
         <div className="mt-6 sm:mt-8 md:mt-10 pt-4 sm:pt-6 md:pt-8 border-t border-amber-200">

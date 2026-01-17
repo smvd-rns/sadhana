@@ -1181,7 +1181,7 @@ export default function CompleteProfilePage() {
           </div>
 
           {/* Spiritual Information Card */}
-          <div className="bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border-2 border-amber-200 p-4 sm:p-5 md:p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="relative z-30 bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border-2 border-amber-200 p-4 sm:p-5 md:p-6 hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
             <div className="flex items-center space-x-2 sm:space-x-3 mb-4 sm:mb-5 md:mb-6">
               <div className="p-2 sm:p-2.5 md:p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-lg sm:rounded-xl shadow-lg">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />

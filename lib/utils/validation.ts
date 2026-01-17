@@ -33,19 +33,18 @@ export function sanitizeInput(input: string): string {
  */
 export function sanitizeTextInput(input: string): string {
     if (!input) return '';
-    
+
     // Remove HTML tags and scripts
     let sanitized = input
         .replace(/<[^>]*>/g, '') // Remove HTML tags
         .replace(/javascript:/gi, '') // Remove javascript: protocol
         .replace(/on\w+=/gi, '') // Remove event handlers
         .replace(/data:/gi, '') // Remove data URIs
-        .replace(/vbscript:/gi, '') // Remove vbscript
-        .trim();
-    
+        .replace(/vbscript:/gi, ''); // Remove vbscript
+
     // Allow safe characters: letters, numbers, spaces, basic punctuation
     sanitized = sanitized.replace(/[^a-zA-Z0-9\s\-\.\,\'\(\)\&\:\/]/g, '');
-    
+
     return sanitized;
 }
 
@@ -58,28 +57,28 @@ export function validateTextInput(input: string, fieldName: string, maxLength: n
     }
 
     const trimmed = input.trim();
-    
+
     // Check length
     if (trimmed.length < 1) {
         return { valid: false, error: `${fieldName} cannot be empty` };
     }
-    
+
     if (trimmed.length > maxLength) {
         return { valid: false, error: `${fieldName} must be less than ${maxLength} characters` };
     }
-    
+
     // Check for dangerous characters
     const dangerousChars = /[<>;{}[\]\\/='"]/;
     if (dangerousChars.test(trimmed)) {
         return { valid: false, error: `Invalid text in ${fieldName}. Special characters like < > ; { } [ ] are not allowed.` };
     }
-    
+
     // Check for script tags and javascript
     const scriptPattern = /<script|javascript:|on\w+=/i;
     if (scriptPattern.test(trimmed)) {
         return { valid: false, error: `Invalid text in ${fieldName}. Malicious code detected.` };
     }
-    
+
     return { valid: true };
 }
 
@@ -92,20 +91,20 @@ export function validatePhone(phone: string): ValidationResult {
     }
 
     const trimmed = phone.trim();
-    
+
     // Remove spaces and common formatting characters for validation
     const cleaned = trimmed.replace(/[\s\-\(\)\+]/g, '');
-    
+
     // Check if it's all digits
     if (!/^\d+$/.test(cleaned)) {
         return { valid: false, error: 'Invalid phone number. Phone number should contain only digits and formatting characters (+, -, spaces, parentheses)' };
     }
-    
+
     // Check length (typically 10-15 digits for international numbers)
     if (cleaned.length < 10 || cleaned.length > 15) {
         return { valid: false, error: 'Invalid phone number. Phone number should be between 10 and 15 digits' };
     }
-    
+
     return { valid: true };
 }
 
@@ -202,7 +201,7 @@ export function validateMobile(mobile: string): ValidationResult {
 
     // Remove spaces and common formatting characters for validation
     const cleaned = mobile.replace(/[\s\-\(\)\+]/g, '');
-    
+
     // Check if it's all digits
     if (!/^\d+$/.test(cleaned)) {
         return { valid: false, error: 'Invalid mobile number. Mobile number should contain only digits and formatting characters (+, -, spaces, parentheses)' };
