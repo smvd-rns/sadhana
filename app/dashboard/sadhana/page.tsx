@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { submitSadhanaReport, getSadhanaReportByDate, getWeeklyTotals } from '@/lib/supabase/sadhana';
 import { SadhanaReport } from '@/types';
-import { CheckCircle, AlertCircle, Upload, BookOpen, Clock, Moon, Sun, Coffee, Bed, Calendar } from 'lucide-react';
+import { CheckCircle, AlertCircle, Upload, BookOpen, Clock, Moon, Sun, Coffee, Bed, Calendar, X } from 'lucide-react';
 
 export default function SadhanaPage() {
   const { userData } = useAuth();
@@ -20,7 +20,7 @@ export default function SadhanaPage() {
     daySleep: 0,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [existingReport, setExistingReport] = useState<SadhanaReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,7 @@ export default function SadhanaPage() {
 
           // Load weekly totals for validation and calculations
           const totals = await getWeeklyTotals(userData.id, formData.date);
-          console.log('Loaded weekly totals:', totals);
+          // console.log('Loaded weekly totals:', totals);
           setWeeklyTotals(totals);
         } catch (error) {
           console.error('Error loading sadhana report:', error);
@@ -129,7 +129,7 @@ export default function SadhanaPage() {
 
     setSubmitting(true);
     setError('');
-    setSuccess(false);
+    setSuccess('');
 
     try {
       await submitSadhanaReport({
@@ -145,8 +145,8 @@ export default function SadhanaPage() {
         daySleep: formData.daySleep,
       });
 
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      setSuccess('Sadhana report submitted successfully!');
+      setTimeout(() => setSuccess(''), 3000);
 
       // Reload the report and weekly totals
       const report = await getSadhanaReportByDate(userData.id, formData.date);
@@ -233,10 +233,23 @@ export default function SadhanaPage() {
         </div>
 
         {/* Success Message */}
+        {/* Success Message - Sticky Popup */}
         {success && (
-          <div className="bg-green-50 border-l-4 border-green-500 text-green-700 px-6 py-4 rounded-xl shadow-md flex items-center animate-pulse">
-            <CheckCircle className="h-6 w-6 mr-3 flex-shrink-0" />
-            <span className="font-semibold">Report {existingReport ? 'updated' : 'submitted'} successfully!</span>
+          <div className="fixed top-20 right-4 z-50 animate-slideInRight">
+            <div className="bg-white border-l-4 border-green-500 text-gray-800 px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 ring-1 ring-black/5">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-green-800 text-lg">Success</h3>
+                <p className="text-sm text-gray-600">{success}</p>
+              </div>
+              <button onClick={() => setSuccess('')} className="ml-2 text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         )}
 

@@ -242,7 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-72 bg-gradient-to-b from-white via-orange-50/30 to-amber-50/30 shadow-xl border-r border-gray-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-30 w-72 bg-gradient-to-b from-white via-orange-50 to-amber-50 shadow-xl border-r border-gray-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         <div className="flex flex-col h-full relative overflow-hidden">

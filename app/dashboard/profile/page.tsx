@@ -19,6 +19,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  // Track if form has unsaved changes
+  const [isDirty, setIsDirty] = useState(false);
+  const isInitializedRef = useRef(false);
 
   // Form data
   const [formData, setFormData] = useState({
@@ -199,6 +202,12 @@ export default function ProfilePage() {
       });
     }, observerOptions);
 
+    // Set initialized to true after a delay to allow initial data population
+    // This prevents isDirty from becoming true on initial load
+    setTimeout(() => {
+      isInitializedRef.current = true;
+    }, 1500);
+
     setTimeout(() => {
       const animatedElements = document.querySelectorAll('.animate-on-scroll');
       animatedElements.forEach((el) => observer.observe(el));
@@ -254,6 +263,13 @@ export default function ProfilePage() {
       window.removeEventListener('resize', updatePosition);
     };
   }, [showCounselorDropdown, currentCounselorType, brahmachariCounselorSearch, grihasthaCounselorSearch]);
+
+  // Detect unsaved changes
+  useEffect(() => {
+    if (isInitializedRef.current) {
+      setIsDirty(true);
+    }
+  }, [formData, education, workExperience, languages, skills, services]);
 
   // Load initial data
   useEffect(() => {
@@ -1082,7 +1098,9 @@ export default function ProfilePage() {
       }
 
       console.log('Profile updated successfully:', data);
+      console.log('Profile updated successfully:', data);
       setSuccess('Profile updated successfully!');
+      setIsDirty(false); // Reset dirty state on success
 
       // Reload user data after a short delay to reflect changes (e.g. role revocation)
       setTimeout(() => {
@@ -3369,6 +3387,26 @@ export default function ProfilePage() {
             </button>
           </div>
         )}
+      </div>
+
+      {/* Sticky Save Button - Floating Action Button Style */}
+      <div className={`fixed bottom-6 right-6 z-40 transform transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isDirty ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-32 opacity-0 scale-75 pointer-events-none'}`}>
+        <button
+          type="button"
+          onClick={(e) => handleSubmit({ preventDefault: () => { } } as React.FormEvent)}
+          disabled={saving}
+          className="flex items-center gap-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white px-5 sm:px-7 py-3 sm:py-3.5 rounded-full shadow-2xl hover:shadow-[0_10px_30px_rgba(245,158,11,0.5)] hover:scale-105 active:scale-95 transition-all duration-300 font-bold text-sm sm:text-lg border-2 border-white/20 backdrop-blur-sm group"
+        >
+          {saving ? (
+            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <div className="relative">
+              <Save className="w-5 h-5 sm:w-6 sm:h-6 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-amber-600 animate-pulse"></span>
+            </div>
+          )}
+          <span>Save Changes</span>
+        </button>
       </div>
     </div>
   );

@@ -4,17 +4,17 @@ import { SadhanaReport } from '@/types';
 // Helper function to normalize date to ISO string
 const normalizeDate = (date: Date | string | any): string => {
   if (!date) return '';
-  
+
   // Handle string
   if (typeof date === 'string') {
     return date.split('T')[0];
   }
-  
+
   // Handle Date object
   if (date instanceof Date) {
     return date.toISOString().split('T')[0];
   }
-  
+
   // Fallback: try to convert
   try {
     const dateObj = new Date(date);
@@ -24,7 +24,7 @@ const normalizeDate = (date: Date | string | any): string => {
   } catch (e) {
     console.error('Error normalizing date:', date, e);
   }
-  
+
   return '';
 };
 
@@ -55,7 +55,7 @@ export const getWeeklyTotals = async (userId: string, date: Date | string): Prom
     const diff = dateObj.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
     startOfWeek.setDate(diff);
     startOfWeek.setHours(0, 0, 0, 0);
-    
+
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
     endOfWeek.setHours(23, 59, 59, 999);
@@ -97,25 +97,25 @@ export const getWeeklyTotals = async (userId: string, date: Date | string): Prom
       });
     }
 
-    console.log('Weekly totals calculated:', {
-      userId,
-      startDate: startDateStr,
-      endDate: endDateStr,
-      reportsFound: data?.length || 0,
-      totals: {
-        japa: japaTotal,
-        hearing: hearingTotal,
-        reading: readingTotal,
-        toBed: toBedTotal,
-        wakeUp: wakeUpTotal,
-        dailyFilling: dailyFillingTotal,
-        daySleep: daySleepTotal
-      }
-    });
+    // console.log('Weekly totals calculated:', {
+    //   userId,
+    //   startDate: startDateStr,
+    //   endDate: endDateStr,
+    //   reportsFound: data?.length || 0,
+    //   totals: {
+    //     japa: japaTotal,
+    //     hearing: hearingTotal,
+    //     reading: readingTotal,
+    //     toBed: toBedTotal,
+    //     wakeUp: wakeUpTotal,
+    //     dailyFilling: dailyFillingTotal,
+    //     daySleep: daySleepTotal
+    //   }
+    // });
 
-    return { 
-      japa: japaTotal, 
-      hearing: hearingTotal, 
+    return {
+      japa: japaTotal,
+      hearing: hearingTotal,
       reading: readingTotal,
       toBed: toBedTotal,
       wakeUp: wakeUpTotal,
@@ -132,21 +132,21 @@ export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'su
   if (!supabase) {
     throw new Error('Supabase is not initialized');
   }
-  
+
   try {
     const dateStr = normalizeDate(report.date);
-    
+
     // Check if report already exists for this date
     const existingReport = await getSadhanaReportByDate(report.userId, dateStr);
-    
+
     // Get weekly totals to calculate weekly percentages
     const weeklyTotals = await getWeeklyTotals(report.userId, dateStr);
-    
+
     // Calculate current week totals including this report
     const currentJapaTotal = weeklyTotals.japa - (existingReport?.japa || 0) + report.japa;
     const currentHearingTotal = weeklyTotals.hearing - (existingReport?.hearing || 0) + report.hearing;
     const currentReadingTotal = weeklyTotals.reading - (existingReport?.reading || 0) + report.reading;
-    
+
     const currentToBedTotal = weeklyTotals.toBed - (existingReport?.toBed || 0) + report.toBed;
     const currentWakeUpTotal = weeklyTotals.wakeUp - (existingReport?.wakeUp || 0) + report.wakeUp;
     const currentDailyFillingTotal = weeklyTotals.dailyFilling - (existingReport?.dailyFilling || 0) + report.dailyFilling;
@@ -212,7 +212,7 @@ export const getUserSadhanaReports = async (userId: string, limitCount: number =
     console.error('Supabase is not initialized');
     return [];
   }
-  
+
   try {
     const { data, error } = await supabase
       .from('sadhana_reports')
@@ -254,7 +254,7 @@ export const getSadhanaReportByDate = async (userId: string, date: Date | string
     console.error('Supabase is not initialized');
     return null;
   }
-  
+
   try {
     const dateStr = normalizeDate(date);
     const { data, error } = await supabase

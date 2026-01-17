@@ -365,6 +365,55 @@ export default function BCVoiceManagerRequestPage() {
                   </p>
                 </div>
 
+                <div>
+                  <label className="block text-sm sm:text-base font-semibold text-gray-700 mb-2">
+                    Select Centers to Manage <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs sm:text-sm text-gray-500 mb-3">
+                    Select the centers you want to manage as BC Voice Manager. You can select multiple centers.
+                  </p>
+                  {loadingCenters ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-orange-600" />
+                    </div>
+                  ) : (
+                    <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-lg p-3 space-y-2">
+                      {centers.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">No centers available</p>
+                      ) : (
+                        centers.map((center) => (
+                          <label
+                            key={center.id}
+                            className="flex items-center space-x-2 p-2 hover:bg-gray-50 rounded cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedCenters.includes(center.id) || selectedCenters.includes(center.name)}
+                              onChange={(e) => {
+                                const centerId = center.id || center.name;
+                                if (e.target.checked) {
+                                  setSelectedCenters([...selectedCenters, centerId]);
+                                } else {
+                                  setSelectedCenters(selectedCenters.filter(c => c !== centerId));
+                                }
+                              }}
+                              className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                            />
+                            <span className="text-sm text-gray-700">
+                              {center.name} - {center.city}, {center.state}
+                            </span>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  )}
+                  {selectedCenters.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      {selectedCenters.length} center(s) selected
+                    </p>
+                  )}
+                </div>
+
                 <button
                   onClick={handleRequest}
                   disabled={requesting || !subject.trim() || !message.trim() || selectedCenters.length === 0}

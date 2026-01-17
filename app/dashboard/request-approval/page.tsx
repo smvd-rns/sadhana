@@ -151,7 +151,15 @@ export default function RequestApprovalPage() {
           }
         }
       } else if (request.type === 'bc_voice_manager') {
-        // ... (existing code)
+        const notes = 'Approved by super admin';
+
+        await updateBCVoiceManagerRequestStatus(
+          request.id,
+          'approved',
+          user.id,
+          notes,
+          approvedCenters
+        );
       }
 
       setSuccess(request.status === 'approved' ? 'Centers updated successfully' : 'Request approved successfully');

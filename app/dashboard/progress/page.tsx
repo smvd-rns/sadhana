@@ -239,17 +239,26 @@ Body %: ${avgBodyPercent}%`;
 
   const weeklyChartData = Object.values(weeklyData)
     .map(({ reports: weekReports, weekStart, weekEnd }) => {
-      const avgBodyPercent = weekReports.length > 0
-        ? weekReports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / weekReports.length
-        : 0;
-      const avgSoulPercent = weekReports.length > 0
-        ? weekReports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / weekReports.length
-        : 0;
+      // Calculate totals for the week
+      const weeklyJapa = weekReports.reduce((sum, r) => sum + (r.japa || 0), 0);
+      const weeklyHearing = weekReports.reduce((sum, r) => sum + (r.hearing || 0), 0);
+      const weeklyReading = weekReports.reduce((sum, r) => sum + (r.reading || 0), 0);
+
+      const weeklyToBed = weekReports.reduce((sum, r) => sum + (r.toBed || 0), 0);
+      const weeklyWakeUp = weekReports.reduce((sum, r) => sum + (r.wakeUp || 0), 0);
+      const weeklyDailyFilling = weekReports.reduce((sum, r) => sum + (r.dailyFilling || 0), 0);
+      const weeklyDaySleep = weekReports.reduce((sum, r) => sum + (r.daySleep || 0), 0);
+
+      // Weekly Soul Total Possible = 70 * 3 = 210
+      const avgSoulPercent = ((weeklyJapa + weeklyHearing + weeklyReading) / 210) * 100;
+
+      // Weekly Body Total Possible = 70 * 4 = 280
+      const avgBodyPercent = ((weeklyToBed + weeklyWakeUp + weeklyDailyFilling + weeklyDaySleep) / 280) * 100;
 
       return {
         week: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`,
-        bodyPercent: Math.round(avgBodyPercent * 10) / 10,
-        soulPercent: Math.round(avgSoulPercent * 10) / 10,
+        bodyPercent: Math.min(100, Math.round(avgBodyPercent * 10) / 10),
+        soulPercent: Math.min(100, Math.round(avgSoulPercent * 10) / 10),
       };
     })
     .sort((a, b) => {
