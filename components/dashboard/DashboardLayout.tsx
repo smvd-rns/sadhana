@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      router.push('/login');
+      router.push('/auth/login');
       router.refresh(); // Clear any client-side state
     }
   };
