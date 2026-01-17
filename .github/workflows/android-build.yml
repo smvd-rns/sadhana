@@ -35,6 +35,7 @@ jobs:
         working-directory: ./android
         run: |
           chmod +x gradlew
+          sed -i 's/\r$//' gradlew
           ./gradlew assembleDebug
 
       - name: Upload APK
