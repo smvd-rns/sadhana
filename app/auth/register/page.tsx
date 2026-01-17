@@ -98,7 +98,7 @@ export default function RegisterPage() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const response = await fetch('/api/states/get');
+        const response = await fetch('/api/states/get', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           setStates(data);
@@ -290,8 +290,8 @@ export default function RegisterPage() {
 
         // Select the newly added center - find it to get its ID
         const newCenterData = updatedCenters.find(c => c.name === newCenter.name.trim());
-        setFormData(prev => ({ 
-          ...prev, 
+        setFormData(prev => ({
+          ...prev,
           center: newCenter.name.trim(),
           centerId: newCenterData?.id || ''
         }));
@@ -371,10 +371,10 @@ export default function RegisterPage() {
           c.email.toLowerCase() === newBrahmachariCounselor.email.trim().toLowerCase()
         );
         if (addedCounselor) {
-          setFormData(prev => ({ 
-            ...prev, 
+          setFormData(prev => ({
+            ...prev,
             brahmachariCounselor: addedCounselor.name,
-            brahmachariCounselorEmail: addedCounselor.email 
+            brahmachariCounselorEmail: addedCounselor.email
           }));
         }
 
@@ -884,10 +884,10 @@ export default function RegisterPage() {
                     value={formData.centerId}
                     onChange={(e) => {
                       const selectedCenter = availableCenters.find(c => c.id === e.target.value);
-                      setFormData({ 
-                        ...formData, 
-                        center: selectedCenter?.name || '', 
-                        centerId: e.target.value 
+                      setFormData({
+                        ...formData,
+                        center: selectedCenter?.name || '',
+                        centerId: e.target.value
                       });
                     }}
                     disabled={!formData.city || loadingCenters}
@@ -1260,10 +1260,10 @@ export default function RegisterPage() {
                                 key={counselor.id}
                                 type="button"
                                 onClick={() => {
-                                  setFormData(prev => ({ 
-                                    ...prev, 
+                                  setFormData(prev => ({
+                                    ...prev,
                                     brahmachariCounselor: counselor.name,
-                                    brahmachariCounselorEmail: counselor.email 
+                                    brahmachariCounselorEmail: counselor.email
                                   }));
                                   setBrahmachariCounselorSearch(counselor.name);
                                 }}
@@ -1494,10 +1494,10 @@ export default function RegisterPage() {
                                 key={counselor.id}
                                 type="button"
                                 onClick={() => {
-                                  setFormData(prev => ({ 
-                                    ...prev, 
+                                  setFormData(prev => ({
+                                    ...prev,
                                     grihasthaCounselor: counselor.name,
-                                    grihasthaCounselorEmail: counselor.email 
+                                    grihasthaCounselorEmail: counselor.email
                                   }));
                                   setGrihasthaCounselorSearch(counselor.name);
                                 }}

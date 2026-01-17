@@ -14,7 +14,7 @@ export interface CitiesData {
 // Get cities from Supabase via API
 export const getCitiesFromLocal = async (): Promise<CitiesData> => {
   try {
-    const response = await fetch('/api/cities/get');
+    const response = await fetch('/api/cities/get', { cache: 'no-store' });
     if (!response.ok) {
       // If file doesn't exist, return empty object
       return {};

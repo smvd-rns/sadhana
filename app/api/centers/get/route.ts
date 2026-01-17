@@ -51,6 +51,7 @@ export async function GET(request: Request) {
       return fetch(input, {
         ...init,
         headers: fetchHeaders,
+        cache: 'no-store',
       });
     };
 

@@ -204,7 +204,7 @@ export default function CompleteProfilePage() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const response = await fetch('/api/states/get');
+        const response = await fetch('/api/states/get', { cache: 'no-store' });
         if (response.ok) {
           const data = await response.json();
           setStates(data);
