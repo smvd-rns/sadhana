@@ -67,7 +67,7 @@ export default function Home() {
           </div>
 
           <h1 className="text-4xl font-display font-bold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-orange-700 to-amber-600 tracking-tight">
-            ISKCON Sadhana
+            Hare Krishna
           </h1>
           <p className="text-orange-900/60 font-medium text-sm tracking-widest uppercase">
             Spiritual Practice & Mentorship
@@ -87,16 +87,7 @@ export default function Home() {
           >
             <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#F59E0B_0%,#EA580C_50%,#F59E0B_100%)] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <span className="relative flex w-full cursor-pointer items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-3.5 text-sm font-semibold text-white transition-all duration-200 hover:shadow-lg hover:to-orange-600">
-              Sign In
-            </span>
-          </Link>
-
-          <Link
-            href="/auth/register"
-            className="block w-full"
-          >
-            <span className="flex w-full cursor-pointer items-center justify-center rounded-xl border border-orange-200 bg-white/50 px-8 py-3.5 text-sm font-semibold text-orange-700 transition-all duration-200 hover:bg-white/80 hover:shadow-md hover:border-orange-300 backdrop-blur-sm">
-              Create Account
+              Sign In / Sign Up
             </span>
           </Link>
         </div>
