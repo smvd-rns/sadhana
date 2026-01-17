@@ -1,8 +1,0 @@
-# Ignore Android native project
-android/
-
-# Ignore GitHub Actions workflows
-.github/
-
-# Ignore Capacitor configuration
-capacitor.config.ts
