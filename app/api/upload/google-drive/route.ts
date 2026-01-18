@@ -44,14 +44,14 @@ async function findOrCreateFolder(drive: any, parentFolderId: string, folderName
   try {
     // Sanitize folder name (Google Drive folder names can contain most characters)
     const sanitizedFolderName = folderName.trim();
-    
+
     if (!sanitizedFolderName) {
       throw new Error('Folder name cannot be empty');
     }
 
     // Search for existing folder with this name in the parent folder
     const searchQuery = `name='${sanitizedFolderName.replace(/'/g, "\\'")}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-    
+
     const searchResponse = await drive.files.list({
       q: searchQuery,
       fields: 'files(id, name)',
@@ -174,7 +174,7 @@ async function uploadToDrive(fileBuffer: Buffer, fileName: string, mimeType: str
     // Construct the direct image URL for Google Drive files
     // Format: https://drive.google.com/uc?export=view&id=FILE_ID
     const directImageUrl = `https://drive.google.com/uc?export=view&id=${response.data.id}`;
-    
+
     // Return the file ID, view link, and direct image URL
     return JSON.stringify({
       fileId: response.data.id,
@@ -212,22 +212,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.' }, { status: 400 });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      return NextResponse.json({ error: 'File size exceeds 5MB limit.' }, { status: 400 });
-    }
+    // File size check removed as per requirement (unlimited uploads)
 
     // Get file extension
     const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-    
+
     // Sanitize user name for filename (remove special characters)
     const sanitizedName = userName
       .trim()
       .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
       .replace(/\s+/g, '_') // Replace spaces with underscores
       .toLowerCase();
-    
+
     // Create filename: username_timestamp.extension
     const timestamp = Date.now();
     const fileName = `${sanitizedName}_${timestamp}.${fileExtension}`;
@@ -238,7 +234,7 @@ export async function POST(request: Request) {
 
     // Get or create folder structure (state/city/center)
     let targetFolderId = FOLDER_ID; // Default to main folder if location not provided
-    
+
     if (state && city && center) {
       try {
         const drive = await getDriveClient();

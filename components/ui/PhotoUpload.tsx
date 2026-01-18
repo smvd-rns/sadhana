@@ -89,16 +89,7 @@ export default function PhotoUpload({
       return;
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      onUploadError('File size exceeds 5MB limit. Please choose a smaller image.');
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      return;
-    }
+    // File size check removed as per requirement (unlimited uploads)
 
     // Create temporary preview (will be replaced with actual URL after upload)
     const reader = new FileReader();
@@ -277,8 +268,8 @@ export default function PhotoUpload({
               src={preview}
               alt="Profile preview"
               className={`w-20 h-20 rounded-full object-cover border-2 transition-all ${uploadSuccess
-                  ? 'border-green-500 ring-2 ring-green-200'
-                  : 'border-gray-300'
+                ? 'border-green-500 ring-2 ring-green-200'
+                : 'border-gray-300'
                 }`}
               onError={(e) => {
                 // If thumbnail fails, try the original URL
@@ -329,10 +320,10 @@ export default function PhotoUpload({
             onClick={handleClick}
             disabled={isUploadDisabled}
             className={`flex items-center space-x-2 px-4 py-2 border rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${uploadSuccess
-                ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100 shadow-sm'
-                : required && !preview && !isLocationRequired
-                  ? 'border-primary-400 bg-primary-50 text-primary-700 hover:bg-primary-100'
-                  : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
+              ? 'border-green-500 bg-green-50 text-green-700 hover:bg-green-100 shadow-sm'
+              : required && !preview && !isLocationRequired
+                ? 'border-primary-400 bg-primary-50 text-primary-700 hover:bg-primary-100'
+                : 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50'
               }`}
           >
             {uploading ? (
@@ -365,7 +356,7 @@ export default function PhotoUpload({
       )}
 
       <p className="text-xs text-gray-500">
-        Maximum file size: 5MB. Supported formats: JPEG, PNG, GIF, WebP
+        Supported formats: JPEG, PNG, GIF, WebP
       </p>
     </div>
   );
