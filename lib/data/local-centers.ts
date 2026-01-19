@@ -77,12 +77,16 @@ export const addCenterToLocal = async (center: Omit<CenterData, 'id'>): Promise<
       }
     }
 
+    const { getDeviceHeaders } = await import('@/lib/utils/device');
+    const deviceHeaders = getDeviceHeaders();
+
     const response = await fetch('/api/centers/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { 'Authorization': authHeader }),
-      },
+        ...deviceHeaders, // Include device ID
+      } as HeadersInit,
       body: JSON.stringify(center),
     });
     return response.ok;

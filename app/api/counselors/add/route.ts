@@ -18,6 +18,37 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error || 'Invalid counselor information' }, { status: 400 });
     }
 
+    // Rate Limiting
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    // Create a temporary client to get the user ID from the token
+    const authHeader = request.headers.get('authorization');
+    const accessToken = authHeader?.replace('Bearer ', '');
+    let userId = null;
+
+    if (accessToken) {
+      const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false }
+      });
+      const { data: { user } } = await tempClient.auth.getUser(accessToken);
+      userId = user?.id || null;
+    }
+
+    const { checkRateLimit } = await import('@/lib/rate-limit');
+    const rateLimit = await checkRateLimit(request, userId, {
+      action: 'add_counselor',
+      limit: 20, // Max 20 counselors
+      windowMs: 60 * 60 * 1000, // 1 hour window
+      blockDurationMs: 6 * 60 * 60 * 1000 // 6 hours block
+    });
+
+    if (rateLimit.blocked) {
+      return NextResponse.json({
+        error: rateLimit.message,
+        retryAfter: rateLimit.retryAfter
+      }, { status: 429 });
+    }
+
     // Sanitize inputs
     name = sanitizeInput(name);
     mobile = sanitizeInput(mobile);
@@ -25,22 +56,22 @@ export async function POST(request: Request) {
     city = sanitizeInput(city).trim();
     ashram = ashram ? sanitizeInput(ashram).trim() : null;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase is not initialized. Please check your environment variables.');
     }
 
-    const shouldUseServiceKey = !!serviceRoleKey;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Custom fetch
+    // Use Service Role Key if available (Restricted RLS), otherwise fallback to Anon Key (Public RLS)
+    const keyToUse = serviceRoleKey || supabaseAnonKey;
+
     const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
       const fetchHeaders = new Headers(init?.headers);
 
-      if (shouldUseServiceKey) {
-        fetchHeaders.set('apikey', serviceRoleKey!);
+      if (serviceRoleKey) {
+        fetchHeaders.set('apikey', serviceRoleKey);
         fetchHeaders.set('Authorization', `Bearer ${serviceRoleKey}`);
       } else {
         const authHeader = request.headers.get('authorization');
@@ -58,8 +89,6 @@ export async function POST(request: Request) {
         headers: fetchHeaders,
       });
     };
-
-    const keyToUse = shouldUseServiceKey ? serviceRoleKey! : supabaseAnonKey;
 
     const authenticatedClient = createClient(supabaseUrl, keyToUse, {
       auth: {
@@ -83,18 +112,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (checkEmailError && checkEmailError.code !== 'PGRST116') {
-      if (checkEmailError.message?.includes('does not exist') || checkEmailError.code === '42P01') {
-        throw new Error('Counselors table does not exist. Please run the Supabase schema SQL file (supabase-schema.sql) in your Supabase SQL Editor first.');
+      // Ignore permission denied errors for duplicate checks - we'll let the unique constraint handle it
+      if (checkEmailError.code !== '42501' && !checkEmailError.message?.includes('permission denied')) {
+        console.warn('Error checking for existing counselor:', checkEmailError);
       }
-      if (checkEmailError.code === '42501' || checkEmailError.message?.includes('permission denied')) {
-        throw new Error('Permission denied. Please check your Supabase RLS policies or configure SUPABASE_SERVICE_ROLE_KEY.');
-      }
-      throw new Error(checkEmailError.message || 'Failed to check if counselor exists');
     }
 
     if (existingByEmail) {
       // Counselor already exists with this email
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: `A counselor with this email (${trimmedEmail}) already exists. Please use a different email or select the existing counselor.`,
         duplicate: true,
         existingCounselor: {
@@ -123,7 +149,7 @@ export async function POST(request: Request) {
 
     if (existingByNameMobile && existingByNameMobile.email !== trimmedEmail) {
       // Same name and mobile but different email - potential duplicate
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: `A counselor with the same name (${trimmedName}) and mobile number (${trimmedMobile}) already exists with email ${existingByNameMobile.email}. Please verify this is not a duplicate.`,
         duplicate: true,
         existingCounselor: {
@@ -162,7 +188,7 @@ export async function POST(request: Request) {
           .select('id, name, email, mobile, city, ashram')
           .eq('email', trimmedEmail)
           .single();
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: `A counselor with this email (${trimmedEmail}) already exists. Please use a different email or select the existing counselor.`,
           duplicate: true,
           existingCounselor: existingCounselor ? {
@@ -198,9 +224,7 @@ export async function POST(request: Request) {
 
     if (errorString.includes('permission denied') || errorString.includes('row-level security')) {
       status = 403;
-      errorMessage = 'Permission denied. Unable to add counselor. Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local for registration support.';
-    } else if (errorString.includes('not initialized')) {
-      status = 500;
+      errorMessage = 'Permission denied. Unable to add counselor.';
     } else if (errorString.includes('relation') && errorString.includes('does not exist')) {
       errorMessage = 'Counselors table does not exist. Please run the Supabase schema SQL file.';
     }

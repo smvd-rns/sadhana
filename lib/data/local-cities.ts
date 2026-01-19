@@ -45,13 +45,17 @@ export const addCityToLocal = async (state: string, cityName: string): Promise<b
       }
     }
 
+    const { getDeviceHeaders } = await import('@/lib/utils/device');
+    const deviceHeaders = getDeviceHeaders();
+
     // This will be handled by an API route since we can't write to public files from client
     const response = await fetch('/api/cities/add', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { 'Authorization': authHeader }),
-      },
+        ...deviceHeaders, // Include device ID
+      } as HeadersInit,
       body: JSON.stringify({ state, cityName }),
     });
     return response.ok;

@@ -1,5 +1,6 @@
 'use client';
 
+import { toast } from 'react-hot-toast';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -95,6 +96,34 @@ export default function CompleteProfilePage() {
   const [profileImage, setProfileImage] = useState('');
   const uploadedImageUrlRef = useRef<string>(''); // Track the URL we just uploaded to ensure it's available
 
+  // Calculate form validity for enabling/disabling submit button
+  const isFormValid = () => {
+    // Basic fields
+    if (!formData.name?.trim() || !isValidName(formData.name)) return false;
+
+    // Email is read-only usually, but if editable:
+    if (formData.email && !validateEmail(formData.email).valid) return false;
+
+    // Location
+    if (!formData.state || !formData.city || !formData.center) return false;
+
+    // Spiritual
+    if (!formData.initiationStatus) return false;
+    if (formData.initiationStatus === 'initiated') {
+      if (!formData.initiatedName || !formData.spiritualMasterName) return false;
+    }
+
+    if (!formData.chantingSince || !formData.ashram || !formData.royalMember) return false;
+
+    // Counselors
+    if (!formData.brahmachariCounselor) return false;
+
+    // Photo (check state or ref)
+    if (!profileImage && !uploadedImageUrlRef.current) return false;
+
+    return true;
+  };
+
   // Debug: Log when profileImage changes
   useEffect(() => {
     console.log('Complete Profile - profileImage state changed to:', profileImage);
@@ -141,40 +170,27 @@ export default function CompleteProfilePage() {
       }
 
       // Load centers immediately if state and city are available from userData
-      // This ensures the center dropdown shows the saved center name
       if (savedState && savedCity) {
         const loadCentersForUserData = async () => {
           try {
             const centers = await getCentersByLocationFromLocal(savedState, savedCity);
             const centersList = centers.map(c => ({ id: c.id, name: c.name }));
             setAvailableCenters(centersList);
-            console.log('Loaded centers for userData:', centersList);
-            console.log('Saved center name from database:', savedCenter);
 
-            // Verify the saved center exists in the list and ensure it's set correctly
             if (savedCenter && savedCenter.trim() !== '') {
               const centerExists = centersList.some(c => c.name.trim() === savedCenter.trim());
               if (!centerExists) {
-                // Try case-insensitive match
                 const matchedCenter = centersList.find(c =>
                   c.name.trim().toLowerCase() === savedCenter.trim().toLowerCase()
                 );
                 if (matchedCenter) {
-                  console.log('Found case-insensitive match, updating center to:', matchedCenter.name);
                   setFormData(prev => ({ ...prev, center: matchedCenter.name }));
                 } else {
-                  console.warn('⚠️ Saved center not found in centers list:', savedCenter);
-                  console.warn('Available centers:', centersList.map(c => c.name));
-                  // Keep the saved center name even if not in list (might be valid)
-                  // But ensure it's set in formData
                   setFormData(prev => ({ ...prev, center: savedCenter }));
                 }
               } else {
-                console.log('✅ Saved center found in centers list');
-                // Ensure center is set correctly (trimmed to match option value)
                 const exactMatch = centersList.find(c => c.name.trim() === savedCenter.trim());
                 if (exactMatch && exactMatch.name !== savedCenter) {
-                  console.log('Updating center to exact match:', exactMatch.name);
                   setFormData(prev => ({ ...prev, center: exactMatch.name }));
                 }
               }
@@ -182,7 +198,6 @@ export default function CompleteProfilePage() {
           } catch (error) {
             console.error('Error loading centers for userData:', error);
           } finally {
-            // Mark initial load as complete after centers are loaded
             isInitialLoadRef.current = false;
           }
         };
@@ -229,8 +244,6 @@ export default function CompleteProfilePage() {
         const allCities = [...new Set(localCities)].sort();
         setAvailableCities(allCities);
 
-        // Only reset city and center if this is NOT the initial load from userData
-        // On initial load, userData already has the correct values, so don't reset them
         if (!isInitialLoadRef.current) {
           setFormData(prev => ({ ...prev, city: '', center: '' }));
           setAvailableCenters([]);
@@ -253,9 +266,7 @@ export default function CompleteProfilePage() {
           const centersList = centers.map(c => ({ id: c.id, name: c.name }));
           setAvailableCenters(centersList);
 
-          // Only reset center if user manually changes city (not on initial load)
           if (!isInitialLoadRef.current && formData.city) {
-            // User changed city manually, reset center
             setFormData(prev => ({ ...prev, center: '' }));
           }
         } catch (error) {
@@ -326,17 +337,17 @@ export default function CompleteProfilePage() {
     }
 
     if (!newCityName.trim()) {
-      setError('City name is required');
+      toast.error('City name is required');
       return;
     }
 
     if (!formData.state) {
-      setError('Please select state first');
+      toast.error('Please select state first');
       return;
     }
 
     setAddingCity(true);
-    setError('');
+    // setError(''); // Removed
 
     try {
       const success = await addCityToLocal(
@@ -350,11 +361,12 @@ export default function CompleteProfilePage() {
         setFormData(prev => ({ ...prev, city: newCityName.trim() }));
         setNewCityName('');
         setShowAddCity(false);
+        toast.success('City added successfully');
       } else {
-        setError('Failed to add city. Please contact an admin.');
+        toast.error('Failed to add city. Please contact an admin.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to add city');
+      toast.error(err.message || 'Failed to add city');
     } finally {
       setAddingCity(false);
     }
@@ -367,22 +379,22 @@ export default function CompleteProfilePage() {
     }
 
     if (!newCenter.name.trim()) {
-      setError('Center name is required');
+      toast.error('Center name is required');
       return;
     }
 
     if (!newCenter.address.trim()) {
-      setError('Center address is required');
+      toast.error('Center address is required');
       return;
     }
 
     if (!formData.state || !formData.city) {
-      setError('Please select state and city first');
+      toast.error('Please select state and city first');
       return;
     }
 
     setAddingCenter(true);
-    setError('');
+    // setError(''); // Removed
 
     try {
       const success = await addCenterToLocal({
@@ -399,15 +411,19 @@ export default function CompleteProfilePage() {
         setFormData(prev => ({ ...prev, center: newCenter.name.trim() }));
         setNewCenter({ name: '', address: '', contact: '' });
         setShowAddCenter(false);
+        toast.success('Center added successfully');
       } else {
-        setError('Failed to add center. Please contact an admin.');
+        toast.error('Failed to add center. Please contact an admin.');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to add center');
+      toast.error(err.message || 'Failed to add center');
     } finally {
       setAddingCenter(false);
     }
   };
+
+  // ... (Update other handlers similarly) ...
+
 
   // Handle adding Brahmachari Counselor
   const handleAddBrahmachariCounselor = async (e?: React.MouseEvent) => {
@@ -417,41 +433,41 @@ export default function CompleteProfilePage() {
     }
 
     setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-    setError('');
+    // setError(''); // Removed
 
     if (!newBrahmachariCounselor.name.trim()) {
       setCounselorFieldErrors(prev => ({ ...prev, name: 'Counselor name is required' }));
-      setError('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     if (!isValidName(newBrahmachariCounselor.name)) {
       setCounselorFieldErrors(prev => ({ ...prev, name: 'Invalid characters in name. Only letters, numbers, and basic punctuation (.,-\'&) are allowed.' }));
-      setError('Invalid counselor name');
+      toast.error('Invalid counselor name');
       return;
     }
 
     const mobileValidation = validateMobile(newBrahmachariCounselor.mobile);
     if (!mobileValidation.valid) {
       setCounselorFieldErrors(prev => ({ ...prev, mobile: mobileValidation.error || 'Invalid mobile number' }));
-      setError('Invalid mobile number');
+      toast.error('Invalid mobile number');
       return;
     }
 
     const emailValidation = validateEmail(newBrahmachariCounselor.email);
     if (!emailValidation.valid) {
       setCounselorFieldErrors(prev => ({ ...prev, email: emailValidation.error || 'Invalid email address' }));
-      setError('Invalid email address');
+      toast.error('Invalid email address');
       return;
     }
 
     setAddingBrahmachariCounselor(true);
-    setError('');
+    // setError('');
 
     try {
       if (!newBrahmachariCounselor.city.trim()) {
         setCounselorFieldErrors(prev => ({ ...prev, city: 'City is required' }));
-        setError('City is required');
+        toast.error('City is required');
         return;
       }
 
@@ -465,31 +481,49 @@ export default function CompleteProfilePage() {
 
       if (success) {
         const updatedCounselors = await getCounselorsFromLocal('', 'Brahmachari Ashram');
-        setAvailableBrahmachariCounselors(updatedCounselors);
 
-        const addedCounselor = updatedCounselors.find(c =>
-          c.email.toLowerCase() === newBrahmachariCounselor.email.trim().toLowerCase()
+        let addedCounselor = updatedCounselors.find(c =>
+          (c.email || '').toLowerCase() === newBrahmachariCounselor.email.trim().toLowerCase()
         );
-        if (addedCounselor) {
-          setFormData(prev => ({ ...prev, brahmachariCounselor: addedCounselor.name }));
+
+        if (!addedCounselor) {
+          // Optimistic update: Create temp counselor if not found (unverified)
+          addedCounselor = {
+            id: `temp-${Date.now()}`,
+            name: newBrahmachariCounselor.name.trim(),
+            mobile: newBrahmachariCounselor.mobile.trim(),
+            email: newBrahmachariCounselor.email.trim().toLowerCase(),
+            city: newBrahmachariCounselor.city.trim(),
+            ashram: 'Brahmachari Ashram'
+          };
+          updatedCounselors.push(addedCounselor);
         }
+
+        setAvailableBrahmachariCounselors(updatedCounselors);
+        setFormData(prev => ({
+          ...prev,
+          brahmachariCounselor: addedCounselor!.name,
+          brahmachariCounselorEmail: addedCounselor!.email
+        }));
+        // Update search field to show the name immediately
+        setBrahmachariCounselorSearch(addedCounselor!.name);
 
         setNewBrahmachariCounselor({ name: '', mobile: '', email: '', city: '' });
         setShowAddBrahmachariCounselor(false);
-        setBrahmachariCounselorSearch('');
         setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
+        toast.success('Counselor added successfully and selected');
       } else {
-        setError('Failed to add counselor. Please contact an admin.');
+        toast.error('Failed to add counselor. Please contact an admin.');
       }
     } catch (err: any) {
       if (err.message?.includes('already exists') || err.message?.includes('duplicate')) {
         if (err.existingCounselor) {
-          setError(`${err.message} You can select "${err.existingCounselor.name}" from the dropdown.`);
+          toast.error(`${err.message} You can select "${err.existingCounselor.name}" from the dropdown.`);
         } else {
-          setError(err.message);
+          toast.error(err.message);
         }
       } else {
-        setError(err.message || 'Failed to add counselor');
+        toast.error(err.message || 'Failed to add counselor');
       }
     } finally {
       setAddingBrahmachariCounselor(false);
@@ -504,41 +538,41 @@ export default function CompleteProfilePage() {
     }
 
     setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-    setError('');
+    // setError('');
 
     if (!newGrihasthaCounselor.name.trim()) {
       setCounselorFieldErrors(prev => ({ ...prev, name: 'Counselor name is required' }));
-      setError('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     if (!isValidName(newGrihasthaCounselor.name)) {
       setCounselorFieldErrors(prev => ({ ...prev, name: 'Invalid characters in name. Only letters, numbers, and basic punctuation (.,-\'&) are allowed.' }));
-      setError('Invalid counselor name');
+      toast.error('Invalid counselor name');
       return;
     }
 
     const mobileValidation = validateMobile(newGrihasthaCounselor.mobile);
     if (!mobileValidation.valid) {
       setCounselorFieldErrors(prev => ({ ...prev, mobile: mobileValidation.error || 'Invalid mobile number' }));
-      setError('Invalid mobile number');
+      toast.error('Invalid mobile number');
       return;
     }
 
     const emailValidation = validateEmail(newGrihasthaCounselor.email);
     if (!emailValidation.valid) {
       setCounselorFieldErrors(prev => ({ ...prev, email: emailValidation.error || 'Invalid email address' }));
-      setError('Invalid email address');
+      toast.error('Invalid email address');
       return;
     }
 
     setAddingGrihasthaCounselor(true);
-    setError('');
+    // setError('');
 
     try {
       if (!newGrihasthaCounselor.city.trim()) {
         setCounselorFieldErrors(prev => ({ ...prev, city: 'City is required' }));
-        setError('City is required');
+        toast.error('City is required');
         return;
       }
 
@@ -552,35 +586,49 @@ export default function CompleteProfilePage() {
 
       if (success) {
         const updatedCounselors = await getCounselorsFromLocal('', 'Grihastha Ashram');
-        setAvailableGrihasthaCounselors(updatedCounselors);
 
-        const addedCounselor = updatedCounselors.find(c =>
-          c.email.toLowerCase() === newGrihasthaCounselor.email.trim().toLowerCase()
+        let addedCounselor = updatedCounselors.find(c =>
+          (c.email || '').toLowerCase() === newGrihasthaCounselor.email.trim().toLowerCase()
         );
-        if (addedCounselor) {
-          setFormData(prev => ({
-            ...prev,
-            grihasthaCounselor: addedCounselor.name,
-            grihasthaCounselorEmail: addedCounselor.email
-          }));
+
+        if (!addedCounselor) {
+          // Optimistic update: Create temp counselor if not found (unverified)
+          addedCounselor = {
+            id: `temp-${Date.now()}`,
+            name: newGrihasthaCounselor.name.trim(),
+            mobile: newGrihasthaCounselor.mobile.trim(),
+            email: newGrihasthaCounselor.email.trim().toLowerCase(),
+            city: newGrihasthaCounselor.city.trim(),
+            ashram: 'Grihastha Ashram'
+          };
+          updatedCounselors.push(addedCounselor);
         }
+
+        setAvailableGrihasthaCounselors(updatedCounselors);
+        setFormData(prev => ({
+          ...prev,
+          grihasthaCounselor: addedCounselor!.name,
+          grihasthaCounselorEmail: addedCounselor!.email
+        }));
+        // Update search field to show the name immediately
+        setGrihasthaCounselorSearch(addedCounselor!.name);
 
         setNewGrihasthaCounselor({ name: '', mobile: '', email: '', city: '' });
         setShowAddGrihasthaCounselor(false);
-        setGrihasthaCounselorSearch('');
         setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
+        toast.success('Counselor added successfully and selected');
       } else {
-        setError('Failed to add counselor. Please contact an admin.');
+        toast.error('Failed to add counselor. Please contact an admin.');
       }
     } catch (err: any) {
       if (err.message?.includes('already exists') || err.message?.includes('duplicate')) {
         if (err.existingCounselor) {
-          setError(`${err.message} You can select "${err.existingCounselor.name}" from the dropdown.`);
+          toast.error(`${err.message} You can select "${err.existingCounselor.name}" from the dropdown.`);
         } else {
-          setError(err.message);
+          toast.error(err.message);
         }
       } else {
-        setError(err.message || 'Failed to add counselor');
+        toast.error(err.message || 'Failed to add counselor');
       }
     } finally {
       setAddingGrihasthaCounselor(false);
@@ -589,23 +637,23 @@ export default function CompleteProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    // setError(''); 
 
     if (!user) {
-      setError('You must be logged in to complete your profile');
+      toast.error('You must be logged in to complete your profile');
       return;
     }
 
     // Validate Name
     if (!isValidName(formData.name)) {
-      setError('Invalid characters in name');
+      toast.error('Invalid characters in name');
       return;
     }
 
     // Validate Email
     const emailValidation = validateEmail(formData.email);
     if (!emailValidation.valid) {
-      setError(emailValidation.error || 'Invalid email');
+      toast.error(emailValidation.error || 'Invalid email');
       return;
     }
 
@@ -613,61 +661,53 @@ export default function CompleteProfilePage() {
     // Use ref value first (synchronous) if state is empty (handles React state batching issues)
     // Check both state and ref to ensure we have the uploaded image
     const finalProfileImageValue = uploadedImageUrlRef.current?.trim() || profileImage?.trim() || '';
-    console.log('Complete Profile - handleSubmit - profileImage state:', profileImage);
-    console.log('Complete Profile - handleSubmit - uploadedImageUrlRef.current:', uploadedImageUrlRef.current);
-    console.log('Complete Profile - handleSubmit - finalProfileImageValue:', finalProfileImageValue);
 
     if (!finalProfileImageValue) {
-      console.error('Complete Profile - handleSubmit - Profile image validation failed. Both state and ref are empty.');
-      console.error('Complete Profile - handleSubmit - Validation check: ref=', uploadedImageUrlRef.current, ', state=', profileImage);
-      setError('Please upload your profile photo. It is required.');
+      toast.error('Please upload your profile photo. It is required.');
       return;
     }
 
     // Ensure state is in sync with ref (update if needed, but we'll use ref value anyway)
     if (uploadedImageUrlRef.current?.trim() && profileImage !== uploadedImageUrlRef.current.trim()) {
-      console.log('Complete Profile - handleSubmit - Syncing profileImage state with ref');
       setProfileImage(uploadedImageUrlRef.current.trim());
     }
 
     // Validate location fields
     if (!formData.state || !formData.city || !formData.center) {
-      setError('Please fill in all required location fields (State, City, and Center)');
+      toast.error('Please fill in all required location fields (State, City, and Center)');
       return;
     }
 
     // Validate spiritual fields
     if (!formData.initiationStatus) {
-      setError('Please select whether you are Initiated or Aspiring');
+      toast.error('Please select whether you are Initiated or Aspiring');
       return;
     }
 
     if (formData.initiationStatus === 'initiated') {
       if (!formData.initiatedName || !formData.spiritualMasterName) {
-        setError('Please fill in Initiated Name and Spiritual Master Name');
+        toast.error('Please fill in Initiated Name and Spiritual Master Name');
         return;
       }
-    } else if (formData.initiationStatus === 'aspiring') {
-      // Aspiring Spiritual Master Name is optional - no validation needed
     }
 
     if (!formData.chantingSince) {
-      setError('Please select Chanting Since date');
+      toast.error('Please select Chanting Since date');
       return;
     }
 
     if (!formData.ashram) {
-      setError('Please select Ashram');
+      toast.error('Please select Ashram');
       return;
     }
 
     if (!formData.royalMember) {
-      setError('Please select Royal Member status');
+      toast.error('Please select Royal Member status');
       return;
     }
 
     if (!formData.brahmachariCounselor) {
-      setError('Please select Brahmachari Counselor');
+      toast.error('Please select Brahmachari Counselor');
       return;
     }
 
@@ -696,20 +736,11 @@ export default function CompleteProfilePage() {
       if (formData.grihasthaCounselorEmail) hierarchy.grihasthaCounselorEmail = formData.grihasthaCounselorEmail;
 
       // Use ref value as fallback if state is empty (handles React state batching)
-      // Recalculate to ensure we have the latest value - use ref first since it's synchronous
       const finalProfileImage = uploadedImageUrlRef.current?.trim() || profileImage?.trim() || userData?.profileImage || null;
-      console.log('Complete Profile - handleSubmit - About to update with profile_image:', finalProfileImage);
-      console.log('Complete Profile - handleSubmit - profileImage state:', profileImage);
-      console.log('Complete Profile - handleSubmit - uploadedImageUrlRef.current:', uploadedImageUrlRef.current);
-      console.log('Complete Profile - handleSubmit - finalProfileImageValue (from validation):', finalProfileImageValue);
 
       if (!finalProfileImage || !finalProfileImage.trim()) {
-        console.error('Complete Profile - handleSubmit - Final profile image is still empty after all checks');
-        console.error('Complete Profile - handleSubmit - All values checked: ref=', uploadedImageUrlRef.current, ', state=', profileImage, ', userData=', userData?.profileImage);
         throw new Error('Please upload your profile photo. It is required.');
       }
-
-      console.log('Complete Profile - handleSubmit - Hierarchy before enrichment:', JSON.stringify(hierarchy, null, 2));
 
       // Update user with all fields - updateUser will enrich hierarchy with counselor emails and center_id
       await updateUser(user.id, {
@@ -719,17 +750,18 @@ export default function CompleteProfilePage() {
         hierarchy: hierarchy,
       });
 
-      console.log('Complete Profile - handleSubmit - Profile updated successfully via updateUser');
-      console.log('Complete Profile - handleSubmit - Refreshing user data...');
-
       // Refresh user data in AuthProvider to ensure accurate state before redirect
       await refreshUserData();
 
-      console.log('Complete Profile - handleSubmit - User data refreshed, redirecting to dashboard...');
+      // Give React time to propagate the state update to AuthProvider context
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Redirect to dashboard after successful update
       router.push('/dashboard');
+      toast.success('Profile completed successfully!');
     } catch (err: any) {
-      setError(err.message || 'Failed to complete profile');
+      console.error('Profile completion error:', err);
+      toast.error(err.message || 'Failed to complete profile');
     } finally {
       setLoading(false);
     }
@@ -762,13 +794,7 @@ export default function CompleteProfilePage() {
           </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="mb-4 sm:mb-6 bg-red-50 border-l-4 border-red-500 text-red-700 px-4 sm:px-6 py-3 sm:py-4 rounded-lg sm:rounded-xl shadow-md flex items-start space-x-2 sm:space-x-3">
-            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 flex-shrink-0 text-red-600" />
-            <p className="flex-1 font-semibold text-sm sm:text-base">{error}</p>
-          </div>
-        )}
+        {/* Error Message Removed */}
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
           {/* Basic Information Card */}
@@ -1834,8 +1860,11 @@ export default function CompleteProfilePage() {
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg sm:shadow-xl border-2 border-gray-200 p-4 sm:p-5 md:p-6">
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 sm:py-4 rounded-lg sm:rounded-xl font-semibold text-base sm:text-lg md:text-xl hover:from-blue-700 hover:to-cyan-700 transition-all transform hover:scale-[1.01] active:scale-[0.99] shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center space-x-2 sm:space-x-3"
+              disabled={loading || !isFormValid()}
+              className={`w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-3 sm:py-4 rounded-lg sm:rounded-xl font-semibold text-base sm:text-lg md:text-xl transition-all transform shadow-lg flex items-center justify-center space-x-2 sm:space-x-3 ${loading || !isFormValid()
+                ? 'opacity-50 cursor-not-allowed'
+                : 'hover:from-blue-700 hover:to-cyan-700 hover:scale-[1.01] active:scale-[0.99] hover:shadow-xl'
+                }`}
             >
               {loading ? (
                 <>
@@ -1850,6 +1879,7 @@ export default function CompleteProfilePage() {
               )}
             </button>
           </div>
+
         </form>
 
         {/* Footer */}

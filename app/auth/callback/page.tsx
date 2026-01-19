@@ -12,148 +12,44 @@ function CallbackContent() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper function to create user record if it doesn't exist
-  // Returns true if user needs to complete profile, false otherwise
+  // Helper function to check if user record exists
+  // Returns true if user needs to complete profile (user missing or incomplete), false otherwise
   const createUserRecordIfNeeded = async (user: any): Promise<boolean> => {
     if (!supabase) {
       console.error('Supabase client not initialized');
       return false;
     }
 
-    // console.log('Checking if user exists in users table...');
-    // console.log('User ID:', user.id);
-    // console.log('User email:', user.email);
-
     // Check if user already exists in users table
     const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, state, city, center, initiation_status, ashram, brahmachari_counselor')
       .eq('id', user.id)
       .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') {
       console.error('Error checking existing user:', checkError);
-      console.error('Check error code:', checkError.code);
-      console.error('Check error message:', checkError.message);
       return false;
     }
 
     if (existingUser) {
-      // console.log('User already exists in users table');
-
       // Check if user has completed all required fields
-      const { data: userData, error: fetchError } = await supabase
-        .from('users')
-        .select('state, city, center, initiation_status, ashram, brahmachari_counselor')
-        .eq('id', user.id)
-        .single();
+      const hasRequiredFields =
+        existingUser.state &&
+        existingUser.city &&
+        existingUser.center &&
+        existingUser.initiation_status &&
+        existingUser.ashram &&
+        existingUser.brahmachari_counselor;
 
-      if (!fetchError && userData) {
-        // Check if required fields are missing
-        const hasRequiredFields =
-          userData.state &&
-          userData.city &&
-          userData.center &&
-          userData.initiation_status &&
-          userData.ashram &&
-          userData.brahmachari_counselor;
-
-        // Return true if fields are missing (needs completion)
-        return !hasRequiredFields;
-      }
-
-      // If we can't fetch user data, assume they need completion
-      return true;
+      // Return true if fields are missing (needs completion)
+      return !hasRequiredFields;
     }
 
-    // console.log('User does not exist in users table, creating...');
-
-    // Create user record directly using the authenticated client
-    const { data: insertedUser, error: insertError } = await supabase
-      .from('users')
-      .insert({
-        id: user.id,
-        email: user.email?.toLowerCase() || '',
-        name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-        role: [1], // Default role: student (role 1)
-        state: null,
-        city: null,
-        center: null,
-        hierarchy: {}, // Keep for backward compatibility
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .select('id, state, city, center, initiation_status, ashram, brahmachari_counselor')
-      .single();
-
-    if (insertError) {
-      console.error('Error creating user record:', insertError);
-      console.error('Insert error code:', insertError.code);
-      console.error('Insert error message:', insertError.message);
-      console.error('Insert error details:', JSON.stringify(insertError, null, 2));
-
-      // If it's a duplicate error, user was created between check and insert
-      if (insertError.code === '23505') {
-        // console.log('User already exists (race condition)');
-        // User was created between check and insert, check if they need completion
-        const { data: userData } = await supabase
-          .from('users')
-          .select('state, city, center, initiation_status, ashram, brahmachari_counselor')
-          .eq('id', user.id)
-          .single();
-
-        if (userData) {
-          const hasRequiredFields =
-            userData.state &&
-            userData.city &&
-            userData.center &&
-            userData.initiation_status &&
-            userData.ashram &&
-            userData.brahmachari_counselor;
-
-          return !hasRequiredFields;
-        }
-        return true;
-      } else {
-        // Try calling the API route as fallback (uses service role key)
-        // console.log('Trying API route fallback...');
-        try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          const accessToken = currentSession?.access_token;
-
-          const headers: HeadersInit = {
-            'Content-Type': 'application/json',
-          };
-
-          if (accessToken) {
-            headers['Authorization'] = `Bearer ${accessToken}`;
-          }
-
-          const createUserResponse = await fetch('/api/users/create-from-auth', {
-            method: 'POST',
-            headers,
-          });
-
-          if (createUserResponse.ok) {
-            const result = await createUserResponse.json();
-            // console.log('✅ User record created via API route:', result);
-            return true; // New user, needs completion
-          } else {
-            const errorData = await createUserResponse.json();
-            console.error('❌ Failed to create user record via API:', errorData);
-          }
-        } catch (apiError: any) {
-          console.error('❌ Error calling create-user API:', apiError);
-        }
-        return true; // Assume needs completion if error
-      }
-    } else {
-      // console.log('✅ User record created successfully in users table:', insertedUser);
-      // New user created - they need to complete profile
-      return true; // Indicates redirect to completion form is needed
-    }
-
-    return false; // No redirect needed (should not reach here)
+    // User does not exist in users table.
+    // We DO NOT create the record here anymore (per user request).
+    // The record will be created when they submit the Complete Profile form.
+    return true; // Redirect to complete-profile
   };
 
   useEffect(() => {

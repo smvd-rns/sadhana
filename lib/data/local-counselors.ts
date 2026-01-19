@@ -13,15 +13,15 @@ export const getCounselorsFromLocal = async (search?: string, ashram?: string): 
     const params = new URLSearchParams();
     if (search) params.append('search', search);
     if (ashram) params.append('ashram', ashram);
-    
+
     const url = `/api/counselors/get${params.toString() ? `?${params.toString()}` : ''}`;
-    
+
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch counselors');
     }
-    
+
     const data = await response.json();
     return data || [];
   } catch (error) {
@@ -48,8 +48,12 @@ export const addCounselorToLocal = async (counselor: {
     const { data: { session } } = await supabase.auth.getSession();
     const accessToken = session?.access_token;
 
-    const headers: HeadersInit = {
+    const { getDeviceHeaders } = await import('@/lib/utils/device');
+    const deviceHeaders = getDeviceHeaders();
+
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
+      ...deviceHeaders as Record<string, string>, // Include device ID
     };
 
     if (accessToken) {

@@ -13,31 +13,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
+    // Rate Limiting
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    // Create a temporary client to get the user ID from the token
+    const authHeader = request.headers.get('authorization');
+    const accessToken = authHeader?.replace('Bearer ', '');
+    let userId = null;
+
+    if (accessToken) {
+      const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: { persistSession: false }
+      });
+      const { data: { user } } = await tempClient.auth.getUser(accessToken);
+      userId = user?.id || null;
+    }
+
+    const { checkRateLimit } = await import('@/lib/rate-limit');
+    const rateLimit = await checkRateLimit(request, userId, {
+      action: 'add_city',
+      limit: 20, // Max 20 cities
+      windowMs: 60 * 60 * 1000, // 1 hour window
+      blockDurationMs: 6 * 60 * 60 * 1000 // 6 hours block
+    });
+
+    if (rateLimit.blocked) {
+      return NextResponse.json({
+        error: rateLimit.message,
+        retryAfter: rateLimit.retryAfter
+      }, { status: 429 });
+    }
+
     // Sanitize inputs
     state = sanitizeInput(state);
     cityName = sanitizeInput(cityName);
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase is not initialized. Please check your environment variables.');
     }
 
-    // Decide which key to use
-    const shouldUseServiceKey = !!serviceRoleKey;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    // Create a custom fetch function that includes the headers
+    // Use Service Role Key if available (Restricted RLS), otherwise fallback to Anon Key (Public RLS)
+    const keyToUse = serviceRoleKey || supabaseAnonKey;
+
+    // Custom fetch
     const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
       const fetchHeaders = new Headers(init?.headers);
 
-      if (shouldUseServiceKey) {
-        // With service key, we don't need the user's token for RLS bypass
-        fetchHeaders.set('apikey', serviceRoleKey!);
+      if (serviceRoleKey) {
+        fetchHeaders.set('apikey', serviceRoleKey);
         fetchHeaders.set('Authorization', `Bearer ${serviceRoleKey}`);
       } else {
-        // Standard flow
+        // Pass the user's auth token if using Anon Key
         const authHeader = request.headers.get('authorization');
         const accessToken = authHeader?.replace('Bearer ', '');
         if (accessToken) {
@@ -53,9 +83,6 @@ export async function POST(request: Request) {
         headers: fetchHeaders,
       });
     };
-
-    // Create Supabase client
-    const keyToUse = shouldUseServiceKey ? serviceRoleKey! : supabaseAnonKey;
 
     const authenticatedClient = createClient(supabaseUrl, keyToUse, {
       auth: {
@@ -79,13 +106,9 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (checkError && checkError.code !== 'PGRST116') {
-      if (checkError.message?.includes('does not exist') || checkError.code === '42P01') {
-        throw new Error('Cities table does not exist. Please run the Supabase schema SQL file (supabase-schema.sql) in your Supabase SQL Editor first.');
+      if (checkError.code !== '42501' && !checkError.message?.includes('permission denied')) {
+        console.warn('Error checking if city exists:', checkError);
       }
-      if (checkError.code === '42501' || checkError.message?.includes('permission denied')) {
-        throw new Error('Permission denied. Please check your Supabase RLS policies or configure SUPABASE_SERVICE_ROLE_KEY in .env.local.');
-      }
-      throw new Error(checkError.message || 'Failed to check if city exists');
     }
 
     if (existing) {
@@ -129,7 +152,7 @@ export async function POST(request: Request) {
 
     if (errorString.includes('permission denied') || errorString.includes('row-level security')) {
       status = 403;
-      errorMessage = 'Permission denied. Unable to add city. Ensure SUPABASE_SERVICE_ROLE_KEY is set in .env.local for registration support.';
+      errorMessage = 'Permission denied. Unable to add city.';
     } else if (errorString.includes('not initialized')) {
       status = 500;
     }

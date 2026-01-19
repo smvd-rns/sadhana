@@ -14,11 +14,67 @@ export async function GET(request: Request) {
       throw new Error('Supabase is not initialized. Please check your environment variables.');
     }
 
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const keyToUse = serviceRoleKey || supabaseAnonKey;
+
+    const customFetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const fetchHeaders = new Headers(init?.headers);
+
+      if (serviceRoleKey) {
+        fetchHeaders.set('apikey', serviceRoleKey);
+        fetchHeaders.set('Authorization', `Bearer ${serviceRoleKey}`);
+      } else {
+        const authHeader = request.headers.get('authorization');
+        const accessToken = authHeader?.replace('Bearer ', '');
+        if (accessToken) {
+          fetchHeaders.set('Authorization', `Bearer ${accessToken}`);
+        }
+        fetchHeaders.set('apikey', supabaseAnonKey);
+      }
+
+      fetchHeaders.set('Content-Type', 'application/json');
+
+      return fetch(input, {
+        ...init,
+        headers: fetchHeaders,
+      });
+    };
+
+    const supabase = createClient(supabaseUrl, keyToUse, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+      global: {
+        fetch: customFetch,
+      },
+    });
+
+    // Check if user is authenticated to decide whether to show sensitive details
+    // Note: In Next.js API routes, we can check the auth cookie or header
+    const authHeader = request.headers.get('authorization');
+    let isAuthenticated = false;
+
+    if (authHeader) {
+      const { data: { user }, error } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+      if (user && !error) {
+        isAuthenticated = true;
+      }
+    }
+
+    // Select fields based on auth status
+    // Public: Hide PII (email, mobile)
+    // Auth: Show everything (admins might need it, or logged in users)
+    // For now, we'll hide PII for everyone except maybe if we add role checks later.
+    // But to be safe for public registration page, we MUST hide email/mobile.
+    const selectFields = isAuthenticated
+      ? 'id, name, mobile, email, city, ashram'
+      : 'id, name, city, ashram'; // Exclude mobile and email for public
 
     let query = supabase
       .from('counselors')
-      .select('id, name, mobile, email, city, ashram')
+      .select(selectFields)
+      .eq('is_verified', true) // Only show verified counselors to be safe (RLS also enforces this for anon)
       .order('name', { ascending: true });
 
     // If ashram filter provided, filter by ashram

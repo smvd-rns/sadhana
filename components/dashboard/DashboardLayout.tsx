@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
 import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
-import { Menu, X, Home, BookOpen, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio } from 'lucide-react';
+import { Menu, X, Home, BookOpen, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield } from 'lucide-react';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import ProfileCreationLoadingModal from '@/components/auth/ProfileCreationLoadingModal';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
@@ -214,6 +214,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (isSuperAdmin) {
       baseNavigation.push({ name: 'Import', href: '/dashboard/import', icon: Upload });
       baseNavigation.push({ name: 'Request Approval', href: '/dashboard/request-approval', icon: CheckCircle2 });
+      baseNavigation.push({ name: 'Data Approvals', href: '/dashboard/admin/data-approvals', icon: Shield });
       baseNavigation.push({ name: 'Centers', href: '/dashboard/centers', icon: Building2 });
       baseNavigation.push({ name: 'Cities', href: '/dashboard/cities', icon: MapPin });
     }

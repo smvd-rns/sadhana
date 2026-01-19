@@ -5,13 +5,15 @@
  */
 
 // Regex to allow safe characters only (Alphanumeric, spaces, and common name punctuation)
-// Specifically EXCLUDES: < > ; { } [ ] \ / =
-const SAFE_NAME_REGEX = /^[a-zA-Z0-9\s\-\.\,\'\(\)\&]+$/;
+// Regex to allow safe characters only (Alphanumeric, spaces, and common name punctuation)
+// Specifically EXCLUDES: < > ; { } [ ] \ =
+// Added / and # for center names (e.g. "Center #1", "City/Center")
+const SAFE_NAME_REGEX = /^[a-zA-Z0-9\s\-\.\,\'\(\)\&\/\#]+$/;
 
 export function isValidName(name: string): boolean {
     if (!name) return false;
     // Check length
-    if (name.length < 2 || name.length > 100) return false;
+    if (name.length < 2 || name.length > 200) return false; // Increased limit to 200
     // Check characters
     return SAFE_NAME_REGEX.test(name);
 }

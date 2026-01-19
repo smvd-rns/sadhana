@@ -333,7 +333,34 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
       throw new Error(error.message);
     }
 
-    console.log('updateUser - Update successful!');
+    // If no rows were updated (empty data array), it means the user doesn't exist in the public table.
+    // We should try to insert the record instead.
+    if (!data || data.length === 0) {
+      console.warn('updateUser - No user found with ID:', userId, '. Attempting INSERT (upsert fallback).');
+
+      const insertData = {
+        id: userId,
+        ...dbUpdates,
+        role: dbUpdates.role || [1], // Default to student if not provided
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { data: insertResult, error: insertError } = await supabase
+        .from('users')
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('updateUser - Fallback INSERT failed:', insertError);
+        throw new Error('User record missing and failed to create: ' + insertError.message);
+      }
+
+      console.log('updateUser - Fallback INSERT successful:', insertResult);
+    } else {
+      console.log('updateUser - Update successful!');
+    }
   } catch (error: any) {
     console.error('Error updating user:', error);
     throw new Error(error.message || 'Failed to update user');
