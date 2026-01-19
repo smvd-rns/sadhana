@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
-import { Shield, Check, X, Building2, MapPin, User, Loader2, AlertCircle } from 'lucide-react';
+import { Shield, Check, X, Building2, MapPin, User, Loader2, AlertCircle, Lock } from 'lucide-react';
 import ConfirmationModal from '@/components/ui/ConfirmationModal';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 export default function DataApprovalsPage() {
+    const { userData, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState<'centers' | 'cities' | 'counselors'>('centers');
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any[]>([]);
@@ -32,11 +34,44 @@ export default function DataApprovalsPage() {
     const router = useRouter();
 
     useEffect(() => {
-        fetchData();
+        if (!authLoading && userData) {
+            // Check if user has role 8 (Super Admin) - Robust check with JSON parse & string handling
+            let roles = userData.role;
+            if (typeof roles === 'string' && roles.startsWith('[')) {
+                try { roles = JSON.parse(roles); } catch { }
+            }
+            const rolesArray = Array.isArray(roles) ? roles : [roles];
+            const hasAccess = rolesArray.some(r => {
+                const val = String(r).trim();
+                return val === '8' || val === 'super_admin';
+            });
+
+            if (!hasAccess) {
+                // Redirect or show access denied
+                // We'll let the render handle the access denied view
+                return;
+            }
+            fetchData();
+        }
         setSelectedIds(new Set());
-    }, [activeTab]);
+    }, [activeTab, authLoading, userData]);
 
     const fetchData = async () => {
+        // Double check access before fetching
+        if (!userData) return;
+
+        let roles = userData.role;
+        if (typeof roles === 'string' && roles.startsWith('[')) {
+            try { roles = JSON.parse(roles); } catch { }
+        }
+        const rolesArray = Array.isArray(roles) ? roles : [roles];
+        const hasAccess = rolesArray.some(r => {
+            const val = String(r).trim();
+            return val === '8' || val === 'super_admin';
+        });
+
+        if (!hasAccess) return;
+
         setLoading(true);
         try {
             let table = '';
@@ -183,6 +218,54 @@ export default function DataApprovalsPage() {
             return newSet;
         });
     };
+
+    // Check access for render
+    const hasAccess = userData && (() => {
+        let roles = userData.role;
+
+        // Handle stringified JSON (potential edge case)
+        if (typeof roles === 'string' && roles.startsWith('[')) {
+            try {
+                roles = JSON.parse(roles);
+            } catch (e) {
+                console.error('Failed to parse role string:', e);
+            }
+        }
+
+        const rolesArray = Array.isArray(roles) ? roles : [roles];
+        return rolesArray.some(r => {
+            const val = String(r).trim();
+            return val === '8' || val === 'super_admin';
+        });
+    })();
+
+    if (authLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+        );
+    }
+
+    if (!hasAccess) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+                <div className="p-4 bg-red-100 rounded-full mb-4">
+                    <Lock className="w-12 h-12 text-red-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
+                <p className="text-gray-500 max-w-md mb-6">
+                    You do not have permission to access this page. This area is restricted to Super Administrators only.
+                </p>
+                <button
+                    onClick={() => router.push('/dashboard')}
+                    className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                    Return to Dashboard
+                </button>
+            </div>
+        );
+    }
 
     const TabButton = ({ id, label, icon: Icon }: any) => (
         <button
