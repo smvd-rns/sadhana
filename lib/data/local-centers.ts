@@ -33,6 +33,8 @@ export interface CenterData {
   kitchen_head_name?: string;
   study_in_charge_id?: string;
   study_in_charge_name?: string;
+  oc_id?: string;
+  oc_name?: string;
 }
 
 export interface CentersData {
