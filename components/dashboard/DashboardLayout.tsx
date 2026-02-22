@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
 import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
-import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield } from 'lucide-react';
+import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield, BookOpen } from 'lucide-react';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import ProfileCreationLoadingModal from '@/components/auth/ProfileCreationLoadingModal';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
@@ -161,6 +161,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const baseNavigation = [
       { name: 'Dashboard', href: '/dashboard', icon: Home },
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
+      { name: 'Sadhana', href: '/dashboard/sadhana', icon: BookOpen },
       { name: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
       { name: 'Profile', href: '/dashboard/profile', icon: Settings },
     ];
