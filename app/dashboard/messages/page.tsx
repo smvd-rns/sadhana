@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { extractUrls, linkifyMessage } from '@/lib/utils/message-parser';
 import { ExternalLink } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -17,20 +17,20 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'unread' | 'read'>('unread');
 
-  useEffect(() => {
-    if (userData) {
-      loadMessages();
-    }
-  }, [userData]);
-
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     if (!userData) return;
 
     setLoading(true);
     const fetchedMessages = await getUserMessages(userData.id);
     setMessages(fetchedMessages);
     setLoading(false);
-  };
+  }, [userData]);
+
+  useEffect(() => {
+    if (userData) {
+      loadMessages();
+    }
+  }, [userData, loadMessages]);
 
   const handleMessageClick = async (message: Message) => {
     setSelectedMessage(message);

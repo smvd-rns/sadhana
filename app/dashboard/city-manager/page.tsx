@@ -171,13 +171,10 @@ export default function CityManagerPage() {
             ];
 
             setUsers(allUsers);
-        } catch (error) {
-            console.error('Error loading users:', error);
-            alert('Error loading users. Please check console for details.');
         } finally {
             setLoading(false);
         }
-    }, [userData, centersInCity.length]);
+    }, [userData]);
 
     const filteredUsers = useMemo(() => {
         return users.filter(user => {

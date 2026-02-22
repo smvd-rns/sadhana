@@ -78,7 +78,7 @@ export default function CounselorRequestPage() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [existingRequest?.status, checkCounselorStatus, user, userData]);
+  }, [existingRequest, checkCounselorStatus, user, userData]);
 
   const handleRequest = async () => {
     if (!user || !userData) {
@@ -104,7 +104,7 @@ export default function CounselorRequestPage() {
     try {
       // Sanitize the message before sending
       const sanitizedMessage = sanitizeText(message);
-      
+
       await createCounselorRequest(
         user.id,
         userData.email,
@@ -114,7 +114,7 @@ export default function CounselorRequestPage() {
       );
       setSuccess('Counselor role request submitted successfully! Waiting for super admin approval.');
       setMessage(''); // Clear the message after successful submission
-      
+
       // Refresh the request status
       await checkCounselorStatus();
     } catch (error: any) {
@@ -143,7 +143,7 @@ export default function CounselorRequestPage() {
           </div>
           <div className="bg-gray-50 rounded-lg p-4 mb-4">
             <p className="text-gray-700">
-              Your email address is not found in the counselor database. 
+              Your email address is not found in the counselor database.
               Only users whose email addresses are registered in the counselor table can request the counselor role.
             </p>
           </div>
@@ -154,8 +154,8 @@ export default function CounselorRequestPage() {
 
   // Check if user already has counselor role
   const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
-  const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2) || 
-                          userRoles.includes('senior_counselor') || userRoles.includes(3);
+  const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2) ||
+    userRoles.includes('senior_counselor') || userRoles.includes(3);
 
   if (hasCounselorRole) {
     return (
@@ -219,13 +219,12 @@ export default function CounselorRequestPage() {
 
         {existingRequest ? (
           <div className="space-y-4">
-            <div className={`p-4 rounded-lg border ${
-              existingRequest.status === 'approved' 
-                ? 'bg-green-50 border-green-200' 
+            <div className={`p-4 rounded-lg border ${existingRequest.status === 'approved'
+                ? 'bg-green-50 border-green-200'
                 : existingRequest.status === 'rejected'
-                ? 'bg-red-50 border-red-200'
-                : 'bg-yellow-50 border-yellow-200'
-            }`}>
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-yellow-50 border-yellow-200'
+              }`}>
               <div className="flex items-center gap-2 mb-2">
                 {existingRequest.status === 'approved' && (
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -286,7 +285,7 @@ export default function CounselorRequestPage() {
                     Tell us about yourself <span className="text-red-500">*</span>
                   </label>
                   <p className="text-xs sm:text-sm text-gray-500 mb-2">
-                    Please write about your background, experience, and why you want to be a counselor. 
+                    Please write about your background, experience, and why you want to be a counselor.
                     This helps the super admin verify your request. (Max 2000 characters)
                   </p>
                   <textarea
@@ -327,7 +326,7 @@ export default function CounselorRequestPage() {
           <div className="space-y-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <p className="text-gray-700">
-                Your email address ({userData?.email}) is registered in the counselor database. 
+                Your email address ({userData?.email}) is registered in the counselor database.
                 You can request the counselor role to access the counselor page and view students assigned to you.
               </p>
             </div>
@@ -337,7 +336,7 @@ export default function CounselorRequestPage() {
                 Tell us about yourself <span className="text-red-500">*</span>
               </label>
               <p className="text-xs sm:text-sm text-gray-500 mb-2">
-                Please write about your background, experience, and why you want to be a counselor. 
+                Please write about your background, experience, and why you want to be a counselor.
                 This helps the super admin verify your request. (Max 2000 characters)
               </p>
               <textarea

@@ -64,7 +64,7 @@ export default function CitiesPage() {
     try {
       // Load from local JSON file (no Firestore reads!)
       const citiesData = await getCitiesFromLocal();
-      
+
       if (filterState) {
         // Filter by state
         const stateCities = citiesData[filterState] || [];
@@ -139,7 +139,7 @@ export default function CitiesPage() {
         setError('City not found');
         return;
       }
-      
+
       // Delete from local JSON file (no Firestore writes!)
       const success = await deleteCityFromLocal(city.state, city.name);
       if (success) {
@@ -157,10 +157,10 @@ export default function CitiesPage() {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          selectedFile.type === 'application/vnd.ms-excel' ||
-          selectedFile.name.endsWith('.xlsx') ||
-          selectedFile.name.endsWith('.xls') ||
-          selectedFile.name.endsWith('.csv')) {
+        selectedFile.type === 'application/vnd.ms-excel' ||
+        selectedFile.name.endsWith('.xlsx') ||
+        selectedFile.name.endsWith('.xls') ||
+        selectedFile.name.endsWith('.csv')) {
         setFile(selectedFile);
         setError('');
       } else {
@@ -268,7 +268,7 @@ export default function CitiesPage() {
       setSuccess(`Successfully imported ${processed} cities. ${errors} errors (may include duplicates).`);
       setFile(null);
       loadCities();
-      
+
       const fileInput = document.getElementById('excel-file-cities') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
     } catch (err: any) {
@@ -296,7 +296,7 @@ export default function CitiesPage() {
 
     try {
       let result;
-      
+
       if (mode === 'mapped-only') {
         result = await importMappedCitiesOnly((current, total) => {
           setProgress({ processed: current, total, errors: 0 });
@@ -384,7 +384,7 @@ export default function CitiesPage() {
     return <div className="flex items-center justify-center h-64">Loading...</div>;
   }
 
-  const filteredCities = filterState 
+  const filteredCities = filterState
     ? cities.filter(c => c.state === filterState)
     : cities;
 
@@ -455,90 +455,90 @@ export default function CitiesPage() {
           </div>
 
           {showWorldCitiesImport && (
-          <div className="space-y-4">
-            {/* Import Mode Selection */}
-            <div className="bg-white rounded-lg p-4 border border-blue-200">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Import Mode
-              </label>
-              <div className="flex space-x-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="mapped-only"
-                    checked={importMode === 'mapped-only'}
-                    onChange={(e) => setImportMode(e.target.value as 'mapped-only' | 'all')}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <strong>Mapped Only</strong> - Import only cities that can be matched to states (Recommended)
-                  </span>
-                </label>
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    value="all"
-                    checked={importMode === 'all'}
-                    onChange={(e) => setImportMode(e.target.value as 'mapped-only' | 'all')}
-                    className="mr-2"
-                  />
-                  <span className="text-sm">
-                    <strong>All Cities</strong> - Process all cities (unmapped will be listed)
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {/* Progress Display */}
-            {importingFromWorldCities && progress.total > 0 && (
+            <div className="space-y-4">
+              {/* Import Mode Selection */}
               <div className="bg-white rounded-lg p-4 border border-blue-200">
-                <div className="flex justify-between text-sm text-blue-600 mb-2">
-                  <span>Processing: {progress.processed.toLocaleString()} / {progress.total.toLocaleString()}</span>
-                  {importMode === 'all' && (
-                    <span>Mapped: {importStats.mapped} | Unmapped: {importStats.unmapped}</span>
-                  )}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Import Mode
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="mapped-only"
+                      checked={importMode === 'mapped-only'}
+                      onChange={(e) => setImportMode(e.target.value as 'mapped-only' | 'all')}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">
+                      <strong>Mapped Only</strong> - Import only cities that can be matched to states (Recommended)
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="all"
+                      checked={importMode === 'all'}
+                      onChange={(e) => setImportMode(e.target.value as 'mapped-only' | 'all')}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">
+                      <strong>All Cities</strong> - Process all cities (unmapped will be listed)
+                    </span>
+                  </label>
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                    style={{ width: `${(progress.processed / progress.total) * 100}%` }}
-                  />
-                </div>
-                <p className="text-xs text-blue-500 mt-2">
-                  This may take several minutes. Please don't close the browser.
-                </p>
               </div>
-            )}
 
-            {/* Import Button */}
-            <button
-              onClick={handleImportFromWorldCities}
-              disabled={importingFromWorldCities}
-              className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg"
-            >
-              {importingFromWorldCities ? (
-                <>
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
-                  Importing Cities...
-                </>
-              ) : (
-                <>
-                  <Download className="h-6 w-6 mr-3" />
-                  Import {availableCitiesCount.toLocaleString()} Cities from world_cities_full.js
-                </>
+              {/* Progress Display */}
+              {importingFromWorldCities && progress.total > 0 && (
+                <div className="bg-white rounded-lg p-4 border border-blue-200">
+                  <div className="flex justify-between text-sm text-blue-600 mb-2">
+                    <span>Processing: {progress.processed.toLocaleString()} / {progress.total.toLocaleString()}</span>
+                    {importMode === 'all' && (
+                      <span>Mapped: {importStats.mapped} | Unmapped: {importStats.unmapped}</span>
+                    )}
+                  </div>
+                  <div className="w-full bg-blue-200 rounded-full h-3">
+                    <div
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${(progress.processed / progress.total) * 100}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-blue-500 mt-2">
+                    This may take several minutes. Please don&apos;t close the browser.
+                  </p>
+                </div>
               )}
-            </button>
 
-            <div className="bg-blue-100 rounded-lg p-3 text-sm text-blue-800">
-              <p className="font-semibold mb-1">ℹ️ How it works:</p>
-              <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Cities are automatically matched to states based on existing state-city mappings</li>
-                <li>Only cities with state matches are imported (ensures data quality)</li>
-                <li>Duplicate cities are automatically skipped</li>
-                <li>Import happens in batches to avoid overwhelming the system</li>
-              </ul>
+              {/* Import Button */}
+              <button
+                onClick={handleImportFromWorldCities}
+                disabled={importingFromWorldCities}
+                className="w-full bg-blue-600 text-white px-6 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg"
+              >
+                {importingFromWorldCities ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mr-3"></div>
+                    Importing Cities...
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-6 w-6 mr-3" />
+                    Import {availableCitiesCount.toLocaleString()} Cities from world_cities_full.js
+                  </>
+                )}
+              </button>
+
+              <div className="bg-blue-100 rounded-lg p-3 text-sm text-blue-800">
+                <p className="font-semibold mb-1">ℹ️ How it works:</p>
+                <ul className="list-disc list-inside space-y-1 text-xs">
+                  <li>Cities are automatically matched to states based on existing state-city mappings</li>
+                  <li>Only cities with state matches are imported (ensures data quality)</li>
+                  <li>Duplicate cities are automatically skipped</li>
+                  <li>Import happens in batches to avoid overwhelming the system</li>
+                </ul>
+              </div>
             </div>
-          </div>
           )}
         </div>
       )}
@@ -557,7 +557,7 @@ export default function CitiesPage() {
                   )}
                 </div>
                 <p className="text-sm text-green-700 mt-1">
-                  {txtImportCompleted 
+                  {txtImportCompleted
                     ? 'Cities have been imported successfully. You can hide this section if no longer needed.'
                     : `Import ${availableTxtCitiesCount.toLocaleString()} cities with state mapping`}
                 </p>
@@ -600,7 +600,7 @@ export default function CitiesPage() {
                   />
                 </div>
                 <p className="text-xs text-green-500 mt-2">
-                  This may take several minutes. Please don't close the browser.
+                  This may take several minutes. Please don&apos;t close the browser.
                 </p>
               </div>
             )}
@@ -645,7 +645,7 @@ export default function CitiesPage() {
               <div className="flex-1">
                 <h2 className="text-xl font-semibold text-purple-900">Import from all city.txt</h2>
                 <p className="text-sm text-purple-700 mt-1">
-                  Import all cities from the "all city.txt" file into the local cities JSON file
+                  Import all cities from the &quot;all city.txt&quot; file into the local cities JSON file
                 </p>
               </div>
             </div>
@@ -685,7 +685,7 @@ export default function CitiesPage() {
             <div className="bg-purple-100 rounded-lg p-3 text-sm text-purple-800">
               <p className="font-semibold mb-1">ℹ️ How it works:</p>
               <ul className="list-disc list-inside space-y-1 text-xs">
-                <li>Reads cities from "all city.txt" file (JSON format)</li>
+                <li>Reads cities from &quot;all city.txt&quot; file (JSON format)</li>
                 <li>Merges with existing cities in local JSON file</li>
                 <li>Automatically removes duplicates</li>
                 <li>Organizes cities by state</li>
@@ -756,77 +756,77 @@ export default function CitiesPage() {
 
       {/* Import Section - Only for Super Admin (Role 8) */}
       {isSuperAdmin && (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Import Cities from Excel/CSV</h2>
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="excel-file-cities" className="block text-sm font-medium text-gray-700 mb-2">
-              Select Excel or CSV File
-            </label>
-            <div className="flex items-center space-x-4">
-              <label className="flex-1 cursor-pointer">
-                <input
-                  id="excel-file-cities"
-                  type="file"
-                  accept=".xlsx,.xls,.csv"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-                <div className="flex items-center justify-center px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors">
-                  <FileSpreadsheet className="h-8 w-8 text-gray-400 mr-3" />
-                  <span className="text-gray-600">
-                    {file ? file.name : 'Click to select Excel or CSV file'}
-                  </span>
-                </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Import Cities from Excel/CSV</h2>
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="excel-file-cities" className="block text-sm font-medium text-gray-700 mb-2">
+                Select Excel or CSV File
               </label>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <p className="text-sm text-gray-700 mb-2">File should have the following columns:</p>
-            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-              <li><strong>name</strong> or <strong>city</strong> (required) - City name</li>
-              <li><strong>state</strong> (required) - State name (must match exactly with state names in the system)</li>
-            </ul>
-            <p className="text-xs text-gray-500 mt-2">
-              You can download comprehensive city datasets from: simplemaps.com/data/in-cities or use any CSV/Excel with city and state columns
-            </p>
-          </div>
-
-          {importing && progress.total > 0 && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Processing: {progress.processed} / {progress.total}</span>
-                <span>Errors: {progress.errors}</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-primary-600 h-2 rounded-full transition-all"
-                  style={{ width: `${(progress.processed / progress.total) * 100}%` }}
-                />
+              <div className="flex items-center space-x-4">
+                <label className="flex-1 cursor-pointer">
+                  <input
+                    id="excel-file-cities"
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex items-center justify-center px-6 py-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-primary-500 transition-colors">
+                    <FileSpreadsheet className="h-8 w-8 text-gray-400 mr-3" />
+                    <span className="text-gray-600">
+                      {file ? file.name : 'Click to select Excel or CSV file'}
+                    </span>
+                  </div>
+                </label>
               </div>
             </div>
-          )}
 
-          <button
-            onClick={handleImport}
-            disabled={!file || importing}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-          >
-            {importing ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Importing...
-              </>
-            ) : (
-              <>
-                <Upload className="h-5 w-5 mr-2" />
-                Import Cities
-              </>
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-700 mb-2">File should have the following columns:</p>
+              <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+                <li><strong>name</strong> or <strong>city</strong> (required) - City name</li>
+                <li><strong>state</strong> (required) - State name (must match exactly with state names in the system)</li>
+              </ul>
+              <p className="text-xs text-gray-500 mt-2">
+                You can download comprehensive city datasets from: simplemaps.com/data/in-cities or use any CSV/Excel with city and state columns
+              </p>
+            </div>
+
+            {importing && progress.total > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Processing: {progress.processed} / {progress.total}</span>
+                  <span>Errors: {progress.errors}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-primary-600 h-2 rounded-full transition-all"
+                    style={{ width: `${(progress.processed / progress.total) * 100}%` }}
+                  />
+                </div>
+              </div>
             )}
-          </button>
+
+            <button
+              onClick={handleImport}
+              disabled={!file || importing}
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {importing ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-5 w-5 mr-2" />
+                  Import Cities
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Filter */}

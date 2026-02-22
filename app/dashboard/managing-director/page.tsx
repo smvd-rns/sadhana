@@ -914,7 +914,7 @@ export default function ManagingDirectorDashboard() {
         };
 
         fetchAssignments();
-    }, [userData, isMD, supabase]);
+    }, [userData, isMD]);
 
     // 1. Load initial metadata and stats (only once or on temple change)
     useEffect(() => {
