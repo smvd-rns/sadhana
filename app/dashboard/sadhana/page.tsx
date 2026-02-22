@@ -152,7 +152,7 @@ export default function SadhanaPage() {
 
             // Filter out current date if it exists and inject fresh data
             const filteredReports = currentReports.filter((r: any) => r.date !== formData.date);
-            filteredReports.push({ ...formData });
+            filteredReports.push({ ...formData } as any);
 
             setWeeklyScores(calculateWeeklyScoresFromReports(filteredReports));
 

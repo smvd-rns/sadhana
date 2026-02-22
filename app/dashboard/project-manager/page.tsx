@@ -259,7 +259,7 @@ const RoleMultiSelect = ({
 export default function ProjectManagerDashboard() {
     const { userData } = useAuth();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'approvals' | 'user-management' | 'registrations'>('approvals');
+    const [activeTab, setActiveTab] = useState<'approvals' | 'user-management' | 'registrations' | 'service-team'>('approvals');
 
     // Context State
     const [currentCenter, setCurrentCenter] = useState<string>('');
@@ -321,7 +321,7 @@ export default function ProjectManagerDashboard() {
     };
 
     const loadStructure = useCallback(async () => {
-        if (!currentCenter) return;
+        if (!supabase || !currentCenter) return;
         setLoadingStructure(true);
         try {
             const { data, error } = await supabase
@@ -333,21 +333,16 @@ export default function ProjectManagerDashboard() {
             if (error) throw error;
             setCurrentCenterData(data);
 
-            // Also ensure we have users loaded for the dropdowns
-            if (users.length === 0) {
-                loadUsers();
-            }
-
         } catch (error) {
             console.error('Error loading structure:', error);
             toast.error('Failed to load service team structure');
         } finally {
             setLoadingStructure(false);
         }
-    }, [currentCenter, users.length, loadUsers]);
+    }, [currentCenter]);
 
     const handleStructureUpdate = async (roleValue: number, userId: string) => {
-        if (!currentCenterData?.id) return;
+        if (!supabase || !currentCenterData?.id) return;
 
         try {
             setLoadingStructure(true);
@@ -417,6 +412,7 @@ export default function ProjectManagerDashboard() {
     };
 
     const refreshCounts = useCallback(async (centersToMap: any[] = managedCenters) => {
+        if (!supabase) return;
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
 
@@ -503,6 +499,7 @@ export default function ProjectManagerDashboard() {
         }
 
         const fetchInitialData = async () => {
+            if (!supabase) { setLoadingContext(false); return; }
             const session = await supabase.auth.getSession();
             if (!session.data.session) {
                 setLoadingContext(false);
@@ -567,19 +564,7 @@ export default function ProjectManagerDashboard() {
         fetchInitialData();
     }, [userData, isProjectManager, router, refreshCounts]);
 
-    // Effect to set initial center once managedCenters is populated
-    useEffect(() => {
-        if (managedCenters.length > 0 && !currentCenter && !loadingContext) {
-            // Prioritize centers with pending requests, otherwise pick the first one
-            const firstCenter = managedCenters.find(c => c.pendingCount > 0) || managedCenters[0];
-            if (firstCenter) {
-                setCurrentCenter(firstCenter.name);
-                const tName = firstCenter.temple_name || '';
-                setCurrentTemple(tName);
-                loadStats(firstCenter.name, tName);
-            }
-        }
-    }, [managedCenters, currentCenter, loadingContext, loadStats]);
+
 
     // Handle Center Change
     const handleCenterChange = (centerName: string) => {
@@ -597,20 +582,7 @@ export default function ProjectManagerDashboard() {
         }
     };
 
-    // Load Data when tab changes or context is ready
-    useEffect(() => {
-        if (!currentCenter) return;
-
-        if (activeTab === 'approvals') {
-            loadRequests();
-        } else if (activeTab === 'registrations') {
-            loadPendingUsers();
-        } else if (activeTab === 'user-management') {
-            loadUsers();
-        } else if (activeTab === 'service-team') {
-            loadStructure();
-        }
-    }, [activeTab, currentCenter, approvalStatus, loadRequests, loadPendingUsers, loadUsers, loadStructure]);
+    // (useEffect for tab changes moved below, after all useCallbacks are declared)
 
     // --- Data Loading Functions ---
 
@@ -638,6 +610,20 @@ export default function ProjectManagerDashboard() {
             setStats(prev => ({ ...prev, loading: false }));
         }
     }, []);
+
+    // Effect to set initial center once managedCenters is populated
+    useEffect(() => {
+        if (managedCenters.length > 0 && !currentCenter && !loadingContext) {
+            // Prioritize centers with pending requests, otherwise pick the first one
+            const firstCenter = managedCenters.find(c => c.pendingCount > 0) || managedCenters[0];
+            if (firstCenter) {
+                setCurrentCenter(firstCenter.name);
+                const tName = firstCenter.temple_name || '';
+                setCurrentTemple(tName);
+                loadStats(firstCenter.name, tName);
+            }
+        }
+    }, [managedCenters, currentCenter, loadingContext, loadStats]);
 
     // --- New User Registrations Logic ---
     const loadPendingUsers = useCallback(async () => {
@@ -768,6 +754,21 @@ export default function ProjectManagerDashboard() {
             setLoadingUsers(false);
         }
     }, [currentCenter]);
+
+    // Load Data when tab changes or context is ready
+    useEffect(() => {
+        if (!currentCenter) return;
+
+        if (activeTab === 'approvals') {
+            loadRequests();
+        } else if (activeTab === 'registrations') {
+            loadPendingUsers();
+        } else if (activeTab === 'user-management') {
+            loadUsers();
+        } else if (activeTab === 'service-team') {
+            loadStructure();
+        }
+    }, [activeTab, currentCenter, approvalStatus, loadRequests, loadPendingUsers, loadUsers, loadStructure]);
 
     // --- Action Handlers ---
 
@@ -1693,15 +1694,15 @@ export default function ProjectManagerDashboard() {
                                             <div className="mt-1 relative">
                                                 {(() => {
                                                     const existingRoles = (Array.isArray(user.role) ? user.role : [user.role]).map((r: any) => Number(r));
-                                                    const isLocked = existingRoles.some(r => !MANAGEABLE_ROLES.some(mr => mr.value === r));
+                                                    const isLocked = existingRoles.some((r: number) => !MANAGEABLE_ROLES.some(mr => mr.value === r));
 
                                                     // Find current center post (first matching manageable role)
                                                     // Prioritize higher roles 29->17->1
                                                     // But actually we just find the one that exists in CENTER_POST_OPTIONS
                                                     // Sort user roles by value descending to pick "highest" post
                                                     const currentPost = existingRoles
-                                                        .filter(r => CENTER_POST_OPTIONS.some(o => o.value === r))
-                                                        .sort((a, b) => b - a)[0] || 1;
+                                                        .filter((r: number) => CENTER_POST_OPTIONS.some(o => o.value === r))
+                                                        .sort((a: number, b: number) => b - a)[0] || 1;
 
                                                     if (isLocked) {
                                                         return (
@@ -1768,12 +1769,12 @@ export default function ProjectManagerDashboard() {
                                                     <div className="relative w-48">
                                                         {(() => {
                                                             const existingRoles = (Array.isArray(user.role) ? user.role : [user.role]).map((r: any) => Number(r));
-                                                            const isLocked = existingRoles.some(r => !MANAGEABLE_ROLES.some(mr => mr.value === r));
+                                                            const isLocked = existingRoles.some((r: number) => !MANAGEABLE_ROLES.some(mr => mr.value === r));
 
                                                             // Find current center post
                                                             const currentPost = existingRoles
-                                                                .filter(r => CENTER_POST_OPTIONS.some(o => o.value === r))
-                                                                .sort((a, b) => b - a)[0] || 1;
+                                                                .filter((r: number) => CENTER_POST_OPTIONS.some(o => o.value === r))
+                                                                .sort((a: number, b: number) => b - a)[0] || 1;
 
                                                             if (isLocked) {
                                                                 return (

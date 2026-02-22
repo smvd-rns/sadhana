@@ -67,6 +67,7 @@ export default function SadhanaReportPage() {
         }
 
         const fetchContext = async () => {
+            if (!supabase) { setLoadingContext(false); return; }
             const session = await supabase.auth.getSession();
             if (!session.data.session) return;
             const adminId = session.data.session.user.id;
@@ -110,6 +111,7 @@ export default function SadhanaReportPage() {
         if (!selectedCenter) return;
 
         const loadUsers = async () => {
+            if (!supabase) return;
             try {
                 // In a production scenario, we'd have a more robust mechanism, but for this scale
                 // fetching all users matching current_center is fine.

@@ -104,6 +104,7 @@ export default function MDSadhanaReportPage() {
         if (!selectedTemple?.name) return;
 
         const loadCenters = async () => {
+            if (!supabase) return;
             try {
                 const { data, error } = await supabase
                     .from('centers')
@@ -127,6 +128,7 @@ export default function MDSadhanaReportPage() {
         if (!selectedTemple?.name) return;
 
         const loadUsers = async () => {
+            if (!supabase) return;
             try {
                 const { data, error } = await supabase
                     .from('users')
