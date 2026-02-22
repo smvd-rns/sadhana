@@ -39,17 +39,7 @@ export default function ProfileApprovalsPage() {
     const [selectedFields, setSelectedFields] = useState<Record<string, string[]>>({});
     const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
 
-    useEffect(() => {
-        if (userData && (
-            (Array.isArray(userData.role) && (userData.role.includes('super_admin') || userData.role.includes('center_admin') || userData.role.includes('counselor'))) ||
-            userData.role === 'super_admin' ||
-            userData.role === 8
-        )) {
-            fetchRequests();
-        }
-    }, [userData, selectedStatus]);
-
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         try {
             setLoading(true);
             setDebugError(null);
@@ -92,7 +82,17 @@ export default function ProfileApprovalsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedStatus]);
+
+    useEffect(() => {
+        if (userData && (
+            (Array.isArray(userData.role) && (userData.role.includes('super_admin') || userData.role.includes('center_admin') || userData.role.includes('counselor'))) ||
+            userData.role === 'super_admin' ||
+            userData.role === 8
+        )) {
+            fetchRequests();
+        }
+    }, [userData, selectedStatus, fetchRequests]);
 
     const handleBatchAction = async (status: 'approved' | 'rejected') => {
         if (selectedRequestIds.length === 0) return;
@@ -570,7 +570,7 @@ export default function ProfileApprovalsPage() {
                                                 </p>
                                                 {request.admin_feedback && (
                                                     <p className="text-sm text-gray-600 mt-2 italic shadow-sm bg-white p-3 rounded-xl border border-gray-100">
-                                                        " {request.admin_feedback} "
+                                                        &quot; {request.admin_feedback} &quot;
                                                     </p>
                                                 )}
                                             </div>

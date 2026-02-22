@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { roleHierarchy } from '@/lib/utils/roles';
 import { StatsCard } from '@/components/president/StatsCard';
@@ -27,20 +27,7 @@ export default function OrganizationView() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedCamp, setSelectedCamp] = useState('');
 
-    useEffect(() => {
-        if (!authLoading && userData) {
-            fetchStats();
-            fetchHierarchy();
-        }
-    }, [authLoading, userData]);
-
-    useEffect(() => {
-        if (!authLoading && userData) {
-            fetchHierarchy();
-        }
-    }, [groupBy, searchTerm, selectedCamp]);
-
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
             setStatsLoading(true);
             const { data: { session } } = await supabase!.auth.getSession();
@@ -61,9 +48,9 @@ export default function OrganizationView() {
         } finally {
             setStatsLoading(false);
         }
-    };
+    }, []);
 
-    const fetchHierarchy = async () => {
+    const fetchHierarchy = useCallback(async () => {
         try {
             setHierarchyLoading(true);
             const { data: { session } } = await supabase!.auth.getSession();
@@ -84,7 +71,20 @@ export default function OrganizationView() {
         } finally {
             setHierarchyLoading(false);
         }
-    };
+    }, [groupBy, searchTerm, selectedCamp]);
+
+    useEffect(() => {
+        if (!authLoading && userData) {
+            fetchStats();
+            fetchHierarchy();
+        }
+    }, [authLoading, userData, fetchStats, fetchHierarchy]);
+
+    useEffect(() => {
+        if (!authLoading && userData) {
+            fetchHierarchy();
+        }
+    }, [authLoading, userData, groupBy, searchTerm, selectedCamp, fetchHierarchy]);
 
     if (authLoading) return (
         <div className="flex items-center justify-center min-h-[60vh]">

@@ -45,7 +45,7 @@ export default function BCVoiceManagerRequestPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, userData]);
+  }, [user, userData, refreshUserData]);
 
   useEffect(() => {
     // Only check once on mount, not every time checkRequestStatus changes
@@ -101,7 +101,7 @@ export default function BCVoiceManagerRequestPage() {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [existingRequest?.status, checkRequestStatus, user, userData]);
+  }, [existingRequest, checkRequestStatus, user, userData]);
 
   // Stop all polling and effects when request is approved
   const isApproved = existingRequest?.status === 'approved';
@@ -439,7 +439,7 @@ export default function BCVoiceManagerRequestPage() {
             <div className="bg-blue-50 rounded-lg p-4">
               <p className="text-gray-700">
                 Request the BC Voice Manager role to manage multiple centers and assign Voice Managers.
-                You'll be able to view progress reports for all users under your centers.
+                You&apos;ll be able to view progress reports for all users under your centers.
               </p>
             </div>
 

@@ -1196,7 +1196,7 @@ export default function ProfilePage() {
                     <div className={`bg-white/50 rounded-lg p-2.5 border ${pendingRequest.status === 'approved' ? 'border-emerald-100' : 'border-red-100'} mt-2`}>
                       <p className={`text-[10px] font-bold ${pendingRequest.status === 'approved' ? 'text-emerald-800' : 'text-red-800'} uppercase tracking-wider mb-1`}>Reason / Feedback from Authority:</p>
                       <p className={`text-xs ${pendingRequest.status === 'approved' ? 'text-emerald-700' : 'text-red-700'} italic font-medium leading-relaxed`}>
-                        " {pendingRequest.admin_feedback} "
+                        &quot; {pendingRequest.admin_feedback} &quot;
                       </p>
                     </div>
                   )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, Users, ChevronDown, ChevronRight, Search } from 'lucide-react';
@@ -47,13 +47,7 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
     const [expandedStates, setExpandedStates] = useState<Set<string>>(new Set());
     const [expandedCities, setExpandedCities] = useState<Set<string>>(new Set());
 
-    useEffect(() => {
-        if (userData) {
-            fetchAnalytics();
-        }
-    }, [userData, params.messageId]);
-
-    const fetchAnalytics = async () => {
+    const fetchAnalytics = useCallback(async () => {
         try {
             const { data: { session } } = await supabase!.auth.getSession();
             if (!session) return;
@@ -73,7 +67,13 @@ export default function AnalyticsPage({ params }: { params: { messageId: string 
         } finally {
             setLoading(false);
         }
-    };
+    }, [params.messageId]);
+
+    useEffect(() => {
+        if (userData) {
+            fetchAnalytics();
+        }
+    }, [userData, fetchAnalytics]);
 
     const toggleState = (state: string) => {
         setExpandedStates(prev => {

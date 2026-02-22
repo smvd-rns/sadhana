@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -46,9 +47,9 @@ export default function StateManagerPage() {
         }
 
         loadUsers();
-    }, [userData, hasStateAdminRole, router]);
+    }, [userData, hasStateAdminRole, router, loadUsers]);
 
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         const assignedState = userData?.hierarchy?.assignedState;
 
         if (!assignedState) {
@@ -173,7 +174,7 @@ export default function StateManagerPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userData]);
 
     // Calculate available centers based on selected city
     const centersInState = useMemo(() => {
@@ -505,13 +506,12 @@ export default function StateManagerPage() {
                                 >
                                     <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
                                         {user.profileImage ? (
-                                            <img
+                                            <Image
                                                 src={user.profileImage}
                                                 alt={user.name}
+                                                width={64}
+                                                height={64}
                                                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-orange-200"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).style.display = 'none';
-                                                }}
                                             />
                                         ) : (
                                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">

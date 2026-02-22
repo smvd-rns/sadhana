@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { SadhanaReport } from '@/types';
@@ -22,7 +22,7 @@ export default function ProgressPage() {
   const reportsPerPage = 10;
   const maxPages = 10;
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     if (userData) {
       setLoading(true);
       // For 'all', fetch 6 months of data (180 days)
@@ -44,11 +44,11 @@ export default function ProgressPage() {
       setLoading(false);
       setCurrentPage(1); // Reset to first page when data changes
     }
-  };
+  }, [userData, timeRange, customDateRange.from, customDateRange.to]);
 
   useEffect(() => {
     loadReports();
-  }, [userData, timeRange]);
+  }, [loadReports]);
 
   // Generate WhatsApp message
   const generateWhatsAppMessage = () => {

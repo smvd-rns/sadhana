@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -48,9 +49,9 @@ export default function ZoneManagerPage() {
         }
 
         loadUsers();
-    }, [userData, hasZonalAdminRole, router]);
+    }, [userData, hasZonalAdminRole, router, loadUsers]);
 
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         const assignedZone = userData?.hierarchy?.assignedZone;
 
         if (!assignedZone) {
@@ -175,7 +176,7 @@ export default function ZoneManagerPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userData]);
 
     // Update cities when state filter changes
     useEffect(() => {
@@ -582,13 +583,12 @@ export default function ZoneManagerPage() {
                                 >
                                     <div className="flex items-start gap-3 sm:gap-4 mb-4">
                                         {user.profileImage ? (
-                                            <img
+                                            <Image
                                                 src={user.profileImage}
                                                 alt={user.name}
+                                                width={64}
+                                                height={64}
                                                 className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-orange-200"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).style.display = 'none';
-                                                }}
                                             />
                                         ) : (
                                             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { User, SadhanaReport } from '@/types';
 import { fetchSadhanaReportsByRange } from '@/lib/api/sadhana-client';
 import {
@@ -105,14 +105,7 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
         }
     }, [isOpen, user]);
 
-    // Fetch sadhana details based on date range
-    useEffect(() => {
-        if (isOpen && user && activeTab === 'sadhana') {
-            loadSadhanaDetails();
-        }
-    }, [isOpen, user, activeTab, dateRange]);
-
-    const loadSadhanaDetails = async () => {
+    const loadSadhanaDetails = useCallback(async () => {
         if (!user) return;
         setLoadingSadhana(true);
         try {
@@ -125,7 +118,14 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
         } finally {
             setLoadingSadhana(false);
         }
-    };
+    }, [user, dateRange]);
+
+    // Fetch sadhana details based on date range
+    useEffect(() => {
+        if (isOpen && user && activeTab === 'sadhana') {
+            loadSadhanaDetails();
+        }
+    }, [isOpen, user, activeTab, loadSadhanaDetails]);
 
     // Prepare weekly aggregated data for Body & Soul percentage chart
     const getWeeklyChartData = () => {

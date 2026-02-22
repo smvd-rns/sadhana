@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'react-hot-toast';
 import {
@@ -304,7 +305,7 @@ export default function ManagingDirectorDashboard() {
         return mapped;
     };
 
-    const loadStats = async (tName: string) => {
+    const loadStats = useCallback(async (tName: string) => {
         if (!supabase || !tName) return;
 
         try {
@@ -418,9 +419,9 @@ export default function ManagingDirectorDashboard() {
             console.error('Error loading stats:', error);
             setStats(prev => ({ ...prev, loading: false }));
         }
-    };
+    }, []);
 
-    const loadCenters = async () => {
+    const loadCenters = useCallback(async () => {
         if (!supabase) return;
         setLoadingCenters(true);
         try {
@@ -446,7 +447,7 @@ export default function ManagingDirectorDashboard() {
         } finally {
             setLoadingCenters(false);
         }
-    };
+    }, [selectedTemple?.name]);
 
 
 
@@ -635,7 +636,7 @@ export default function ManagingDirectorDashboard() {
     };
 
     // --- Counselors Logic ---
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         if (!supabase) return;
         setLoadingUsers(true);
         try {
@@ -659,7 +660,7 @@ export default function ManagingDirectorDashboard() {
         } finally {
             setLoadingUsers(false);
         }
-    };
+    }, [selectedTemple?.name]);
 
     const handleOpenAssignModal = async (user: any) => {
         setSelectedUser(user);
@@ -776,7 +777,7 @@ export default function ManagingDirectorDashboard() {
     };
 
     // --- New User Registrations Logic ---
-    const loadPendingUsers = async (tName: string = selectedTemple?.name) => {
+    const loadPendingUsers = useCallback(async (tName: string = selectedTemple?.name) => {
         if (!supabase || !tName) return;
         setLoadingPendingUsers(true);
         try {
@@ -802,7 +803,7 @@ export default function ManagingDirectorDashboard() {
         } finally {
             setLoadingPendingUsers(false);
         }
-    };
+    }, [selectedTemple?.name]);
 
     const handleUserVerification = async (userId: string, status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase) return;
@@ -856,7 +857,7 @@ export default function ManagingDirectorDashboard() {
 
 
     // --- Approvals Logic (Simplified from ProfileApprovalsPage) ---
-    const loadRequests = async () => {
+    const loadRequests = useCallback(async () => {
         if (!supabase) return;
         setLoadingRequests(true);
         try {
@@ -882,7 +883,7 @@ export default function ManagingDirectorDashboard() {
         } finally {
             setLoadingRequests(false);
         }
-    };
+    }, [approvalStatus, currentTemple]);
 
     // 0. Fetch Assignments
     useEffect(() => {
@@ -913,7 +914,7 @@ export default function ManagingDirectorDashboard() {
         };
 
         fetchAssignments();
-    }, [userData?.id, isMD]);
+    }, [userData, isMD, supabase]);
 
     // 1. Load initial metadata and stats (only once or on temple change)
     useEffect(() => {
@@ -939,7 +940,7 @@ export default function ManagingDirectorDashboard() {
             loadStats(tName);
         }
 
-    }, [userData?.id, isMD, selectedTemple?.name]);
+    }, [userData, isMD, selectedTemple, loadStats]);
 
     // 2. Load Tab Specific Data
     useEffect(() => {
@@ -953,7 +954,7 @@ export default function ManagingDirectorDashboard() {
         if (activeTab === 'approvals') loadRequests();
         if (activeTab === 'registrations') loadPendingUsers(selectedTemple.name);
 
-    }, [activeTab, userData?.id, isMD, approvalStatus, selectedTemple?.name]);
+    }, [activeTab, userData, isMD, approvalStatus, selectedTemple, router, loadCenters, loadUsers, loadRequests, loadPendingUsers]);
 
     // 3. Reset pagination when filters change
     useEffect(() => {
@@ -965,7 +966,7 @@ export default function ManagingDirectorDashboard() {
         if (showAddCenterModal && users.length === 0) {
             loadUsers();
         }
-    }, [showAddCenterModal]);
+    }, [showAddCenterModal, users.length, loadUsers]);
 
     // Final Filtered & Paged users for the management tab
     const filteredUsersList = users.filter(u => {
@@ -1513,7 +1514,7 @@ export default function ManagingDirectorDashboard() {
 
                                                 {center.address && (
                                                     <div className="bg-gray-50/50 rounded-xl p-3 border border-gray-100 hover:bg-white hover:shadow-sm transition-all">
-                                                        <p className="text-[10px] font-medium text-gray-500 leading-relaxed italic line-clamp-2">"{center.address}"</p>
+                                                        <p className="text-[10px] font-medium text-gray-500 leading-relaxed italic line-clamp-2">&quot;{center.address}&quot;</p>
                                                     </div>
                                                 )}
 
@@ -1671,7 +1672,7 @@ export default function ManagingDirectorDashboard() {
                                     <Users className="h-12 w-12 text-gray-300" />
                                 </div>
                                 <h3 className="text-2xl font-black text-gray-900 tracking-tight">No Results Found</h3>
-                                <p className="text-gray-500 font-medium mt-3 max-w-sm mx-auto">We couldn't find any staff members matching your current filter configuration.</p>
+                                <p className="text-gray-500 font-medium mt-3 max-w-sm mx-auto">We couldn&apos;t find any staff members matching your current filter configuration.</p>
                                 <button
                                     onClick={() => {
                                         setUserSearch('');
@@ -2153,7 +2154,7 @@ export default function ManagingDirectorDashboard() {
                                                                 {request.admin_feedback && (
                                                                     <div className="mt-8 p-6 bg-gray-50/50 rounded-2xl border border-gray-100 italic text-sm text-gray-500 font-medium relative">
                                                                         <Quote className="h-8 w-8 text-gray-100 absolute -top-4 -left-2 rotate-12" />
-                                                                        <span className="relative z-10">"{request.admin_feedback}"</span>
+                                                                        <span className="relative z-10">&quot;{request.admin_feedback}&quot;</span>
                                                                     </div>
                                                                 )}
                                                             </div>

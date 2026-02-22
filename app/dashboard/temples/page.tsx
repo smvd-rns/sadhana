@@ -74,7 +74,7 @@ export default function TemplesPage() {
         } else {
             setAvailableCities([]);
         }
-    }, [newTemple.state]);
+    }, [newTemple.state, newTemple.city]);
 
     useEffect(() => {
         if (editTempleData?.state) {

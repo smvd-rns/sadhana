@@ -261,7 +261,7 @@ export default function SadhanaReportPage() {
                         <BarChart2 className="h-6 w-6 sm:h-8 sm:w-8 text-amber-500" />
                         Sadhana Report
                     </h1>
-                    <p className="text-sm text-gray-500 font-medium mt-1">Bird's-eye view of spiritual progress for {selectedCenter}</p>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Bird&apos;s-eye view of spiritual progress for {selectedCenter}</p>
                 </div>
 
                 {centers.length > 1 && (

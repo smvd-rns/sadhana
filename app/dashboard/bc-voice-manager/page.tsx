@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByHierarchy } from '@/lib/supabase/users';
@@ -35,31 +35,7 @@ export default function BCVoiceManagerPage() {
   const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
   const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2);
 
-  useEffect(() => {
-    if (!userData || !user) return;
-
-    // Check if user has counselor role (role 2)
-    if (!hasCounselorRole) {
-      router.push('/dashboard');
-      return;
-    }
-
-    // Load both in parallel
-    Promise.all([loadApprovedCenters(), loadCenters()]).then(() => {
-      console.log('Both approved centers and centers list loaded');
-    });
-  }, [userData, user, hasCounselorRole, router]);
-
-  useEffect(() => {
-    if (approvedCenters.length > 0 && centers.length > 0) {
-      loadDevs();
-    } else if (approvedCenters.length === 0) {
-      setDevs([]);
-      setLoading(false);
-    }
-  }, [approvedCenters, selectedCenterFilter, centers]);
-
-  const loadApprovedCenters = async () => {
+  const loadApprovedCenters = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -105,18 +81,18 @@ export default function BCVoiceManagerPage() {
       setApprovedCenters([]);
       setLoading(false);
     }
-  };
+  }, [user, hasCounselorRole]);
 
-  const loadCenters = async () => {
+  const loadCenters = useCallback(async () => {
     try {
       const allCenters = await getCentersByLocationFromLocal();
       setCenters(allCenters);
     } catch (error) {
       console.error('Error loading centers:', error);
     }
-  };
+  }, []);
 
-  const loadDevs = async () => {
+  const loadDevs = useCallback(async () => {
     if (approvedCenters.length === 0 || centers.length === 0) {
       console.log('Cannot load devs - approvedCenters:', approvedCenters.length, 'centers:', centers.length);
       setLoading(false);
@@ -277,7 +253,31 @@ export default function BCVoiceManagerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [approvedCenters, centers, userData]);
+
+  useEffect(() => {
+    if (!userData || !user) return;
+
+    // Check if user has counselor role (role 2)
+    if (!hasCounselorRole) {
+      router.push('/dashboard');
+      return;
+    }
+
+    // Load both in parallel
+    Promise.all([loadApprovedCenters(), loadCenters()]).then(() => {
+      console.log('Both approved centers and centers list loaded');
+    });
+  }, [userData, user, hasCounselorRole, router, loadApprovedCenters, loadCenters]);
+
+  useEffect(() => {
+    if (approvedCenters.length > 0 && centers.length > 0) {
+      loadDevs();
+    } else if (approvedCenters.length === 0) {
+      setDevs([]);
+      setLoading(false);
+    }
+  }, [approvedCenters, selectedCenterFilter, centers, loadDevs]);
 
   const filteredDevs = devs.filter(dev => {
     const matchesSearch =

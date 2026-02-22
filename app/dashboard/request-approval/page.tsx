@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getAllCounselorRequests, updateCounselorRequestStatus } from '@/lib/supabase/counselor-requests';
@@ -33,25 +33,7 @@ export default function RequestApprovalPage() {
   const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
   const isSuperAdmin = userRoles.includes('super_admin') || userRoles.includes(8 as any);
 
-  useEffect(() => {
-    if (!isSuperAdmin) {
-      router.push('/dashboard');
-      return;
-    }
-    loadRequests();
-    // Load centers for center selection
-    const loadCenters = async () => {
-      try {
-        const allCenters = await getCentersByLocationFromLocal();
-        setCenters(allCenters);
-      } catch (error) {
-        console.error('Error loading centers:', error);
-      }
-    };
-    loadCenters();
-  }, [isSuperAdmin, router, filter, requestTypeFilter]);
-
-  const loadRequests = async () => {
+  const loadRequests = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch both counselor and BC Voice Manager requests
@@ -91,7 +73,25 @@ export default function RequestApprovalPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter, requestTypeFilter]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      router.push('/dashboard');
+      return;
+    }
+    loadRequests();
+    // Load centers for center selection
+    const loadCenters = async () => {
+      try {
+        const allCenters = await getCentersByLocationFromLocal();
+        setCenters(allCenters);
+      } catch (error) {
+        console.error('Error loading centers:', error);
+      }
+    };
+    loadCenters();
+  }, [isSuperAdmin, router, loadRequests]);
 
   const handleApproveClick = (request: CombinedRequest) => {
     if (request.type === 'bc_voice_manager' && request.requestedCenters && request.requestedCenters.length > 0) {
@@ -460,7 +460,7 @@ export default function RequestApprovalPage() {
                     )}
                     {request.message && (
                       <div className="mt-3 p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-xs font-semibold text-gray-700 mb-2">User's Message:</p>
+                        <p className="text-xs font-semibold text-gray-700 mb-2">User&apos;s Message:</p>
                         <MessagePreview message={request.message} maxLength={50} />
                       </div>
                     )}

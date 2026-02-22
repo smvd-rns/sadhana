@@ -179,7 +179,7 @@ export default function BCVoiceManagerDashboard() {
             setApprovedCenters([]);
             setLoading(false);
         }
-    }, [user?.id]);
+    }, [user]);
 
     const loadCenters = useCallback(async () => {
         try {
@@ -197,6 +197,7 @@ export default function BCVoiceManagerDashboard() {
         }
     }, []);
 
+    const approvedCentersKey = approvedCenters.join(',');
     const loadDevs = useCallback(async () => {
         if (approvedCenters.length === 0 || centers.length === 0) {
             setLoading(false);
@@ -301,7 +302,8 @@ export default function BCVoiceManagerDashboard() {
         } finally {
             setLoading(false);
         }
-    }, [approvedCenters.join(','), centers.length]); // Use stable dependencies
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [approvedCentersKey, centers.length]); // Use extracted stable dependency
 
     const filteredDevs = devs.filter(dev => {
         const matchesSearch =

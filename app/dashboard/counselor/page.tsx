@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getUsersByCounselorEmail } from '@/lib/supabase/counselors';
 import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { User, SadhanaReport } from '@/types';
@@ -43,9 +44,9 @@ export default function CounselorPage() {
     }
 
     loadStudents();
-  }, [userData, hasCounselorRole, router]);
+  }, [userData, hasCounselorRole, router, loadStudents]);
 
-  const loadStudents = async () => {
+  const loadStudents = useCallback(async () => {
     if (!userData?.email) return;
 
     setLoading(true);
@@ -123,7 +124,7 @@ export default function CounselorPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userData?.email]);
 
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
@@ -299,14 +300,15 @@ export default function CounselorPage() {
                 >
                   <div className="flex items-start gap-3 sm:gap-4 mb-4">
                     {student.profileImage ? (
-                      <img
-                        src={student.profileImage}
-                        alt={student.name}
-                        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-orange-200"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-orange-200">
+                        <Image
+                          src={student.profileImage}
+                          alt={student.name}
+                          fill
+                          className="object-cover"
+                          unoptimized={true}
+                        />
+                      </div>
                     ) : (
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
                         <UserCircle className="h-7 w-7 sm:h-8 sm:w-8 text-orange-600" />
@@ -441,8 +443,8 @@ export default function CounselorPage() {
                               <button
                                 onClick={() => setCurrentPage(page)}
                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                    ? 'bg-orange-600 text-white'
-                                    : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
+                                  ? 'bg-orange-600 text-white'
+                                  : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
                                   }`}
                               >
                                 {page}

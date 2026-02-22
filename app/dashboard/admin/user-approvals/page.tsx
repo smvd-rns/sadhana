@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { getPendingUsers, updateUser } from '@/lib/supabase/users'; // We need to update updateUser to support verificationStatus if it doesn't already
 import { User } from '@/types';
 import { CheckCircle, XCircle, Search, Filter, Loader2, Shield } from 'lucide-react';
@@ -341,7 +342,14 @@ export default function UserApprovalsPage() {
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-10 w-10">
                                                     {user.profileImage ? (
-                                                        <img className="h-10 w-10 rounded-full object-cover" src={user.profileImage} alt="" />
+                                                        <Image
+                                                            className="h-10 w-10 rounded-full object-cover"
+                                                            src={user.profileImage}
+                                                            alt=""
+                                                            width={40}
+                                                            height={40}
+                                                            unoptimized={true}
+                                                        />
                                                     ) : (
                                                         <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold">
                                                             {user.name?.charAt(0) || 'U'}

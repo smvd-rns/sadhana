@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Upload, X, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { getLargeThumbnailUrl } from '@/lib/utils/google-drive';
 
@@ -57,7 +58,7 @@ export default function PhotoUpload({
         setUploadSuccess(false);
       }
     }
-  }, [currentImageUrl]);
+  }, [currentImageUrl, uploading]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     e.preventDefault(); // Prevent any default form behavior
@@ -166,25 +167,16 @@ export default function PhotoUpload({
         {/* Preview */}
         {preview && (
           <div className="relative">
-            <img
+            <Image
               src={preview}
               alt="Profile preview"
-              referrerPolicy="no-referrer"
+              width={80}
+              height={80}
+              unoptimized={true}
               className={`w-20 h-20 rounded-full object-cover border-2 transition-all ${uploadSuccess
                 ? 'border-green-500 ring-2 ring-green-200'
                 : 'border-gray-300'
                 }`}
-              onError={(e) => {
-                // If thumbnail fails, try the original URL
-                const target = e.target as HTMLImageElement;
-                if (currentImageUrl && target.src !== currentImageUrl) {
-                  console.warn('Image load error, retrying with original URL');
-                  target.src = currentImageUrl;
-                } else {
-                  console.error('Image load failing:', { src: target.src, current: currentImageUrl });
-                  // Don't hide it so we can debug (maybe show broken image icon naturally)
-                }
-              }}
             />
             {uploadSuccess && (
               <div className="absolute -top-1 -right-1 bg-green-500 text-white rounded-full p-1 animate-in fade-in zoom-in duration-200">

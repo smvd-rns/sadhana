@@ -81,7 +81,7 @@ export default function PendingApprovalPage() {
                                     <p className="text-sm font-semibold text-orange-800 mb-1">What happens next?</p>
                                     <ul className="text-sm text-orange-700 space-y-1">
                                         <li>• Admin will review your registration</li>
-                                        <li>• You'll receive access once approved</li>
+                                        <li>&bull; You&apos;ll receive access once approved</li>
                                         <li>• This usually takes 24-48 hours</li>
                                     </ul>
                                 </div>

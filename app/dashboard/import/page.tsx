@@ -28,9 +28,9 @@ export default function ImportPage() {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
       if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-          selectedFile.type === 'application/vnd.ms-excel' ||
-          selectedFile.name.endsWith('.xlsx') ||
-          selectedFile.name.endsWith('.xls')) {
+        selectedFile.type === 'application/vnd.ms-excel' ||
+        selectedFile.name.endsWith('.xlsx') ||
+        selectedFile.name.endsWith('.xls')) {
         setFile(selectedFile);
         setError('');
       } else {
@@ -129,7 +129,7 @@ export default function ImportPage() {
 
       setSuccess(`Successfully imported ${processed} users. ${errors} errors.`);
       setFile(null);
-      
+
       // Reset file input
       const fileInput = document.getElementById('excel-file') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
@@ -159,7 +159,7 @@ export default function ImportPage() {
               <li><strong>state</strong> (optional) - State name</li>
               <li><strong>city</strong> (optional) - City name</li>
               <li><strong>center</strong> (optional) - Center name</li>
-              <li><strong>role</strong> (optional) - User role(s), comma-separated for multiple roles (defaults to "student"). Example: "center_admin,state_admin"</li>
+              <li><strong>role</strong> (optional) - User role(s), comma-separated for multiple roles (defaults to &quot;student&quot;). Example: &quot;center_admin,state_admin&quot;</li>
             </ul>
           </div>
         </div>
@@ -237,9 +237,9 @@ export default function ImportPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <p className="text-sm text-blue-800">
-          <strong>Note:</strong> The Excel file will be parsed using the xlsx library. 
-          Ensure your Excel file has the correct column headers as shown above. 
-          All users will be created with "student" role by default unless specified in the role column.
+          <strong>Note:</strong> The Excel file will be parsed using the xlsx library.
+          Ensure your Excel file has the correct column headers as shown above.
+          All users will be created with &quot;student&quot; role by default unless specified in the role column.
         </p>
       </div>
     </div>

@@ -131,7 +131,7 @@ export default function DashboardPage() {
               <div className="flex items-start gap-2 sm:gap-3 mt-3 sm:mt-5">
                 <div className="mt-1 w-1 h-8 sm:h-12 bg-gradient-to-b from-orange-400 to-orange-200 rounded-full shrink-0" />
                 <p className="text-xs sm:text-base text-slate-600 max-w-xl italic font-medium leading-relaxed">
-                  "{quote}"
+                  &quot;{quote}&quot;
                 </p>
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-orange-300 transition-colors">Submit Sadhana</h3>
-                  <p className="text-xs text-slate-400 font-medium">Record today's practices</p>
+                  <p className="text-xs text-slate-400 font-medium">Record today&apos;s practices</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-orange-300 group-hover:translate-x-0.5 transition-all" />
@@ -309,7 +309,7 @@ export default function DashboardPage() {
                     <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest">Inspiration</span>
                   </div>
                   <p className="text-sm font-semibold text-slate-200 italic leading-relaxed">
-                    "Service to the devotees is the highest of all services."
+                    &quot;Service to the devotees is the highest of all services.&quot;
                   </p>
                 </div>
               </div>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { getUserData } from '@/lib/supabase/auth';
@@ -214,7 +215,7 @@ export default function StudentProgressPage() {
     checkAccess();
   }, [userData, userId, router]);
 
-  const loadReports = async () => {
+  const loadReports = useCallback(async () => {
     if (userId) {
       setLoading(true);
       try {
@@ -239,13 +240,13 @@ export default function StudentProgressPage() {
         setCurrentPage(1);
       }
     }
-  };
+  }, [userId, timeRange, customDateRange.from, customDateRange.to]);
 
   useEffect(() => {
     if (userId) {
       loadReports();
     }
-  }, [userId, timeRange, customDateRange]);
+  }, [userId, loadReports]);
 
   // Generate WhatsApp message
   const generateWhatsAppMessage = () => {
@@ -515,7 +516,7 @@ Body %: ${avgBodyPercent}%`;
         <div className="bg-white/95 backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border border-orange-200 p-6 sm:p-8 text-center max-w-md w-full">
           <UserCircle className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Student Not Found</h2>
-          <p className="text-gray-600 mb-6">Student not found or you don't have access to view this student's progress.</p>
+          <p className="text-gray-600 mb-6">Student not found or you don&apos;t have access to view this student&apos;s progress.</p>
           <button
             onClick={() => router.push('/dashboard/counselor')}
             className="px-4 py-2 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all shadow-lg font-semibold"
@@ -1061,16 +1062,16 @@ Body %: ${avgBodyPercent}%`;
 
                 return (
                   <div className="flex flex-col items-center gap-3">
-                    <img
-                      src={finalUrl}
-                      alt={`${student.name}'s profile`}
-                      className="w-full h-auto rounded-xl object-contain max-h-[80vh]"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        // Fallback just in case
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
+                    <div className="relative w-full aspect-auto rounded-xl overflow-hidden shadow-2xl">
+                      <Image
+                        src={finalUrl}
+                        alt={`${student.name}'s profile`}
+                        width={800}
+                        height={600}
+                        className="w-full h-auto rounded-xl object-contain max-h-[80vh]"
+                        unoptimized={true}
+                      />
+                    </div>
                     <a
                       href={finalUrl}
                       target="_blank"

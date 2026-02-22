@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
@@ -320,7 +320,7 @@ export default function ProjectManagerDashboard() {
         29: 'study_in_charge_id'
     };
 
-    const loadStructure = async () => {
+    const loadStructure = useCallback(async () => {
         if (!currentCenter) return;
         setLoadingStructure(true);
         try {
@@ -344,7 +344,7 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingStructure(false);
         }
-    };
+    }, [currentCenter, users.length, loadUsers]);
 
     const handleStructureUpdate = async (roleValue: number, userId: string) => {
         if (!currentCenterData?.id) return;
@@ -416,7 +416,7 @@ export default function ProjectManagerDashboard() {
         return 'Member';
     };
 
-    const refreshCounts = async (centersToMap: any[] = managedCenters) => {
+    const refreshCounts = useCallback(async (centersToMap: any[] = managedCenters) => {
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
 
@@ -492,7 +492,7 @@ export default function ProjectManagerDashboard() {
                 console.error('PM Dashboard: Exception fetching pending counts', err);
             }
         }
-    };
+    }, [managedCenters]);
 
     useEffect(() => {
         if (!userData || !isProjectManager) {
@@ -565,7 +565,7 @@ export default function ProjectManagerDashboard() {
         };
 
         fetchInitialData();
-    }, [userData, isProjectManager, router]);
+    }, [userData, isProjectManager, router, refreshCounts]);
 
     // Effect to set initial center once managedCenters is populated
     useEffect(() => {
@@ -579,7 +579,7 @@ export default function ProjectManagerDashboard() {
                 loadStats(firstCenter.name, tName);
             }
         }
-    }, [managedCenters, currentCenter, loadingContext]);
+    }, [managedCenters, currentCenter, loadingContext, loadStats]);
 
     // Handle Center Change
     const handleCenterChange = (centerName: string) => {
@@ -610,11 +610,11 @@ export default function ProjectManagerDashboard() {
         } else if (activeTab === 'service-team') {
             loadStructure();
         }
-    }, [activeTab, currentCenter, approvalStatus]);
+    }, [activeTab, currentCenter, approvalStatus, loadRequests, loadPendingUsers, loadUsers, loadStructure]);
 
     // --- Data Loading Functions ---
 
-    const loadStats = async (cName: string, tName: string) => {
+    const loadStats = useCallback(async (cName: string, tName: string) => {
         if (!supabase || !cName) return;
         setStats(prev => ({ ...prev, loading: true }));
         try {
@@ -637,10 +637,10 @@ export default function ProjectManagerDashboard() {
             console.error('Error loading stats:', err);
             setStats(prev => ({ ...prev, loading: false }));
         }
-    };
+    }, []);
 
     // --- New User Registrations Logic ---
-    const loadPendingUsers = async () => {
+    const loadPendingUsers = useCallback(async () => {
         if (!supabase || !currentCenter) return;
         setLoadingPendingUsers(true);
         try {
@@ -661,7 +661,7 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingPendingUsers(false);
         }
-    };
+    }, [currentCenter]);
 
     const handleUserVerification = async (userId: string, status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase) return;
@@ -713,7 +713,7 @@ export default function ProjectManagerDashboard() {
         }
     };
 
-    const loadRequests = async () => {
+    const loadRequests = useCallback(async () => {
         if (!supabase || !currentCenter) return;
         setLoadingRequests(true);
         try {
@@ -739,9 +739,9 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingRequests(false);
         }
-    };
+    }, [currentCenter, currentTemple, approvalStatus]);
 
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         if (!supabase || !currentCenter) return;
         setLoadingUsers(true);
         try {
@@ -767,7 +767,7 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingUsers(false);
         }
-    };
+    }, [currentCenter]);
 
     // --- Action Handlers ---
 
@@ -1373,7 +1373,7 @@ export default function ProjectManagerDashboard() {
                                                                 {request.admin_feedback && (
                                                                     <div className="mt-4 p-4 bg-white rounded-xl border border-gray-200 italic text-sm text-gray-500 font-medium">
                                                                         <span className="font-bold text-gray-400 not-italic mr-2">Feedback:</span>
-                                                                        "{request.admin_feedback}"
+                                                                        &quot;{request.admin_feedback}&quot;
                                                                     </div>
                                                                 )}
                                                             </div>

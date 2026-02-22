@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
@@ -32,19 +33,7 @@ export default function VoiceManagerPage() {
   const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
   const hasVoiceManagerRole = userRoles.includes('voice_manager') || userRoles.includes('senior_counselor') || userRoles.includes(3);
 
-  useEffect(() => {
-    if (!userData) return;
-
-    // Check if user has voice_manager role
-    if (!hasVoiceManagerRole) {
-      router.push('/dashboard');
-      return;
-    }
-
-    loadDevs();
-  }, [userData, hasVoiceManagerRole, router]);
-
-  const loadDevs = async () => {
+  const loadDevs = useCallback(async () => {
     if (!userData?.hierarchy?.center && !userData?.hierarchy?.centerId) {
       console.log('Voice Manager: No center or centerId found', userData?.hierarchy);
       setLoading(false);
@@ -208,7 +197,19 @@ export default function VoiceManagerPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userData]);
+
+  useEffect(() => {
+    if (!userData) return;
+
+    // Check if user has voice_manager role
+    if (!hasVoiceManagerRole) {
+      router.push('/dashboard');
+      return;
+    }
+
+    loadDevs();
+  }, [userData, hasVoiceManagerRole, router, loadDevs]);
 
   const filteredDevs = useMemo(() => {
     return devs.filter(dev => {
@@ -385,13 +386,12 @@ export default function VoiceManagerPage() {
                 >
                   <div className="flex items-start gap-3 sm:gap-4 mb-4">
                     {dev.profileImage ? (
-                      <img
+                      <Image
                         src={dev.profileImage}
                         alt={dev.name}
+                        width={64}
+                        height={64}
                         className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-orange-200"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
                       />
                     ) : (
                       <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">

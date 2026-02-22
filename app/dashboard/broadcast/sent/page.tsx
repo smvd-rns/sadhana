@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { Mail, TrendingUp, Users, Eye, EyeOff, Calendar, Filter, Search } from 'lucide-react';
@@ -31,6 +31,28 @@ export default function SentMessagesPage() {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
+
+    const fetchSentMessages = useCallback(async () => {
+        try {
+            const { data: { session } } = await supabase!.auth.getSession();
+            if (!session) return;
+
+            const response = await fetch('/api/broadcast/sent', {
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                },
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setMessages(data.messages);
+            }
+        } catch (error) {
+            console.error('Error fetching sent messages:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         if (userData) {
@@ -63,29 +85,7 @@ export default function SentMessagesPage() {
 
             fetchSentMessages();
         }
-    }, [userData, router]);
-
-    const fetchSentMessages = async () => {
-        try {
-            const { data: { session } } = await supabase!.auth.getSession();
-            if (!session) return;
-
-            const response = await fetch('/api/broadcast/sent', {
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                },
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                setMessages(data.messages);
-            }
-        } catch (error) {
-            console.error('Error fetching sent messages:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+    }, [userData, router, fetchSentMessages]);
 
     const handleDelete = async (messageId: string) => {
         try {

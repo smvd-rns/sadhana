@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase/config';
 import { updateUser, getUsersByRole, getUsersByHierarchy, getUsersByCenterIds } from '@/lib/supabase/users';
 import { getBCVoiceManagerRequestByUserId } from '@/lib/supabase/bc-voice-manager-requests';
@@ -606,11 +607,12 @@ export default function UsersPage() {
                         {user.name?.charAt(0).toUpperCase() || 'U'}
                       </span>
                       {user.profileImage && (
-                        <img
+                        <Image
                           src={getSmallThumbnailUrl(user.profileImage) || ''}
-                          alt={user.name}
+                          alt={user.name || 'User Profile'}
                           className="absolute inset-0 w-full h-full object-cover"
-                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                          fill
+                          unoptimized={true}
                         />
                       )}
                     </div>

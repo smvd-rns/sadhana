@@ -33,30 +33,7 @@ export default function DataApprovalsPage() {
 
     const router = useRouter();
 
-    useEffect(() => {
-        if (!authLoading && userData) {
-            // Check if user has role 8 (Super Admin) - Robust check with JSON parse & string handling
-            let roles = userData.role;
-            if (typeof roles === 'string' && roles.startsWith('[')) {
-                try { roles = JSON.parse(roles); } catch { }
-            }
-            const rolesArray = Array.isArray(roles) ? roles : [roles];
-            const hasAccess = rolesArray.some(r => {
-                const val = String(r).trim();
-                return val === '8' || val === 'super_admin';
-            });
-
-            if (!hasAccess) {
-                // Redirect or show access denied
-                // We'll let the render handle the access denied view
-                return;
-            }
-            fetchData();
-        }
-        setSelectedIds(new Set());
-    }, [activeTab, authLoading, userData]);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         // Double check access before fetching
         if (!userData) return;
 
@@ -95,7 +72,30 @@ export default function DataApprovalsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userData, activeTab]);
+
+    useEffect(() => {
+        if (!authLoading && userData) {
+            // Check if user has role 8 (Super Admin) - Robust check with JSON parse & string handling
+            let roles = userData.role;
+            if (typeof roles === 'string' && roles.startsWith('[')) {
+                try { roles = JSON.parse(roles); } catch { }
+            }
+            const rolesArray = Array.isArray(roles) ? roles : [roles];
+            const hasAccess = rolesArray.some(r => {
+                const val = String(r).trim();
+                return val === '8' || val === 'super_admin';
+            });
+
+            if (!hasAccess) {
+                // Redirect or show access denied
+                // We'll let the render handle the access denied view
+                return;
+            }
+            fetchData();
+        }
+        setSelectedIds(new Set());
+    }, [activeTab, authLoading, userData, fetchData]);
 
     const getSingularType = (tab: string) => {
         const map: Record<string, string> = {

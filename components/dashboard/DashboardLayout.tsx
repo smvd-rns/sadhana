@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
@@ -244,7 +245,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return baseNavigation;
-  }, [userData?.role, isCounselorEmail, userData]);
+  }, [isCounselorEmail, userData]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -331,13 +332,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="mr-3 flex-shrink-0">
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-40"></div>
-                    <img
+                    <Image
                       src={getSmallThumbnailUrl(userData.profileImage) || userData.profileImage}
                       alt={userData.name || 'Profile'}
+                      width={48}
+                      height={48}
                       className="relative w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
+                      unoptimized={true}
                     />
                   </div>
                 </div>
@@ -388,13 +389,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {userData?.profileImage && (
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-30"></div>
-                  <img
+                  <Image
                     src={getSmallThumbnailUrl(userData.profileImage) || userData.profileImage}
                     alt={userData.name || 'Profile'}
+                    width={32}
+                    height={32}
                     className="relative w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none';
-                    }}
+                    unoptimized={true}
                   />
                 </div>
               )}
