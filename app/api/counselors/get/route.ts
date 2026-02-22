@@ -68,8 +68,8 @@ export async function GET(request: Request) {
     // For now, we'll hide PII for everyone except maybe if we add role checks later.
     // But to be safe for public registration page, we MUST hide email/mobile.
     const selectFields = isAuthenticated
-      ? 'id, name, mobile, email, city, ashram'
-      : 'id, name, city, ashram'; // Exclude mobile and email for public
+      ? 'id, name, mobile, email, city, ashram, user_id'
+      : 'id, name, city, ashram, user_id'; // Exclude mobile and email for public
 
     let query = supabase
       .from('counselors')

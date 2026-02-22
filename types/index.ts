@@ -179,6 +179,8 @@ export interface HierarchyLocation {
   brahmachariCounselorEmail?: string;
   grihasthaCounselor?: string;
   grihasthaCounselorEmail?: string;
+  counselorId?: string;
+  counselor_id?: string;
   otherCounselor?: string;
   otherCenter?: string;
   // Fields for admin role assignments (which area they manage)

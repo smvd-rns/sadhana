@@ -20,7 +20,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [isCounselorEmail, setIsCounselorEmail] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
 
@@ -50,24 +49,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [userData, loading, user, isProfileComplete]);
 
-  // Check if user's email is in counselor table
-  useEffect(() => {
-    const checkCounselorEmail = async () => {
-      if (!userData?.email) return;
-
-      try {
-        const { checkIfEmailIsCounselor } = await import('@/lib/supabase/counselor-requests');
-        const isCounselor = await checkIfEmailIsCounselor(userData.email);
-        setIsCounselorEmail(isCounselor);
-      } catch (error) {
-        console.error('Error checking counselor email:', error);
-      }
-    };
-
-    if (userData) {
-      checkCounselorEmail();
-    }
-  }, [userData]);
 
   // Fetch unread messages count
   useEffect(() => {
@@ -135,7 +116,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const hasOrgViewAccess = isSuperAdmin || isLeadership;
 
     // Check if user has counselor role
-    const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2);
+    const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2) ||
+      userRoles.includes('care_giver') || userRoles.includes(20);
 
     // Check if user has voice_manager role (role 3)
     const hasVoiceManagerRole = userRoles.includes('voice_manager') || userRoles.includes('senior_counselor') || userRoles.includes(3);
@@ -180,11 +162,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     // For Super Admins, this is accessed via Admin Dashboard, so hide it here
     if (hasCounselorRole && !isSuperAdmin) {
       baseNavigation.push({ name: 'Counselor', href: '/dashboard/counselor', icon: UserCheck });
-    }
-
-    // Add counselor request page if user's email is in counselor table but doesn't have counselor role
-    if (isCounselorEmail && !hasCounselorRole) {
-      baseNavigation.push({ name: 'Counselor', href: '/dashboard/counselor-request', icon: UserCircle });
     }
 
 
@@ -246,7 +223,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return baseNavigation;
-  }, [isCounselorEmail, userData]);
+  }, [userData]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

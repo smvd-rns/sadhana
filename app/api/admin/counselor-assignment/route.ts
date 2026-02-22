@@ -58,26 +58,36 @@ export async function POST(request: Request) {
         // Check target user in one go if scoping applies
         let targetUser = null;
         if (isManagingDirector && !isSuperAdmin) {
-            const { data, error: targetError } = await supabase
+            const { data: targetData, error: targetError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('id', userId)
                 .single();
 
-            if (targetError || !data) {
+            if (targetError || !targetData) {
                 return NextResponse.json({ error: 'User not found' }, { status: 404 });
             }
-            targetUser = data;
+            targetUser = targetData;
 
-            const adminTemple = hierarchy?.currentTemple?.name || hierarchy?.currentTemple;
-            const targetTemple = targetUser.hierarchy?.currentTemple?.name || targetUser.hierarchy?.currentTemple;
+            const tH = targetUser.hierarchy || {};
+            const targetTempleName = (targetUser.current_temple || tH.currentTemple?.name || tH.currentTemple || '').toString().trim();
 
-            // Normalize for comparison
-            const adminT = (typeof adminTemple === 'string' ? adminTemple : adminTemple?.name || '').trim().toLowerCase();
-            const targetT = (typeof targetTemple === 'string' ? targetTemple : targetTemple?.name || '').trim().toLowerCase();
+            if (!targetTempleName) {
+                return NextResponse.json({ error: 'Devotee must have a temple assigned in their profile.' }, { status: 400 });
+            }
 
-            if (!adminT || adminT !== targetT) {
-                return NextResponse.json({ error: 'You can only manage counselors within your own temple.' }, { status: 403 });
+            // Verify if the admin is assigned to THIS specific devotee's temple
+            // Using exact case matching as stored in the DB for the name filter
+            const { data: templeCheck, error: templeError } = await supabase
+                .from('temples')
+                .select('id')
+                .eq('name', targetTempleName)
+                .or(`managing_director_id.eq.${adminUser.id},director_id.eq.${adminUser.id},central_voice_manager_id.eq.${adminUser.id},yp_id.eq.${adminUser.id}`)
+                .maybeSingle();
+
+            if (templeError || !templeCheck) {
+                console.warn(`Permission Denied: Admin ${adminUser.id} trying to manage temple ${targetTempleName}`);
+                return NextResponse.json({ error: 'You do not have permission to manage devotees in this temple.' }, { status: 403 });
             }
         } else {
             // Just fetch target user
@@ -129,6 +139,7 @@ export async function POST(request: Request) {
                 ashram: userAshram,
                 role: roleType,
                 is_verified: true,
+                user_id: targetUser.id, // Store the actual user UUID for stable linkage
             };
 
             // 3. Upsert into Counselors Table FIRST
@@ -180,7 +191,10 @@ export async function POST(request: Request) {
 
                 const { error: updateError } = await supabase
                     .from('users')
-                    .update({ role: newRoles, updated_at: new Date().toISOString() })
+                    .update({
+                        role: newRoles,
+                        updated_at: new Date().toISOString()
+                    })
                     .eq('id', userId);
 
                 if (updateError) {

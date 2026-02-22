@@ -1,0 +1,36 @@
+import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
+    try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+        const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+        const targetId = '96bbd399-f416-486b-ba9b-cd4ca611b7ea';
+
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('id, email, name')
+            .eq('id', targetId)
+            .maybeSingle();
+
+        const { data: counselorData, error: counselorError } = await supabase
+            .from('counselors')
+            .select('id, email, name')
+            .eq('id', targetId)
+            .maybeSingle();
+
+        return NextResponse.json({
+            targetId,
+            foundInUsers: !!userData,
+            userData,
+            foundInCounselors: !!counselorData,
+            counselorData
+        });
+    } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 });
+    }
+}

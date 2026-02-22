@@ -49,8 +49,10 @@ export async function POST(request: Request) {
         // Role can be number or array
         // Check if role 8 (Super Admin) or MD/Extended Roles are present
         const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
-        const allowedRoles = [8, 11, 12, 13, 14, 15, 16, 17];
+        const allowedRoles = [8, 11, 12, 13, 14, 15, 16, 17, 2, 20];
 
+        const isSuperAdmin = roles.some((r: any) => Number(r) === 8 || String(r) === 'super_admin');
+        const isCounselor = roles.some((r: any) => [2, 20].includes(Number(r)) || ['counselor', 'care_giver'].includes(String(r)));
         const hasPermission = roles.some((r: any) => allowedRoles.includes(Number(r)));
 
         if (!hasPermission) {
@@ -72,6 +74,81 @@ export async function POST(request: Request) {
 
         if (tableName === 'users') {
             const { reason } = body;
+
+            // Counselor Scoping Check for Users
+            if (isCounselor && !isSuperAdmin) {
+                const adminEmail = user.email;
+                if (!adminEmail) {
+                    return NextResponse.json({ error: 'Unauthorized: Admin email missing' }, { status: 403 });
+                }
+
+                const normalizedAdminEmail = adminEmail.trim().toLowerCase();
+
+                // Lookup Counselor Name
+                const { data: counselorData } = await supabase
+                    .from('counselors')
+                    .select('name')
+                    .eq('email', normalizedAdminEmail)
+                    .maybeSingle();
+
+                const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+
+                // Fetch target users to verify counselor email match
+                const { data: targetUsers, error: targetError } = await supabase
+                    .from('users')
+                    .select('id, hierarchy')
+                    .in('id', targetIds);
+
+                if (targetError || !targetUsers) {
+                    return NextResponse.json({ error: 'Failed to verify target users' }, { status: 500 });
+                }
+
+                // NEW: Fetch profile requests to check for requested counselors
+                const { data: pReqs } = await supabase
+                    .from('profile_update_requests')
+                    .select('user_id, requested_changes')
+                    .in('user_id', targetIds)
+                    .eq('status', 'pending');
+
+                const userToRequested = new Map<string, { emails: string[], names: string[] }>();
+                if (pReqs) {
+                    pReqs.forEach((r: any) => {
+                        const rC = r.requested_changes || {};
+                        const emails: string[] = [];
+                        const names: string[] = [];
+                        if (rC.brahmachariCounselorEmail) emails.push(rC.brahmachariCounselorEmail.trim().toLowerCase());
+                        if (rC.grihasthaCounselorEmail) emails.push(rC.grihasthaCounselorEmail.trim().toLowerCase());
+                        if (rC.brahmachariCounselor) names.push(rC.brahmachariCounselor.trim().toLowerCase());
+                        if (rC.grihasthaCounselor) names.push(rC.grihasthaCounselor.trim().toLowerCase());
+                        userToRequested.set(r.user_id, { emails, names });
+                    });
+                }
+
+                const allMatch = targetUsers.every(u => {
+                    const uH = u.hierarchy || {};
+                    const bE = (uH.brahmachariCounselorEmail || '').trim().toLowerCase();
+                    const gE = (uH.grihasthaCounselorEmail || '').trim().toLowerCase();
+                    const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
+                    const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
+
+                    // Authority via Current Counselor
+                    if (bE === normalizedAdminEmail || gE === normalizedAdminEmail) return true;
+                    if (counselorName && (bN === counselorName || gN === counselorName)) return true;
+
+                    // Authority via Requested Counselor
+                    const reqObj = userToRequested.get(u.id);
+                    if (reqObj) {
+                        if (reqObj.emails.includes(normalizedAdminEmail)) return true;
+                        if (counselorName && reqObj.names.includes(counselorName)) return true;
+                    }
+                    return false;
+                });
+
+                if (!allMatch) {
+                    return NextResponse.json({ error: 'Unauthorized: Some users are not assigned to you' }, { status: 403 });
+                }
+            }
+
             const updateData: any = {
                 reviewed_at: new Date().toISOString(),
                 reviewed_by: user.id
@@ -95,6 +172,11 @@ export async function POST(request: Request) {
             if (error) throw error;
 
         } else {
+            // Non-user types (centers, cities, counselors) still require higher levels or super admin
+            if (isCounselor && !isSuperAdmin) {
+                return NextResponse.json({ error: 'Forbidden: Counselor can only verify students' }, { status: 403 });
+            }
+
             if (action === 'approve') {
                 const { error } = await supabase
                     .from(tableName)

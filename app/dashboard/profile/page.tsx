@@ -15,7 +15,7 @@ import { EducationEntry, WorkExperienceEntry, LanguageEntry, SkillEntry, Service
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; user_id?: string }>>([]);
   const [loadingCounselors, setLoadingCounselors] = useState(true);
   const [temples, setTemples] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingTemples, setLoadingTemples] = useState(true);
@@ -56,6 +56,7 @@ export default function ProfilePage() {
     currentTemple: '',
     currentCenter: '',
     counselor: '',
+    counselorId: '',
     otherCounselor: '',
     ashram: '',
     otherCenter: '',
@@ -225,6 +226,7 @@ export default function ProfilePage() {
       if (normalize(formData.currentTemple) !== normalize(userData.hierarchy?.currentTemple)) return true;
       if (normalize(formData.currentCenter) !== normalize(userData.hierarchy?.currentCenter || userData.hierarchy?.center)) return true;
       if (normalize(formData.counselor) !== normalize(userData.hierarchy?.counselor)) return true;
+      if (normalize(formData.counselorId) !== normalize(userData.counselor_id || userData.hierarchy?.counselorId)) return true;
       if (normalize(formData.otherCounselor) !== normalize(userData.otherCounselor || userData.hierarchy?.otherCounselor)) return true;
       if (normalize(formData.otherCenter) !== normalize(userData.otherCenter || userData.hierarchy?.otherCenter)) return true;
 
@@ -254,7 +256,7 @@ export default function ProfilePage() {
       try {
         const { data, error } = await supabase
           .from('counselors')
-          .select('id, name, email')
+          .select('id, name, email, user_id')
           .order('name');
 
         if (error) {
@@ -418,7 +420,8 @@ export default function ProfilePage() {
         parentCenter: userData.hierarchy?.parentCenter || '',
         currentTemple: userData.hierarchy?.currentTemple || '',
         currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
-        counselor: userData.hierarchy?.counselor || '',
+        counselor: userData.hierarchy?.counselor || userData.counselor || '',
+        counselorId: userData.counselor_id || userData.hierarchy?.counselorId || '',
         otherCounselor: userData.hierarchy?.otherCounselor || '',
         ashram: userData.hierarchy?.ashram || '',
         otherCenter: userData.hierarchy?.otherCenter || '',
@@ -729,7 +732,10 @@ export default function ProfilePage() {
       if (formData.otherParentCenter) hierarchy.otherParentCenter = sanitizeTextInput(formData.otherParentCenter.trim());
       if (formData.currentTemple) hierarchy.currentTemple = sanitizeTextInput(formData.currentTemple.trim());
       if (formData.currentCenter) hierarchy.currentCenter = sanitizeTextInput(formData.currentCenter.trim());
-      if (formData.counselor) hierarchy.counselor = sanitizeTextInput(formData.counselor.trim());
+      if (formData.counselor) {
+        hierarchy.counselor = sanitizeTextInput(formData.counselor.trim());
+        if (formData.counselorId) hierarchy.counselorId = formData.counselorId;
+      }
       if (formData.otherCounselor) hierarchy.otherCounselor = sanitizeTextInput(formData.otherCounselor.trim());
       if (formData.otherCenter) hierarchy.otherCenter = sanitizeTextInput(formData.otherCenter.trim());
 
@@ -825,6 +831,7 @@ export default function ProfilePage() {
         current_temple: formData.currentTemple ? sanitizeTextInput(formData.currentTemple.trim()) : null,
         current_center: formData.currentCenter ? sanitizeTextInput(formData.currentCenter.trim()) : null,
         counselor: formData.counselor ? sanitizeTextInput(formData.counselor.trim()) : null,
+        counselor_id: formData.counselorId || null,
         other_counselor: formData.counselor === 'Other' ? (formData.otherCounselor ? sanitizeTextInput(formData.otherCounselor.trim()) : null) : null,
         other_center: formData.currentCenter === 'Other' || formData.center === 'Other' ? (formData.otherCenter ? sanitizeTextInput(formData.otherCenter.trim()) : null) : null,
         // Camp fields
@@ -886,7 +893,7 @@ export default function ProfilePage() {
         'initiation_status', 'initiated_name', 'spiritual_master_name',
         'aspiring_spiritual_master_name', 'rounds', 'introduced_to_kc_in',
         'parent_temple', 'parent_center', 'other_parent_center',
-        'current_temple', 'current_center', 'counselor',
+        'current_temple', 'current_center', 'counselor', 'counselor_id',
         'other_counselor', 'other_center', 'ashram'
       ];
 
@@ -1656,12 +1663,23 @@ export default function ProfilePage() {
                     </label>
                     <SearchableSelect
                       options={[
-                        ...counselors.map(c => ({ id: c.name, name: c.name })),
+                        ...counselors.map(c => ({ id: c.user_id || c.name, name: c.name })),
                         { id: 'None', name: 'None' },
                         { id: 'Other', name: 'Other' }
                       ]}
-                      value={formData.counselor}
-                      onChange={(value) => setFormData({ ...formData, counselor: value })}
+                      value={formData.counselorId || formData.counselor}
+                      onChange={(value) => {
+                        const selected = counselors.find(c => (c.user_id === value || c.name === value));
+                        if (selected) {
+                          setFormData({
+                            ...formData,
+                            counselor: selected.name,
+                            counselorId: selected.user_id || ''
+                          });
+                        } else {
+                          setFormData({ ...formData, counselor: value, counselorId: '' });
+                        }
+                      }}
                       placeholder="Select Counselor"
                       disabled={loadingCounselors}
                     />

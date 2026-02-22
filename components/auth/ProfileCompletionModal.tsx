@@ -25,7 +25,7 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
 
   const [temples, setTemples] = useState<Array<{ id: string; name: string; state: string; city: string }>>([]);
   const [centers, setCenters] = useState<Array<{ id: string; name: string; state: string; city: string }>>([]);
-  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; ashram?: string }>>([]);
+  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; ashram?: string; user_id?: string }>>([]);
 
   const [loadingTemples, setLoadingTemples] = useState(false);
   const [loadingCenters, setLoadingCenters] = useState(false);
@@ -87,7 +87,7 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
       try {
         const { data, error } = await supabase!
           .from('counselors')
-          .select('id, name, email, ashram')
+          .select('id, name, email, ashram, user_id')
           .eq('is_verified', true)
           .order('name');
 
@@ -170,6 +170,13 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
 
       const counselorData: any = {};
       if (selectedCounselor) {
+        // Essential Stable Link (ID)
+        counselorData.counselor_id = selectedCounselor.user_id || null;
+
+        // Readable Legacy/Redundant data
+        counselorData.counselor = selectedCounselor.name;
+
+        // Preserve Ashram-specific fields for backward compatibility if needed, but unified is preferred
         if (selectedCounselor.ashram === 'Brahmachari') {
           counselorData.brahmachari_counselor = selectedCounselor.name;
           counselorData.brahmachari_counselor_email = selectedCounselor.email;
@@ -190,6 +197,8 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
           ashram: formData.ashram,
           parent_temple: formData.parentTemple,
           parent_center: formData.parentCenter,
+          counselor: counselorData.counselor || null,
+          counselor_id: counselorData.counselor_id || null,
           ...counselorData,
           updated_at: new Date().toISOString(),
         })

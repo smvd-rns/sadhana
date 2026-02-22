@@ -237,23 +237,3 @@ export const updateCounselorRequestStatus = async (
   }
 };
 
-export const checkIfEmailIsCounselor = async (email: string): Promise<boolean> => {
-  try {
-    // Fetch all counselors and check if email matches
-    const response = await fetch('/api/counselors/get');
-    if (!response.ok) {
-      return false;
-    }
-    const counselors = await response.json();
-    if (!Array.isArray(counselors)) {
-      return false;
-    }
-    // Check if any counselor has this email (case-insensitive)
-    return counselors.some(counselor => 
-      counselor.email && counselor.email.toLowerCase() === email.toLowerCase()
-    );
-  } catch (error) {
-    console.error('Error checking counselor email:', error);
-    return false;
-  }
-};

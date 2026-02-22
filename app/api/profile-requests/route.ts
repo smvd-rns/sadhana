@@ -137,7 +137,12 @@ export async function GET(request: Request) {
             ['project_manager', 'project_advisor', 'acting_manager'].includes(String(r))
         );
 
-        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin && !isProjectAdmin) {
+        const isCounselor = roles.some((r: any) =>
+            [2, 20].includes(Number(r)) ||
+            ['counselor', 'care_giver'].includes(String(r))
+        );
+
+        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin && !isProjectAdmin && !isCounselor) {
             return NextResponse.json({ error: 'Unauthorized', debug: debugLogs }, { status: 403 });
         }
 
@@ -308,19 +313,49 @@ export async function GET(request: Request) {
             });
         }
 
-        // 3. Filter by Center if requested (for Project Managers)
-        if (centerFilter) {
-            const normalizedCenter = centerFilter.trim().toLowerCase();
-            filteredRequests = filteredRequests.filter((req: any) => {
-                // Check new column first
-                if (req.center_name && req.center_name.trim().toLowerCase() === normalizedCenter) {
-                    return true;
-                }
-                // Fallback: Check joined user hierarchy
-                const uH = req.user?.hierarchy;
-                const uCenter = (uH?.currentCenter?.name || (typeof uH?.currentCenter === 'string' ? uH?.currentCenter : '')) || '';
-                return uCenter.trim().toLowerCase() === normalizedCenter;
-            });
+        // 4. Counselor Scoped Security: Filter by counselor email/name (Dual Visibility: Current and Requested)
+        if (isCounselor && !isSuperAdmin && !isGlobalAdmin && !isTempleAdmin && !isProjectAdmin) {
+            const counselorEmail = adminUser.email;
+            if (counselorEmail) {
+                const normalizedCounselor = counselorEmail.trim().toLowerCase();
+
+                // Lookup Counselor Name
+                const { data: counselorData } = await supabaseAdmin
+                    .from('counselors')
+                    .select('name')
+                    .eq('email', normalizedCounselor)
+                    .maybeSingle();
+
+                const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+
+                filteredRequests = filteredRequests.filter((req: any) => {
+                    // Current Counselor
+                    const uH = req.user?.hierarchy;
+                    const bE = (uH?.brahmachariCounselorEmail || '').trim().toLowerCase();
+                    const gE = (uH?.grihasthaCounselorEmail || '').trim().toLowerCase();
+                    const bN = (uH?.brahmachariCounselor || '').trim().toLowerCase();
+                    const gN = (uH?.grihasthaCounselor || '').trim().toLowerCase();
+
+                    // Newly Requested Counselor
+                    const rC = req.requested_changes || {};
+                    const rbE = (rC.brahmachariCounselorEmail || '').trim().toLowerCase();
+                    const rgE = (rC.grihasthaCounselorEmail || '').trim().toLowerCase();
+                    const rbN = (rC.brahmachariCounselor || '').trim().toLowerCase();
+                    const rgN = (rC.grihasthaCounselor || '').trim().toLowerCase();
+
+                    const matchesEmail = bE === normalizedCounselor || gE === normalizedCounselor ||
+                        rbE === normalizedCounselor || rgE === normalizedCounselor;
+
+                    const matchesName = counselorName && (
+                        bN === counselorName || gN === counselorName ||
+                        rbN === counselorName || rgN === counselorName
+                    );
+
+                    return matchesEmail || matchesName;
+                });
+            } else {
+                filteredRequests = []; // No email, no access
+            }
         }
 
         log(`Responding with ${filteredRequests.length} records`);

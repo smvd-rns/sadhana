@@ -132,6 +132,13 @@ export default function ManagingDirectorDashboard() {
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [pendingAdminRole, setPendingAdminRole] = useState<number | null>(null);
     const [pendingSpiritualRole, setPendingSpiritualRole] = useState<number | 'none'>('none');
+
+    // --- Counselor Assignment States ---
+    const [showCounselorModal, setShowCounselorModal] = useState(false);
+    const [counselorActionUser, setCounselorActionUser] = useState<any>(null);
+    const [counselorActionType, setCounselorActionType] = useState<'assign' | 'revoke'>('assign');
+    const [selectedCounselorRole, setSelectedCounselorRole] = useState<'counselor' | 'care_giver'>('counselor');
+    const [isProcessingCounselor, setIsProcessingCounselor] = useState(false);
     const [pendingCenters, setPendingCenters] = useState<string[]>([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -776,6 +783,42 @@ export default function ManagingDirectorDashboard() {
             loadUsers();
         } catch (error: any) {
             toast.error(error.message || 'Update failed');
+        }
+    };
+
+    const handleCounselorAction = async () => {
+        if (!supabase || !counselorActionUser) return;
+        setIsProcessingCounselor(true);
+        try {
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+
+            const response = await fetch('/api/admin/counselor-assignment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    userId: counselorActionUser.id,
+                    action: counselorActionType,
+                    roleType: counselorActionType === 'assign' ? selectedCounselorRole : undefined
+                })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+                toast.success(result.message);
+                setShowCounselorModal(false);
+                loadUsers(); // Refresh list to show new roles
+            } else {
+                toast.error(result.error || 'Action failed');
+            }
+        } catch (err) {
+            console.error('Counselor Action Error:', err);
+            toast.error('Failed to process counselor assignment');
+        } finally {
+            setIsProcessingCounselor(false);
         }
     };
 
@@ -1759,6 +1802,47 @@ export default function ManagingDirectorDashboard() {
                                                             >
                                                                 <Eye className="h-3.5 w-3.5" /> View Profile
                                                             </button>
+
+                                                            {(() => {
+                                                                const userRoles = Array.isArray(user.role) ? user.role : [user.role];
+                                                                const isSpiritualAuthority = userRoles.some((r: any) => Number(r) === 2 || Number(r) === 20);
+                                                                const devoteeTemple = uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || user.current_temple || uH?.currentTemple;
+                                                                const isManagedTemple = assignedTemples.some(t => t.name.trim().toLowerCase() === (devoteeTemple || '').trim().toLowerCase());
+
+                                                                if (isSpiritualAuthority) {
+                                                                    return (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setCounselorActionUser(user);
+                                                                                setCounselorActionType('revoke');
+                                                                                setShowCounselorModal(true);
+                                                                            }}
+                                                                            className="w-full py-3 bg-rose-50 text-rose-600 border-2 border-rose-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+                                                                        >
+                                                                            <ShieldAlert className="h-3.5 w-3.5" /> Revoke Role
+                                                                        </button>
+                                                                    );
+                                                                } else if (isManagedTemple) {
+                                                                    return (
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setCounselorActionUser(user);
+                                                                                setCounselorActionType('assign');
+                                                                                setShowCounselorModal(true);
+                                                                            }}
+                                                                            className="w-full py-3 bg-primary-50 text-primary-600 border-2 border-primary-100 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all active:scale-95 shadow-sm flex items-center justify-center gap-2"
+                                                                        >
+                                                                            <ShieldCheck className="h-3.5 w-3.5" /> Assign Roles
+                                                                        </button>
+                                                                    );
+                                                                } else {
+                                                                    return (
+                                                                        <div className="w-full py-3 bg-gray-50 text-gray-400 border-2 border-transparent rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed shadow-sm" title="Devotee must belong to one of your managed Temples">
+                                                                            <Shield className="h-3.5 w-3.5" /> No Access
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            })()}
                                                         </div>
                                                     );
                                                 })()}
@@ -1863,6 +1947,49 @@ export default function ManagingDirectorDashboard() {
                                                                             >
                                                                                 <Eye className="h-4 w-4" />
                                                                             </button>
+
+                                                                            {(() => {
+                                                                                const userRoles = Array.isArray(user.role) ? user.role : [user.role];
+                                                                                const isSpiritualAuthority = userRoles.some((r: any) => Number(r) === 2 || Number(r) === 20);
+                                                                                const devoteeTemple = uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || user.current_temple || uH?.currentTemple;
+                                                                                const isManagedTemple = assignedTemples.some(t => t.name.trim().toLowerCase() === (devoteeTemple || '').trim().toLowerCase());
+
+                                                                                if (isSpiritualAuthority) {
+                                                                                    return (
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setCounselorActionUser(user);
+                                                                                                setCounselorActionType('revoke');
+                                                                                                setShowCounselorModal(true);
+                                                                                            }}
+                                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-rose-50 text-rose-600 border-2 border-rose-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                                                                                            title="Revoke Counselor Role"
+                                                                                        >
+                                                                                            <ShieldAlert className="h-4 w-4" />
+                                                                                        </button>
+                                                                                    );
+                                                                                } else if (isManagedTemple) {
+                                                                                    return (
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setCounselorActionUser(user);
+                                                                                                setCounselorActionType('assign');
+                                                                                                setShowCounselorModal(true);
+                                                                                            }}
+                                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 text-primary-600 border-2 border-primary-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-primary-600 hover:text-white transition-all active:scale-95 shadow-sm"
+                                                                                            title="Assign Counselor/Care Giver Role"
+                                                                                        >
+                                                                                            <ShieldCheck className="h-4 w-4" />
+                                                                                        </button>
+                                                                                    );
+                                                                                } else {
+                                                                                    return (
+                                                                                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 text-gray-400 border border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed" title="Devotee must belong to one of your managed Temples">
+                                                                                            <Shield className="h-4 w-4 text-gray-300" />
+                                                                                        </div>
+                                                                                    );
+                                                                                }
+                                                                            })()}
                                                                         </div>
                                                                     );
                                                                 })()}
@@ -2413,6 +2540,89 @@ export default function ManagingDirectorDashboard() {
             </div>
 
             {/* Modals Section */}
+
+            {/* Counselor Action Modal */}
+            {showCounselorModal && counselorActionUser && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md transform transition-all scale-100 animate-in zoom-in-95 duration-200 overflow-hidden border border-amber-100">
+                        {/* Header */}
+                        <div className={`p-6 flex flex-col items-center text-center gap-3 bg-gradient-to-br ${counselorActionType === 'assign' ? 'from-primary-500 to-orange-600' : 'from-rose-500 to-red-600'}`}>
+                            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shadow-xl">
+                                {counselorActionType === 'assign' ? <ShieldCheck className="h-8 w-8" /> : <ShieldAlert className="h-8 w-8" />}
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                                    {counselorActionType === 'assign' ? 'Appoint Authority' : 'Revoke Authority'}
+                                </h2>
+                                <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-1">
+                                    {counselorActionUser.name}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            {counselorActionType === 'assign' ? (
+                                <>
+                                    <div className="space-y-3">
+                                        <p className="text-sm font-bold text-gray-600 text-center">Select the spiritual role for this devotee:</p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button
+                                                onClick={() => setSelectedCounselorRole('counselor')}
+                                                className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${selectedCounselorRole === 'counselor' ? 'border-primary-500 bg-primary-50 ring-4 ring-primary-500/10' : 'border-gray-100 bg-gray-50 hover:border-primary-200'}`}
+                                            >
+                                                <UserCheck className={`h-6 w-6 ${selectedCounselorRole === 'counselor' ? 'text-primary-600' : 'text-gray-400'}`} />
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${selectedCounselorRole === 'counselor' ? 'text-primary-700' : 'text-gray-500'}`}>Counselor</span>
+                                            </button>
+                                            <button
+                                                onClick={() => setSelectedCounselorRole('care_giver')}
+                                                className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${selectedCounselorRole === 'care_giver' ? 'border-blue-500 bg-blue-50 ring-4 ring-blue-500/10' : 'border-gray-100 bg-gray-50 hover:border-blue-200'}`}
+                                            >
+                                                <Heart className={`h-6 w-6 ${selectedCounselorRole === 'care_giver' ? 'text-blue-600' : 'text-gray-400'}`} />
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${selectedCounselorRole === 'care_giver' ? 'text-blue-700' : 'text-gray-500'}`}>Care Giver</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 border-dashed">
+                                        <p className="text-[10px] font-bold text-amber-700 leading-relaxed text-center italic">
+                                            "Appointing a devotee as an authority will synchronize their role and identity in the database."
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="bg-rose-50 p-5 rounded-2xl border border-rose-100 flex items-start gap-4">
+                                        <AlertTriangle className="h-6 w-6 text-rose-500 flex-shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-black text-rose-900 uppercase tracking-tight">Revocation Warning</p>
+                                            <p className="text-xs font-bold text-rose-700/80 mt-1 leading-relaxed">
+                                                This will remove all spiritual authority roles from this user and delete their record from the counselors directory.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs font-bold text-gray-500 text-center uppercase tracking-widest">Are you sure you want to proceed?</p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => setShowCounselorModal(false)}
+                                    className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleCounselorAction}
+                                    disabled={isProcessingCounselor}
+                                    className={`flex-[2] py-3.5 ${counselorActionType === 'assign' ? 'bg-primary-600 shadow-primary-200' : 'bg-rose-600 shadow-rose-200'} text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:brightness-110 transition-all active:scale-95 flex items-center justify-center gap-2`}
+                                >
+                                    {isProcessingCounselor ? <Activity className="h-4 w-4 animate-spin" /> : (counselorActionType === 'assign' ? <Check className="h-4 w-4" /> : <Trash2 className="h-4 w-4" />)}
+                                    {isProcessingCounselor ? 'Processing...' : (counselorActionType === 'assign' ? 'Confirm Role' : 'Confirm Revocation')}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Center Modal */}
             {

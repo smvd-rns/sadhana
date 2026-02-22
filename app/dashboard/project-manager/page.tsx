@@ -411,7 +411,7 @@ export default function ProjectManagerDashboard() {
         return 'Member';
     };
 
-    const refreshCounts = useCallback(async (centersToMap: any[] = managedCenters) => {
+    const refreshCounts = useCallback(async (centersToMap: any[]) => {
         if (!supabase) return;
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
@@ -488,7 +488,7 @@ export default function ProjectManagerDashboard() {
                 console.error('PM Dashboard: Exception fetching pending counts', err);
             }
         }
-    }, [managedCenters]);
+    }, []);
 
     useEffect(() => {
         if (!userData || !isProjectManager) {
@@ -802,7 +802,7 @@ export default function ProjectManagerDashboard() {
                     setSelectedRequestIds([]);
                     loadRequests(); // Reload existing tab
                     loadStats(currentCenter, currentTemple); // Reload primary card
-                    refreshCounts(); // Reload breakdown list & dropdown
+                    refreshCounts(managedCenters); // Reload breakdown list & dropdown
                 } else {
                     toast.error(result.error || 'Bulk action failed');
                 }

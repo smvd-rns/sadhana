@@ -65,9 +65,14 @@ export async function PATCH(
             ['managing_director', 'project_advisor', 'project_manager', 'acting_manager', 'oc', 'youth_preacher'].includes(String(r))
         );
 
-        log(`Roles check: Super=${isSuperAdmin}, Global=${isGlobalAdmin}, Temple=${isTempleAdmin}`);
+        const isCounselor = roles.some((r: any) =>
+            [2, 20].includes(Number(r)) ||
+            ['counselor', 'care_giver'].includes(String(r))
+        );
 
-        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin) {
+        log(`Roles check: Super=${isSuperAdmin}, Global=${isGlobalAdmin}, Temple=${isTempleAdmin}, Counselor=${isCounselor}`);
+
+        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin && !isCounselor) {
             return NextResponse.json({ error: 'Unauthorized', debug: debugLogs }, { status: 403 });
         }
 
@@ -91,31 +96,89 @@ export async function PATCH(
             return NextResponse.json({ error: 'Request not found', debug: debugLogs }, { status: 404 });
         }
 
-        // Temple Scoped Security for Temple Admins (MDs, OCs, etc.)
-        if (isTempleAdmin && !isSuperAdmin && !isGlobalAdmin) {
-            log('Applying temple scoped security');
+        // Scoped Security for Temple Admins and Counselors
+        if (!isSuperAdmin && !isGlobalAdmin) {
+            log('Applying scoped security');
             const { data: targetUser } = await supabaseAdmin
                 .from('users')
-                .select('hierarchy')
+                .select('hierarchy, counselor_id')
                 .eq('id', profileRequest.user_id)
                 .single();
 
-            const { data: adminFullData } = await supabaseAdmin
-                .from('users')
-                .select('hierarchy')
-                .eq('id', adminUser.id)
-                .single();
+            const uH = targetUser?.hierarchy || {};
 
-            const adminTemple = adminFullData?.hierarchy?.currentTemple?.name || adminFullData?.hierarchy?.currentTemple;
-            const userTemple = targetUser?.hierarchy?.currentTemple?.name || targetUser?.hierarchy?.currentTemple;
+            if (isTempleAdmin) {
+                const { data: adminFullData } = await supabaseAdmin
+                    .from('users')
+                    .select('hierarchy')
+                    .eq('id', adminUser.id)
+                    .single();
 
-            const adminT = (typeof adminTemple === 'string' ? adminTemple : adminTemple?.name || '').trim().toLowerCase();
-            const userT = (typeof userTemple === 'string' ? userTemple : userTemple?.name || '').trim().toLowerCase();
+                const adminTemple = adminFullData?.hierarchy?.currentTemple?.name || adminFullData?.hierarchy?.currentTemple;
+                const userTemple = uH.currentTemple?.name || uH.currentTemple;
 
-            log(`Temple Check: AdminTemple=${adminT}, UserTemple=${userT}`);
+                const adminT = (typeof adminTemple === 'string' ? adminTemple : adminTemple?.name || '').trim().toLowerCase();
+                const userT = (typeof userTemple === 'string' ? userTemple : userTemple?.name || '').trim().toLowerCase();
 
-            if (!adminT || adminT !== userT) {
-                return NextResponse.json({ error: 'Unauthorized: Temple mismatch', debug: debugLogs }, { status: 403 });
+                log(`Temple Check: AdminTemple=${adminT}, UserTemple=${userT}`);
+
+                if (!adminT || adminT !== userT) {
+                    return NextResponse.json({ error: 'Unauthorized: Temple mismatch', debug: debugLogs }, { status: 403 });
+                }
+            } else if (isCounselor) {
+                // Counselor Scoping: Check if admin email matches target user's counselor email OR requested counselor email
+                const adminEmail = adminUser.email;
+                if (!adminEmail) {
+                    return NextResponse.json({ error: 'Unauthorized: Admin email missing', debug: debugLogs }, { status: 403 });
+                }
+
+                const normalizedAdminEmail = adminEmail.trim().toLowerCase();
+
+                // Lookup Counselor Name
+                const { data: counselorData } = await supabaseAdmin
+                    .from('counselors')
+                    .select('name')
+                    .eq('email', normalizedAdminEmail)
+                    .maybeSingle();
+
+                const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+
+                // Current Counselor Emails/Names
+                const bE = (uH.brahmachariCounselorEmail || '').trim().toLowerCase();
+                const gE = (uH.grihasthaCounselorEmail || '').trim().toLowerCase();
+                const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
+                const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
+
+                // Requested Counselor Emails/Names/IDs
+                const rC = profileRequest.requested_changes || {};
+                const rbE = (rC.brahmachariCounselorEmail || '').trim().toLowerCase();
+                const rgE = (rC.grihasthaCounselorEmail || '').trim().toLowerCase();
+                const rbN = (rC.brahmachariCounselor || '').trim().toLowerCase();
+                const rgN = (rC.grihasthaCounselor || '').trim().toLowerCase();
+                const rcId = (rC.counselorId || rC.counselor_id || '').trim();
+
+                // Existing Counselor ID
+                const uId = (uH.counselorId || uH.counselor_id || '').trim();
+                const uTopId = (targetUser?.counselor_id || '').trim();
+
+                log(`Counselor Check: AdminID=${adminUser.id}, AdminEmail=${normalizedAdminEmail}, Name=${counselorName}, rbE=${rbE}, rgE=${rgE}, rbN=${rbN}, rgN=${rgN}, rcId=${rcId}, uId=${uId}, uTopId=${uTopId}`);
+
+                // 1. Matches by Stable ID (Preferred)
+                const matchesId = adminUser.id === rcId || adminUser.id === uId || adminUser.id === uTopId;
+
+                // 2. Matches by Email (Legacy)
+                const matchesEmail = bE === normalizedAdminEmail || gE === normalizedAdminEmail ||
+                    rbE === normalizedAdminEmail || rgE === normalizedAdminEmail;
+
+                // 3. Matches by Name (Fallback)
+                const matchesName = counselorName && (
+                    bN === counselorName || gN === counselorName ||
+                    rbN === counselorName || rgN === counselorName
+                );
+
+                if (!matchesId && !matchesEmail && !matchesName) {
+                    return NextResponse.json({ error: 'Unauthorized: Counselor mismatch', debug: debugLogs }, { status: 403 });
+                }
             }
         }
 
@@ -162,6 +225,8 @@ export async function PATCH(
             if (requestedChanges.currentTemple !== undefined) dbUpdates.current_temple = requestedChanges.currentTemple;
             if (requestedChanges.currentCenter !== undefined) dbUpdates.current_center = requestedChanges.currentCenter;
             if (requestedChanges.counselor !== undefined) dbUpdates.counselor = requestedChanges.counselor;
+            if (requestedChanges.counselorId !== undefined) dbUpdates.counselor_id = requestedChanges.counselorId;
+            if (requestedChanges.counselor_id !== undefined) dbUpdates.counselor_id = requestedChanges.counselor_id;
             if (requestedChanges.otherCounselor !== undefined) dbUpdates.other_counselor = requestedChanges.otherCounselor;
             if (requestedChanges.otherCenter !== undefined) dbUpdates.other_center = requestedChanges.otherCenter;
             if (requestedChanges.otherParentCenter !== undefined) dbUpdates.other_parent_center = requestedChanges.otherParentCenter;

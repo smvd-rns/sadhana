@@ -44,8 +44,9 @@ export async function GET(request: Request) {
         const isSuperAdmin = roleNums.includes(8);
         const isTempleAdmin = roleNums.some((r: number) => [11, 12, 13].includes(r));
         const isCenterAdmin = roleNums.some((r: number) => [14, 15, 16, 17].includes(r));
+        const isCounselor = roleNums.some((r: number) => [2, 20].includes(r));
 
-        if (!isSuperAdmin && !isTempleAdmin && !isCenterAdmin) {
+        if (!isSuperAdmin && !isTempleAdmin && !isCenterAdmin && !isCounselor) {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
 
@@ -91,6 +92,38 @@ export async function GET(request: Request) {
         // Normalize string for comparison
         const normalize = (str: string) => (str || '').trim().toLowerCase();
 
+        // NEW: Fetch Counselor Name for the current admin
+        const { data: adminCounselor } = await supabase
+            .from('counselors')
+            .select('name')
+            .eq('email', normalize(adminUser.email || ''))
+            .maybeSingle();
+
+        const counselorName = adminCounselor?.name ? normalize(adminCounselor.name) : null;
+
+        // NEW: Fetch all pending profile update requests to check for counselor changes
+        const { data: profileRequests } = await supabase
+            .from('profile_update_requests')
+            .select('user_id, requested_changes')
+            .eq('status', 'pending');
+
+        const userToRequestedCounselor = new Map<string, { emails: string[], names: string[] }>();
+        if (profileRequests) {
+            profileRequests.forEach((req: any) => {
+                const rC = req.requested_changes || {};
+                const emails: string[] = [];
+                const names: string[] = [];
+                if (rC.brahmachariCounselorEmail) emails.push(normalize(rC.brahmachariCounselorEmail));
+                if (rC.grihasthaCounselorEmail) emails.push(normalize(rC.grihasthaCounselorEmail));
+                if (rC.brahmachariCounselor) names.push(normalize(rC.brahmachariCounselor));
+                if (rC.grihasthaCounselor) names.push(normalize(rC.grihasthaCounselor));
+
+                if (emails.length > 0 || names.length > 0) {
+                    userToRequestedCounselor.set(req.user_id, { emails, names });
+                }
+            });
+        }
+
         // ------------------------------------------------------------------
         // Filter Logic
         // ------------------------------------------------------------------
@@ -113,19 +146,33 @@ export async function GET(request: Request) {
                 }
             }
 
-            // 3. Center Admin: Check Center Match
-            if (isCenterAdmin) {
-                // Check against allocated IDs
-                if (user.center_id && allocatedCenterIds.includes(user.center_id)) {
-                    matches.push(true);
-                }
+            // 4. Counselor Admin: Check Counselor Email/Name Match (Dual Visibility)
+            if (isCounselor) {
+                const adminEmail = normalize(adminUser.email || '');
+                if (adminEmail) {
+                    const uH = user.hierarchy || {};
+                    const bE = normalize(uH.brahmachariCounselorEmail || '');
+                    const gE = normalize(uH.grihasthaCounselorEmail || '');
+                    const bN = normalize(uH.brahmachariCounselor || '');
+                    const gN = normalize(uH.grihasthaCounselor || '');
 
-                // Fallback: Check names if IDs miss (legacy data?)
-                const userCenterNameRaw = user.center || extractName(user.hierarchy?.center || user.hierarchy?.currentCenter);
-                const userCenterNorm = normalize(userCenterNameRaw);
+                    // Check Current Counselor (Email or Name)
+                    const matchesCurrent = (bE === adminEmail || gE === adminEmail) ||
+                        (counselorName && (bN === counselorName || gN === counselorName));
 
-                if (userCenterNorm && allocatedCenterNames.some(ac => normalize(ac) === userCenterNorm)) {
-                    matches.push(true);
+                    if (matchesCurrent) {
+                        matches.push(true);
+                    } else {
+                        // Check if admin is the newly REQUESTED counselor (Email or Name)
+                        const reqObj = userToRequestedCounselor.get(user.id);
+                        if (reqObj) {
+                            const matchesRequested = reqObj.emails.includes(adminEmail) ||
+                                (counselorName && reqObj.names.includes(counselorName));
+                            if (matchesRequested) {
+                                matches.push(true);
+                            }
+                        }
+                    }
                 }
             }
 
