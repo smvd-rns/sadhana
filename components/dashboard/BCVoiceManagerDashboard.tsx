@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { getUsersByCenterIds, updateUser } from '@/lib/supabase/users';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { getBCVoiceManagerRequestByUserId, requestAdditionalCenters } from '@/lib/supabase/bc-voice-manager-requests';
 import { getCentersByLocationFromLocal, CenterData } from '@/lib/data/local-centers';
 import { User } from '@/types';
@@ -236,7 +236,7 @@ export default function BCVoiceManagerDashboard() {
             const devsWithProgress = await Promise.all(
                 uniqueDevs.map(async (dev) => {
                     try {
-                        const reports = await getUserSadhanaReports(dev.id, 30);
+                        const reports = await fetchSadhanaHistory(30, dev.id);
 
                         if (reports.length === 0) {
                             return {
@@ -816,8 +816,8 @@ export default function BCVoiceManagerDashboard() {
                                                             <button
                                                                 onClick={() => setCurrentPage(page)}
                                                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                                                        ? 'bg-orange-600 text-white'
-                                                                        : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
+                                                                    ? 'bg-orange-600 text-white'
+                                                                    : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
                                                                     }`}
                                                             >
                                                                 {page}

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByState } from '@/lib/supabase/users';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { User } from '@/types';
 import { Users, Loader2, Mail, Phone, MapPin, Building2, UserCircle, TrendingUp, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoleDisplayName, getUserMaxRoleLevel } from '@/lib/utils/roles';
@@ -88,7 +88,7 @@ export default function StateManagerPage() {
             const usersWithProgress = await Promise.all(
                 students.map(async (user) => {
                     try {
-                        const reports = await getUserSadhanaReports(user.id, 30);
+                        const reports = await fetchSadhanaHistory(30, user.id);
 
                         if (reports.length === 0) {
                             return {

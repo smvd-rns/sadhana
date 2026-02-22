@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { getUserData } from '@/lib/supabase/auth';
 import { SadhanaReport, User } from '@/types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -217,22 +217,27 @@ export default function StudentProgressPage() {
   const loadReports = async () => {
     if (userId) {
       setLoading(true);
-      const limit = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'custom' ? 365 : 180;
-      const allReports = await getUserSadhanaReports(userId, limit);
+      try {
+        const limit = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'custom' ? 365 : 180;
+        const allReports = await fetchSadhanaHistory(limit, userId);
 
-      if (timeRange === 'custom') {
-        const filtered = allReports.filter(report => {
-          const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
-          const fromDate = new Date(customDateRange.from);
-          const toDate = new Date(customDateRange.to);
-          return reportDate >= fromDate && reportDate <= toDate;
-        });
-        setReports(filtered);
-      } else {
-        setReports(allReports);
+        if (timeRange === 'custom') {
+          const filtered = allReports.filter((report: SadhanaReport) => {
+            const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+            const fromDate = new Date(customDateRange.from);
+            const toDate = new Date(customDateRange.to);
+            return reportDate >= fromDate && reportDate <= toDate;
+          });
+          setReports(filtered);
+        } else {
+          setReports(allReports);
+        }
+      } catch (error) {
+        console.error('Error loading reports:', error);
+      } finally {
+        setLoading(false);
+        setCurrentPage(1);
       }
-      setLoading(false);
-      setCurrentPage(1);
     }
   };
 

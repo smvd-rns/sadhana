@@ -6,8 +6,32 @@ export interface CenterData {
   name: string;
   state: string;
   city: string;
+  temple_id?: string;
+  temple_name?: string;
   address?: string;
   contact?: string;
+  project_manager_id?: string;
+  project_manager_name?: string;
+  project_advisor_id?: string;
+  project_advisor_name?: string;
+  acting_manager_id?: string;
+  acting_manager_name?: string;
+  internal_manager_id?: string;
+  internal_manager_name?: string;
+  preaching_coordinator_id?: string;
+  preaching_coordinator_name?: string;
+  morning_program_in_charge_id?: string;
+  morning_program_in_charge_name?: string;
+  mentor_id?: string;
+  mentor_name?: string;
+  frontliner_id?: string;
+  frontliner_name?: string;
+  accountant_id?: string;
+  accountant_name?: string;
+  kitchen_head_id?: string;
+  kitchen_head_name?: string;
+  study_in_charge_id?: string;
+  study_in_charge_name?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -72,6 +96,32 @@ export const getCentersByLocationFromSupabase = async (
   } catch (error: any) {
     console.error('Error getting centers by location from Supabase:', error);
     throw new Error(error.message || 'Failed to get centers by location');
+  }
+};
+
+// Get centers by temple from Supabase
+export const getCentersByTempleFromSupabase = async (
+  templeId: string
+): Promise<CenterData[]> => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('centers')
+      .select('*')
+      .eq('temple_id', templeId)
+      .order('name');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('Error getting centers by temple from Supabase:', error);
+    throw new Error(error.message || 'Failed to get centers by temple');
   }
 };
 
@@ -167,10 +217,10 @@ export const addCentersBulkToSupabase = async (
 
   // Process in batches of 100 to avoid overwhelming the database
   const batchSize = 100;
-  
+
   for (let i = 0; i < centers.length; i += batchSize) {
     const batch = centers.slice(i, i + batchSize);
-    
+
     // Prepare batch for insert (deduplicate within batch first)
     const uniqueBatch = Array.from(
       new Map(batch.map(c => [`${c.state}:${c.city}:${c.name}`, c])).values()

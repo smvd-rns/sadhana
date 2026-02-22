@@ -69,3 +69,69 @@ export const getUsersByCounselorEmail = async (counselorEmail: string): Promise<
     throw error;
   }
 };
+
+export interface CounselorData {
+  id: string;
+  name: string;
+  email?: string;
+  mobile?: string;
+  city?: string;
+  ashram?: string;
+  role?: string;
+  is_verified?: boolean;
+}
+
+// Get all verified counselors from Supabase
+export const getCounselorsFromSupabase = async (): Promise<CounselorData[]> => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('counselors')
+      .select('id, name, city, ashram, role')
+      .eq('is_verified', true)
+      .order('name');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('Error getting counselors from Supabase:', error);
+    throw new Error(error.message || 'Failed to get counselors');
+  }
+};
+
+// Get counselors by location (City/State proxy)
+export const getCounselorsByLocationFromSupabase = async (
+  city?: string
+): Promise<CounselorData[]> => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
+
+  try {
+    let query = supabase
+      .from('counselors')
+      .select('id, name, city, ashram, role')
+      .eq('is_verified', true);
+
+    if (city) {
+      query = query.eq('city', city);
+    }
+
+    const { data, error } = await query.order('name');
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('Error getting counselors by location from Supabase:', error);
+    throw new Error(error.message || 'Failed to get counselors by location');
+  }
+};

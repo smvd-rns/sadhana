@@ -101,6 +101,7 @@ export const signUp = async (
         email: email.trim().toLowerCase(),
         name: name.trim(),
         role: roleNumbers, // Save as array of numbers
+        verification_status: 'unverified', // Default to unverified, allows access to complete-profile
         profile_image: profileImage || null, // Google Drive photo link
         state: state,
         city: city,
@@ -197,6 +198,184 @@ export const getCurrentUser = async () => {
   }
 };
 
+export const transformUserProfile = (data: any): User => {
+  // Convert role numbers back to role names
+  const normalizedRole = normalizeRoleFromFirestore(data.role);
+
+  // Build hierarchy object from separate columns (preferred) or JSONB (fallback)
+  const hierarchy = {
+    state: data.state || data.hierarchy?.state,
+    city: data.city || data.hierarchy?.city,
+    center: data.center || data.hierarchy?.center,
+    centerId: data.center_id || data.hierarchy?.centerId,
+    // Spiritual fields from separate columns
+    initiationStatus: data.initiation_status || data.hierarchy?.initiationStatus,
+    initiatedName: data.initiated_name || data.hierarchy?.initiatedName,
+    spiritualMasterName: data.spiritual_master_name || data.hierarchy?.spiritualMasterName,
+    aspiringSpiritualMasterName: data.aspiring_spiritual_master_name || data.hierarchy?.aspiringSpiritualMasterName,
+    chantingSince: data.chanting_since || data.hierarchy?.chantingSince,
+    rounds: data.rounds?.toString() || data.hierarchy?.rounds,
+    ashram: data.ashram || data.hierarchy?.ashram,
+    counselor: data.counselor || data.hierarchy?.counselor,
+    royalMember: data.royal_member || data.hierarchy?.royalMember,
+    introducedToKcIn: data.introduced_to_kc_in || data.hierarchy?.introducedToKcIn,
+    parentTemple: data.parent_temple || data.hierarchy?.parentTemple,
+    parentCenter: data.parent_center || data.hierarchy?.parentCenter,
+    currentTemple: data.current_temple || data.hierarchy?.currentTemple,
+    currentCenter: data.current_center || data.hierarchy?.currentCenter,
+    brahmachariCounselor: data.brahmachari_counselor || data.hierarchy?.brahmachariCounselor,
+    brahmachariCounselorEmail: data.brahmachari_counselor_email || data.hierarchy?.brahmachariCounselorEmail,
+    grihasthaCounselor: data.grihastha_counselor || data.hierarchy?.grihasthaCounselor,
+    grihasthaCounselorEmail: data.grihastha_counselor_email || data.hierarchy?.grihasthaCounselorEmail,
+    otherCounselor: data.other_counselor || data.hierarchy?.otherCounselor,
+    otherCenter: data.other_center || data.hierarchy?.otherCenter,
+    otherParentCenter: data.other_parent_center || data.hierarchy?.otherParentCenter,
+    // Assigned geographic areas for manager roles
+    assignedZone: data.assigned_zone || data.hierarchy?.assignedZone,
+    assignedState: data.assigned_state || data.hierarchy?.assignedState,
+    assignedCity: data.assigned_city || data.hierarchy?.assignedCity,
+  };
+
+  return {
+    id: data.id,
+    email: data.email,
+    name: data.name,
+    verificationStatus: data.verification_status, // Map from DB column
+    rejectionReason: data.rejection_reason,
+    reviewedBy: data.reviewed_by,
+    reviewedAt: data.reviewed_at,
+    role: normalizedRole,
+    phone: data.phone,
+    profileImage: data.profile_image, // Google Drive photo link
+    birthDate: data.birth_date,
+    hierarchy: hierarchy,
+    // Camp completion fields
+    campDys: data.camp_dys || false,
+    campSankalpa: data.camp_sankalpa || false,
+    campSphurti: data.camp_sphurti || false,
+    campUtkarsh: data.camp_utkarsh || false,
+    campFaithAndDoubt: data.camp_faith_and_doubt || false,
+    campSrcgdWorkshop: data.camp_srcgd_workshop || false,
+    campNistha: data.camp_nistha || false,
+    campAshray: data.camp_ashray || false,
+    // SP Books Study Course fields (Third Semester)
+    spbookThirdSsr15: data.spbook_third_ssr_1_5 || false,
+    spbookThirdComingBack: data.spbook_third_coming_back || false,
+    spbookThirdPqpa: data.spbook_third_pqpa || false,
+    spbookThirdMatchlessGift: data.spbook_third_matchless_gift || false,
+    spbookThirdRajaVidya: data.spbook_third_raja_vidya || false,
+    spbookThirdElevationKc: data.spbook_third_elevation_kc || false,
+    spbookThirdBeyondBirthDeath: data.spbook_third_beyond_birth_death || false,
+    spbookThirdKrishnaReservoir: data.spbook_third_krishna_reservoir || false,
+    // SP Books Study Course fields (Fourth Semester)
+    spbookFourthSsr68: data.spbook_fourth_ssr_6_8 || false,
+    spbookFourthLawsOfNature: data.spbook_fourth_laws_of_nature || false,
+    spbookFourthDharma: data.spbook_fourth_dharma || false,
+    spbookFourthSecondChance: data.spbook_fourth_second_chance || false,
+    spbookFourthIsopanishad110: data.spbook_fourth_isopanishad_1_10 || false,
+    spbookFourthQueenKuntiVideo: data.spbook_fourth_queen_kunti_video || false,
+    spbookFourthEnlightenmentNatural: data.spbook_fourth_enlightenment_natural || false,
+    spbookFourthKrishnaBook121: data.spbook_fourth_krishna_book_1_21 || false,
+    // SP Books Study Course fields (Fifth Semester)
+    spbookFifthLifeFromLife: data.spbook_fifth_life_from_life || false,
+    spbookFifthPrahladTeachings: data.spbook_fifth_prahlad_teachings || false,
+    spbookFifthJourneySelfDiscovery: data.spbook_fifth_journey_self_discovery || false,
+    spbookFifthQueenKuntiHearing: data.spbook_fifth_queen_kunti_hearing || false,
+    spbookFifthLordKapila: data.spbook_fifth_lord_kapila || false,
+    spbookFifthNectar16: data.spbook_fifth_nectar_1_6 || false,
+    spbookFifthGita16: data.spbook_fifth_gita_1_6 || false,
+    spbookFifthKrishnaBook2428: data.spbook_fifth_krishna_book_24_28 || false,
+    // SP Books Study Course fields (Sixth Semester)
+    spbookSixthNectar711: data.spbook_sixth_nectar_7_11 || false,
+    spbookSixthPathPerfection: data.spbook_sixth_path_perfection || false,
+    spbookSixthCivilisationTranscendence: data.spbook_sixth_civilisation_transcendence || false,
+    spbookSixthHareKrishnaChallenge: data.spbook_sixth_hare_krishna_challenge || false,
+    spbookSixthGita712: data.spbook_sixth_gita_7_12 || false,
+    spbookSixthSb1stCanto16: data.spbook_sixth_sb_1st_canto_1_6 || false,
+    spbookSixthKrishnaBook3559: data.spbook_sixth_krishna_book_35_59 || false,
+    // SP Books Study Course fields (Seventh Semester)
+    spbookSeventhGita1318: data.spbook_seventh_gita_13_18 || false,
+    spbookSeventhSb1stCanto713: data.spbook_seventh_sb_1st_canto_7_13 || false,
+    spbookSeventhKrishnaBook6378: data.spbook_seventh_krishna_book_63_78 || false,
+    // SP Books Study Course fields (Eighth Semester)
+    spbookEighthSb1stCanto1419: data.spbook_eighth_sb_1st_canto_14_19 || false,
+    spbookEighthKrishnaBook7889: data.spbook_eighth_krishna_book_78_89 || false,
+    // Education fields (build array from separate columns)
+    education: (() => {
+      const eduArray: EducationEntry[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const inst = data[`edu_${i}_institution` as keyof typeof data] as string | undefined;
+        const field = data[`edu_${i}_field` as keyof typeof data] as string | undefined;
+        const year = data[`edu_${i}_year` as keyof typeof data] as number | undefined;
+        if (inst || field) {
+          eduArray.push({
+            institution: inst || '',
+            field: field || '',
+            year: year || null,
+          });
+        }
+      }
+      return eduArray.length > 0 ? eduArray : undefined;
+    })(),
+    // Work experience fields (build array from separate columns)
+    workExperience: (() => {
+      const workArray: WorkExperienceEntry[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const company = data[`work_${i}_company` as keyof typeof data] as string | undefined;
+        const position = data[`work_${i}_position` as keyof typeof data] as string | undefined;
+        const startDate = data[`work_${i}_start_date` as keyof typeof data] as string | undefined;
+        const endDate = data[`work_${i}_end_date` as keyof typeof data] as string | undefined;
+        const current = data[`work_${i}_current` as keyof typeof data] as boolean | undefined;
+        if (company || position) {
+          workArray.push({
+            company: company || '',
+            position: position || '',
+            startDate: startDate || null,
+            endDate: endDate || null,
+            current: current || false,
+          });
+        }
+      }
+      return workArray.length > 0 ? workArray : undefined;
+    })(),
+    // Language fields (build array from separate columns)
+    languages: (() => {
+      const langArray: LanguageEntry[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const name = data[`language_${i}` as keyof typeof data] as string | undefined;
+        if (name && name.trim()) {
+          langArray.push({ name: name.trim() });
+        }
+      }
+      return langArray.length > 0 ? langArray : undefined;
+    })(),
+    // Skills fields (build array from separate columns)
+    skills: (() => {
+      const skillArray: SkillEntry[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const name = data[`skill_${i}` as keyof typeof data] as string | undefined;
+        if (name && name.trim()) {
+          skillArray.push({ name: name.trim() });
+        }
+      }
+      return skillArray.length > 0 ? skillArray : undefined;
+    })(),
+    // Services rendered fields (build array from separate columns)
+    services: (() => {
+      const serviceArray: ServiceEntry[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const name = data[`service_${i}` as keyof typeof data] as string | undefined;
+        if (name && name.trim()) {
+          serviceArray.push({ name: name.trim() });
+        }
+      }
+      return serviceArray.length > 0 ? serviceArray : undefined;
+    })(),
+    createdAt: new Date(data.created_at),
+    updatedAt: new Date(data.updated_at),
+  } as User;
+};
+
 export const getUserData = async (userId: string): Promise<User | null> => {
   if (!supabase) {
     console.error('Supabase is not initialized');
@@ -219,168 +398,8 @@ export const getUserData = async (userId: string): Promise<User | null> => {
       return null; // User not found
     }
 
-    // Convert role numbers back to role names
-    const normalizedRole = normalizeRoleFromFirestore(data.role);
+    return transformUserProfile(data);
 
-    // Build hierarchy object from separate columns (preferred) or JSONB (fallback)
-    const hierarchy = {
-      state: data.state || data.hierarchy?.state,
-      city: data.city || data.hierarchy?.city,
-      center: data.center || data.hierarchy?.center,
-      centerId: data.center_id || data.hierarchy?.centerId,
-      // Spiritual fields from separate columns
-      initiationStatus: data.initiation_status || data.hierarchy?.initiationStatus,
-      initiatedName: data.initiated_name || data.hierarchy?.initiatedName,
-      spiritualMasterName: data.spiritual_master_name || data.hierarchy?.spiritualMasterName,
-      aspiringSpiritualMasterName: data.aspiring_spiritual_master_name || data.hierarchy?.aspiringSpiritualMasterName,
-      chantingSince: data.chanting_since || data.hierarchy?.chantingSince,
-      rounds: data.rounds?.toString() || data.hierarchy?.rounds,
-      ashram: data.ashram || data.hierarchy?.ashram,
-      royalMember: data.royal_member || data.hierarchy?.royalMember,
-      brahmachariCounselor: data.brahmachari_counselor || data.hierarchy?.brahmachariCounselor,
-      brahmachariCounselorEmail: data.brahmachari_counselor_email || data.hierarchy?.brahmachariCounselorEmail,
-      grihasthaCounselor: data.grihastha_counselor || data.hierarchy?.grihasthaCounselor,
-      grihasthaCounselorEmail: data.grihastha_counselor_email || data.hierarchy?.grihasthaCounselorEmail,
-      // Assigned geographic areas for manager roles
-      assignedZone: data.assigned_zone || data.hierarchy?.assignedZone,
-      assignedState: data.assigned_state || data.hierarchy?.assignedState,
-      assignedCity: data.assigned_city || data.hierarchy?.assignedCity,
-    };
-
-    return {
-      id: data.id,
-      email: data.email,
-      name: data.name,
-      role: normalizedRole,
-      phone: data.phone,
-      profileImage: data.profile_image, // Google Drive photo link
-      birthDate: data.birth_date,
-      hierarchy: hierarchy,
-      // Camp completion fields
-      campDys: data.camp_dys || false,
-      campSankalpa: data.camp_sankalpa || false,
-      campSphurti: data.camp_sphurti || false,
-      campUtkarsh: data.camp_utkarsh || false,
-      campFaithAndDoubt: data.camp_faith_and_doubt || false,
-      campSrcgdWorkshop: data.camp_srcgd_workshop || false,
-      campNistha: data.camp_nistha || false,
-      campAshray: data.camp_ashray || false,
-      // SP Books Study Course fields (Third Semester)
-      spbookThirdSsr15: data.spbook_third_ssr_1_5 || false,
-      spbookThirdComingBack: data.spbook_third_coming_back || false,
-      spbookThirdPqpa: data.spbook_third_pqpa || false,
-      spbookThirdMatchlessGift: data.spbook_third_matchless_gift || false,
-      spbookThirdRajaVidya: data.spbook_third_raja_vidya || false,
-      spbookThirdElevationKc: data.spbook_third_elevation_kc || false,
-      spbookThirdBeyondBirthDeath: data.spbook_third_beyond_birth_death || false,
-      spbookThirdKrishnaReservoir: data.spbook_third_krishna_reservoir || false,
-      // SP Books Study Course fields (Fourth Semester)
-      spbookFourthSsr68: data.spbook_fourth_ssr_6_8 || false,
-      spbookFourthLawsOfNature: data.spbook_fourth_laws_of_nature || false,
-      spbookFourthDharma: data.spbook_fourth_dharma || false,
-      spbookFourthSecondChance: data.spbook_fourth_second_chance || false,
-      spbookFourthIsopanishad110: data.spbook_fourth_isopanishad_1_10 || false,
-      spbookFourthQueenKuntiVideo: data.spbook_fourth_queen_kunti_video || false,
-      spbookFourthEnlightenmentNatural: data.spbook_fourth_enlightenment_natural || false,
-      spbookFourthKrishnaBook121: data.spbook_fourth_krishna_book_1_21 || false,
-      // SP Books Study Course fields (Fifth Semester)
-      spbookFifthLifeFromLife: data.spbook_fifth_life_from_life || false,
-      spbookFifthPrahladTeachings: data.spbook_fifth_prahlad_teachings || false,
-      spbookFifthJourneySelfDiscovery: data.spbook_fifth_journey_self_discovery || false,
-      spbookFifthQueenKuntiHearing: data.spbook_fifth_queen_kunti_hearing || false,
-      spbookFifthLordKapila: data.spbook_fifth_lord_kapila || false,
-      spbookFifthNectar16: data.spbook_fifth_nectar_1_6 || false,
-      spbookFifthGita16: data.spbook_fifth_gita_1_6 || false,
-      spbookFifthKrishnaBook2428: data.spbook_fifth_krishna_book_24_28 || false,
-      // SP Books Study Course fields (Sixth Semester)
-      spbookSixthNectar711: data.spbook_sixth_nectar_7_11 || false,
-      spbookSixthPathPerfection: data.spbook_sixth_path_perfection || false,
-      spbookSixthCivilisationTranscendence: data.spbook_sixth_civilisation_transcendence || false,
-      spbookSixthHareKrishnaChallenge: data.spbook_sixth_hare_krishna_challenge || false,
-      spbookSixthGita712: data.spbook_sixth_gita_7_12 || false,
-      spbookSixthSb1stCanto16: data.spbook_sixth_sb_1st_canto_1_6 || false,
-      spbookSixthKrishnaBook3559: data.spbook_sixth_krishna_book_35_59 || false,
-      // SP Books Study Course fields (Seventh Semester)
-      spbookSeventhGita1318: data.spbook_seventh_gita_13_18 || false,
-      spbookSeventhSb1stCanto713: data.spbook_seventh_sb_1st_canto_7_13 || false,
-      spbookSeventhKrishnaBook6378: data.spbook_seventh_krishna_book_63_78 || false,
-      // SP Books Study Course fields (Eighth Semester)
-      spbookEighthSb1stCanto1419: data.spbook_eighth_sb_1st_canto_14_19 || false,
-      spbookEighthKrishnaBook7889: data.spbook_eighth_krishna_book_78_89 || false,
-      // Education fields (build array from separate columns)
-      education: (() => {
-        const eduArray: EducationEntry[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const inst = data[`edu_${i}_institution` as keyof typeof data] as string | undefined;
-          const field = data[`edu_${i}_field` as keyof typeof data] as string | undefined;
-          const year = data[`edu_${i}_year` as keyof typeof data] as number | undefined;
-          if (inst || field) {
-            eduArray.push({
-              institution: inst || '',
-              field: field || '',
-              year: year || null,
-            });
-          }
-        }
-        return eduArray.length > 0 ? eduArray : undefined;
-      })(),
-      // Work experience fields (build array from separate columns)
-      workExperience: (() => {
-        const workArray: WorkExperienceEntry[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const company = data[`work_${i}_company` as keyof typeof data] as string | undefined;
-          const position = data[`work_${i}_position` as keyof typeof data] as string | undefined;
-          const startDate = data[`work_${i}_start_date` as keyof typeof data] as string | undefined;
-          const endDate = data[`work_${i}_end_date` as keyof typeof data] as string | undefined;
-          const current = data[`work_${i}_current` as keyof typeof data] as boolean | undefined;
-          if (company || position) {
-            workArray.push({
-              company: company || '',
-              position: position || '',
-              startDate: startDate || null,
-              endDate: endDate || null,
-              current: current || false,
-            });
-          }
-        }
-        return workArray.length > 0 ? workArray : undefined;
-      })(),
-      // Language fields (build array from separate columns)
-      languages: (() => {
-        const langArray: LanguageEntry[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const name = data[`language_${i}` as keyof typeof data] as string | undefined;
-          if (name && name.trim()) {
-            langArray.push({ name: name.trim() });
-          }
-        }
-        return langArray.length > 0 ? langArray : undefined;
-      })(),
-      // Skills fields (build array from separate columns)
-      skills: (() => {
-        const skillArray: SkillEntry[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const name = data[`skill_${i}` as keyof typeof data] as string | undefined;
-          if (name && name.trim()) {
-            skillArray.push({ name: name.trim() });
-          }
-        }
-        return skillArray.length > 0 ? skillArray : undefined;
-      })(),
-      // Services rendered fields (build array from separate columns)
-      services: (() => {
-        const serviceArray: ServiceEntry[] = [];
-        for (let i = 1; i <= 5; i++) {
-          const name = data[`service_${i}` as keyof typeof data] as string | undefined;
-          if (name && name.trim()) {
-            serviceArray.push({ name: name.trim() });
-          }
-        }
-        return serviceArray.length > 0 ? serviceArray : undefined;
-      })(),
-      createdAt: new Date(data.created_at),
-      updatedAt: new Date(data.updated_at),
-    } as User;
   } catch (error) {
     console.error('Error fetching user data:', error);
     return null;

@@ -16,10 +16,8 @@ export default function Home() {
 
   useEffect(() => {
     setMounted(true);
-    if (!loading && user) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
+    // Don't auto-redirect - let users stay on home page
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setError('');

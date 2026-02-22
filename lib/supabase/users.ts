@@ -39,6 +39,8 @@ export const getUsersByRole = async (role: UserRole) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         // Assigned geographic areas for manager roles
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
@@ -52,12 +54,18 @@ export const getUsersByRole = async (role: UserRole) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image, // Google Drive photo link
@@ -168,6 +176,8 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -177,12 +187,18 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image, // Google Drive photo link
@@ -260,19 +276,37 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     }
 
     // Build update object for Supabase
-    const dbUpdates: any = {};
+    const dbUpdates: any = {
+      id: userId,
+      updated_at: new Date().toISOString(),
+    };
 
     if (updates.email !== undefined) dbUpdates.email = updates.email;
     if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.verificationStatus !== undefined) dbUpdates.verification_status = updates.verificationStatus;
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
     if (updates.profileImage !== undefined) dbUpdates.profile_image = updates.profileImage; // Google Drive photo link
     if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
 
+    // Handle direct field updates from registration form
+    if ((updates as any).ashram !== undefined) dbUpdates.ashram = (updates as any).ashram;
+    if ((updates as any).counselor !== undefined) dbUpdates.counselor = (updates as any).counselor;
+    if ((updates as any).otherCounselor !== undefined) dbUpdates.other_counselor = (updates as any).otherCounselor;
+    if ((updates as any).currentTemple !== undefined) dbUpdates.current_temple = (updates as any).currentTemple;
+    if ((updates as any).currentCenter !== undefined) dbUpdates.current_center = (updates as any).currentCenter;
+    if ((updates as any).otherCenter !== undefined) dbUpdates.other_center = (updates as any).otherCenter;
+    if ((updates as any).rejectionReason !== undefined) dbUpdates.rejection_reason = (updates as any).rejectionReason;
+    if ((updates as any).reviewedBy !== undefined) dbUpdates.reviewed_by = (updates as any).reviewedBy;
+    if ((updates as any).reviewedAt !== undefined) dbUpdates.reviewed_at = (updates as any).reviewedAt;
+
+
     // Handle hierarchy updates - update separate columns
     if (enrichedHierarchy) {
+      dbUpdates.current_temple = enrichedHierarchy.currentTemple || null;
       dbUpdates.state = enrichedHierarchy.state || null;
       dbUpdates.city = enrichedHierarchy.city || null;
       dbUpdates.center = enrichedHierarchy.center || null;
+      dbUpdates.current_center = enrichedHierarchy.currentCenter || enrichedHierarchy.center || null;
       dbUpdates.center_id = enrichedHierarchy.centerId || null;
 
       // Handle assigned geographic areas for manager roles
@@ -289,10 +323,25 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
       dbUpdates.rounds = enrichedHierarchy.rounds ? parseInt(enrichedHierarchy.rounds.toString()) || null : null;
       dbUpdates.ashram = enrichedHierarchy.ashram || null;
       dbUpdates.royal_member = enrichedHierarchy.royalMember || null;
-      dbUpdates.brahmachari_counselor = enrichedHierarchy.brahmachariCounselor || null;
-      dbUpdates.brahmachari_counselor_email = enrichedHierarchy.brahmachariCounselorEmail || null;
-      dbUpdates.grihastha_counselor = enrichedHierarchy.grihasthaCounselor || null;
-      dbUpdates.grihastha_counselor_email = enrichedHierarchy.grihasthaCounselorEmail || null;
+      dbUpdates.introduced_to_kc_in = enrichedHierarchy.introducedToKcIn || null;
+      dbUpdates.parent_temple = enrichedHierarchy.parentTemple || null;
+      dbUpdates.parent_center = enrichedHierarchy.parentCenter || null;
+
+      // Handle unified counselor field (use other_counselor for all counselors)
+      if (enrichedHierarchy.counselor) {
+        dbUpdates.counselor = enrichedHierarchy.counselor;
+        // Clear the old separate counselor fields
+        dbUpdates.brahmachari_counselor = null;
+        dbUpdates.grihastha_counselor = null;
+      } else {
+        // Fallback to old separate fields if new unified field not present
+        dbUpdates.brahmachari_counselor = enrichedHierarchy.brahmachariCounselor || null;
+        dbUpdates.brahmachari_counselor_email = enrichedHierarchy.brahmachariCounselorEmail || null;
+        dbUpdates.grihastha_counselor = enrichedHierarchy.grihasthaCounselor || null;
+        dbUpdates.grihastha_counselor_email = enrichedHierarchy.grihasthaCounselorEmail || null;
+        dbUpdates.other_counselor = enrichedHierarchy.otherCounselor || null;
+      }
+      dbUpdates.other_center = enrichedHierarchy.otherCenter || null;
 
       // Also update JSONB for backward compatibility
       dbUpdates.hierarchy = enrichedHierarchy;
@@ -320,11 +369,26 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     console.log('updateUser - Final dbUpdates object (after role):', JSON.stringify(dbUpdates, null, 2));
     console.log('updateUser - Updating user with ID:', userId);
 
-    const { data, error } = await supabase
-      .from('users')
-      .update(dbUpdates)
-      .eq('id', userId)
-      .select();
+    let result;
+
+    // If we have an email, it might be a new record (or full update), so we use upsert
+    if (dbUpdates.email) {
+      result = await supabase
+        .from('users')
+        .upsert(dbUpdates)
+        .eq('id', userId)
+        .select();
+    } else {
+      // If no email, it's likely a partial update to an existing record
+      // We use update() to avoid 'null value in column email' error if upsert tries to insert
+      result = await supabase
+        .from('users')
+        .update(dbUpdates)
+        .eq('id', userId)
+        .select();
+    }
+
+    const { data, error } = result;
 
     console.log('updateUser - Supabase response:', { data, error });
 
@@ -404,6 +468,8 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -413,12 +479,18 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image,
@@ -512,6 +584,8 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -521,12 +595,18 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image,
@@ -624,6 +704,8 @@ export const getUsersByZone = async (zone: string) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
@@ -636,12 +718,18 @@ export const getUsersByZone = async (zone: string) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image,
@@ -739,6 +827,8 @@ export const getUsersByState = async (state: string) => {
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
@@ -751,12 +841,18 @@ export const getUsersByState = async (state: string) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image,
@@ -866,12 +962,18 @@ export const getUsersByCity = async (city: string) => {
         rounds: user.rounds || user.hierarchy?.rounds,
         ashram: user.ashram || user.hierarchy?.ashram,
         royalMember: user.royal_member || user.hierarchy?.royalMember,
+        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+        parentTemple: user.parent_temple || user.hierarchy?.parentTemple,
+        parentCenter: user.parent_center || user.hierarchy?.parentCenter,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        currentCenter: user.current_center || user.hierarchy?.currentCenter,
       };
 
       return {
         id: user.id,
         email: user.email,
         name: user.name,
+        verificationStatus: user.verification_status || 'approved',
         role: normalizedRole,
         phone: user.phone,
         profileImage: user.profile_image,
@@ -927,6 +1029,87 @@ export const getUsersByCity = async (city: string) => {
     });
   } catch (error) {
     console.error('Error fetching users by city:', error);
+    return [];
+  }
+};
+
+// Get pending users for approval
+export const getPendingUsers = async () => {
+  if (!supabase) {
+    console.error('Supabase is not initialized');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('verification_status', 'pending');
+
+    if (error) {
+      console.error('Error fetching pending users:', error);
+      return [];
+    }
+
+    return (data || []).map((user: any) => {
+      const normalizedRole = normalizeRoleFromFirestore(user.role);
+
+      // Basic hierarchy mapping
+      const hierarchy = {
+        state: user.state || user.hierarchy?.state,
+        city: user.city || user.hierarchy?.city,
+        center: user.current_center || user.center || user.hierarchy?.center, // Prefer current_center
+        otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        ashram: user.ashram || user.hierarchy?.ashram,
+        currentTemple: user.current_temple || user.hierarchy?.currentTemple,
+        counselor: user.counselor || user.hierarchy?.counselor || user.brahmachari_counselor || user.grihastha_counselor || user.other_counselor,
+        otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
+      };
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        verificationStatus: user.verification_status,
+        role: normalizedRole,
+        phone: user.phone,
+        profileImage: user.profile_image,
+        birthDate: user.birth_date,
+        hierarchy: hierarchy,
+        createdAt: new Date(user.created_at),
+        updatedAt: new Date(user.updated_at),
+      } as User;
+    });
+  } catch (error) {
+    console.error('Error fetching pending users:', error);
+    return [];
+  }
+};
+// Get users for dropdowns (minimal data)
+export const getUsersForDropdown = async () => {
+  if (!supabase) {
+    console.error('Supabase is not initialized');
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching users for dropdown:', error);
+      return [];
+    }
+
+    return (data || []).map((user: any) => ({
+      id: user.id,
+      name: user.name,
+      email: user.email
+    }));
+  } catch (error) {
+    console.error('Error fetching users for dropdown:', error);
     return [];
   }
 };

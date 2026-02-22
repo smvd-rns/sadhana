@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByCounselorEmail } from '@/lib/supabase/counselors';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { User, SadhanaReport } from '@/types';
 import { Users, Loader2, Mail, Phone, MapPin, Building2, UserCircle, TrendingUp, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoleDisplayName } from '@/lib/utils/roles';
@@ -57,7 +57,7 @@ export default function CounselorPage() {
         assignedStudents.map(async (student) => {
           try {
             // Get last 30 days of reports for quick overview
-            const reports = await getUserSadhanaReports(student.id, 30);
+            const reports = await fetchSadhanaHistory(30, student.id);
 
             if (reports.length === 0) {
               return {
@@ -239,7 +239,7 @@ export default function CounselorPage() {
                   Filter Summary
                 </h3>
               </div>
-              
+
               <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base">
                 <span className="font-medium text-blue-700">
                   Total Matching Students:
@@ -440,11 +440,10 @@ export default function CounselorPage() {
                               )}
                               <button
                                 onClick={() => setCurrentPage(page)}
-                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                                  currentPage === page
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
                                     ? 'bg-orange-600 text-white'
                                     : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
-                                }`}
+                                  }`}
                               >
                                 {page}
                               </button>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByHierarchy } from '@/lib/supabase/users';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { getBCVoiceManagerRequestByUserId } from '@/lib/supabase/bc-voice-manager-requests';
 import { getCentersByLocationFromLocal, CenterData } from '@/lib/data/local-centers';
 import { User, SadhanaReport } from '@/types';
@@ -210,7 +210,7 @@ export default function BCVoiceManagerPage() {
           uniqueDevs.map(async (dev) => {
             try {
               // Get last 30 days of reports for quick overview
-              const reports = await getUserSadhanaReports(dev.id, 30);
+              const reports = await fetchSadhanaHistory(30, dev.id);
 
               if (reports.length === 0) {
                 return {

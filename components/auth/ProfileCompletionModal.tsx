@@ -2,13 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getCentersByLocationFromLocal, addCenterToLocal } from '@/lib/data/local-centers';
-import { getCitiesByStateFromLocal, addCityToLocal } from '@/lib/data/local-cities';
-import { getCounselorsFromLocal, addCounselorToLocal } from '@/lib/data/local-counselors';
 import { supabase } from '@/lib/supabase/config';
-import { validateCounselorInput, validateMobile, validateEmail, isValidName } from '@/lib/utils/validation';
-import { Plus, X } from 'lucide-react';
-import PhotoUpload from '@/components/ui/PhotoUpload';
+import { validateMobile, validateEmail, isValidName } from '@/lib/utils/validation';
 
 interface ProfileCompletionModalProps {
   isOpen: boolean;
@@ -18,450 +13,203 @@ interface ProfileCompletionModalProps {
 export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCompletionModalProps) {
   const { user, userData } = useAuth();
   const [formData, setFormData] = useState({
-    state: '',
-    city: '',
-    center: '',
-    centerId: '',
+    name: '',
+    phone: '',
+    email: '',
+    birthDate: '',
+    ashram: '',
+    parentTemple: '',
+    parentCenter: '',
     counselor: '',
   });
-  const [selectedCounselor, setSelectedCounselor] = useState<{ id: string; name: string; mobile: string; email: string; city: string; ashram?: string } | null>(null);
-  const [formInitialized, setFormInitialized] = useState(false);
-  const [states, setStates] = useState<string[]>([]);
-  const [availableCities, setAvailableCities] = useState<string[]>([]);
-  const [availableCenters, setAvailableCenters] = useState<Array<{ id: string; name: string }>>([]);
+
+  const [temples, setTemples] = useState<Array<{ id: string; name: string; state: string; city: string }>>([]);
+  const [centers, setCenters] = useState<Array<{ id: string; name: string; state: string; city: string }>>([]);
+  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; ashram?: string }>>([]);
+
+  const [loadingTemples, setLoadingTemples] = useState(false);
   const [loadingCenters, setLoadingCenters] = useState(false);
+  const [loadingCounselors, setLoadingCounselors] = useState(false);
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showAddCenter, setShowAddCenter] = useState(false);
-  const [newCenter, setNewCenter] = useState({
-    name: '',
-    address: '',
-    contact: '',
-  });
-  const [addingCenter, setAddingCenter] = useState(false);
-  const [showAddCity, setShowAddCity] = useState(false);
-  const [newCityName, setNewCityName] = useState('');
-  const [addingCity, setAddingCity] = useState(false);
-  const [availableCounselors, setAvailableCounselors] = useState<Array<{ id: string; name: string; mobile: string; email: string; city: string; ashram?: string }>>([]);
-  const [counselorSearch, setCounselorSearch] = useState('');
-  const [loadingCounselors, setLoadingCounselors] = useState(false);
-  const [showAddCounselor, setShowAddCounselor] = useState(false);
-  const [newCounselor, setNewCounselor] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    city: '',
-  });
-  const [addingCounselor, setAddingCounselor] = useState(false);
-  const [counselorFieldErrors, setCounselorFieldErrors] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    city: '',
-  });
-  const [profileImage, setProfileImage] = useState('');
 
-  // Fetch states from API
+  // Load temples from database
   useEffect(() => {
-    const fetchStates = async () => {
+    const loadTemples = async () => {
+      setLoadingTemples(true);
       try {
-        const response = await fetch('/api/states/get');
-        if (response.ok) {
-          const data = await response.json();
-          setStates(data);
-        } else {
-          console.error('Failed to fetch states');
+        const { data, error } = await supabase!
+          .from('temples')
+          .select('id, name, state, city')
+          .eq('is_verified', true)
+          .order('name');
+
+        if (!error && data) {
+          setTemples(data);
         }
-      } catch (error) {
-        console.error('Error loading states:', error);
+      } catch (err) {
+        console.error('Error loading temples:', err);
+      } finally {
+        setLoadingTemples(false);
       }
     };
-    fetchStates();
+    loadTemples();
   }, []);
 
-  // Update cities when state changes
-  useEffect(() => {
-    const loadCities = async () => {
-      if (formData.state) {
-        const localCities = await getCitiesByStateFromLocal(formData.state);
-        const allCities = [...new Set(localCities)].sort();
-        setAvailableCities(allCities);
-        setFormData(prev => ({ ...prev, city: '', center: '', centerId: '' }));
-        setAvailableCenters([]);
-      } else {
-        setAvailableCities([]);
-        setAvailableCenters([]);
-      }
-    };
-    loadCities();
-  }, [formData.state]);
-
-  // Load centers when state and city change
+  // Load centers from database
   useEffect(() => {
     const loadCenters = async () => {
-      if (formData.state && formData.city) {
-        setLoadingCenters(true);
-        try {
-          const centers = await getCentersByLocationFromLocal(formData.state, formData.city);
-          setAvailableCenters(centers.map(c => ({ id: c.id, name: c.name })));
-        } catch (error) {
-          console.error('Error loading centers:', error);
-        } finally {
-          setLoadingCenters(false);
+      setLoadingCenters(true);
+      try {
+        const { data, error } = await supabase!
+          .from('centers')
+          .select('id, name, state, city')
+          .eq('is_verified', true)
+          .order('name');
+
+        if (!error && data) {
+          setCenters(data);
         }
-      } else {
-        setAvailableCenters([]);
-      }
-      if (formData.city) {
-        setFormData(prev => ({ ...prev, center: '', centerId: '' }));
+      } catch (err) {
+        console.error('Error loading centers:', err);
+      } finally {
+        setLoadingCenters(false);
       }
     };
     loadCenters();
-  }, [formData.state, formData.city]);
+  }, []);
 
-  // Pre-fill form with existing data if available (only on initial load, once)
-  useEffect(() => {
-    if (!formInitialized && userData) {
-      // Cast to any to access properties that might not be in the stricter User interface yet
-      const userAny = userData as any;
-
-      // Only pre-fill once when userData is first available and form hasn't been initialized
-      const hasData = userAny.hierarchy || userAny.state || userAny.city || userAny.center;
-      if (hasData && !formData.state && !formData.city && !formData.center) {
-        setFormData({
-          state: userAny.hierarchy?.state || userAny.state || '',
-          city: userAny.hierarchy?.city || userAny.city || '',
-          center: userAny.hierarchy?.center || userAny.center || '',
-          centerId: userAny.center_id || userAny.hierarchy?.centerId || '',
-          counselor: userAny.hierarchy?.counselor || userAny.counselor || '',
-        });
-        if (userAny.hierarchy?.counselor || userAny.counselor) {
-          setCounselorSearch(userAny.hierarchy?.counselor || userAny.counselor || '');
-        }
-        // Also load profile image if available
-        if (userAny.profile_image && !profileImage) {
-          setProfileImage(userAny.profile_image);
-        } else if (userAny.profileImage && !profileImage) {
-          setProfileImage(userAny.profileImage);
-        }
-      }
-      setFormInitialized(true); // Mark as initialized to prevent future resets
-    }
-  }, [userData, formInitialized]); // Run when userData becomes available, but only initialize once
-
-  // Load counselors with search functionality
+  // Load counselors from database
   useEffect(() => {
     const loadCounselors = async () => {
       setLoadingCounselors(true);
       try {
-        const counselors = await getCounselorsFromLocal(counselorSearch);
-        setAvailableCounselors(counselors);
-      } catch (error) {
-        console.error('Error loading counselors:', error);
+        const { data, error } = await supabase!
+          .from('counselors')
+          .select('id, name, email, ashram')
+          .eq('is_verified', true)
+          .order('name');
+
+        if (!error && data) {
+          setCounselors(data);
+        }
+      } catch (err) {
+        console.error('Error loading counselors:', err);
       } finally {
         setLoadingCounselors(false);
       }
     };
+    loadCounselors();
+  }, []);
 
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      loadCounselors();
-    }, 300);
-
-    return () => clearTimeout(timeoutId);
-  }, [counselorSearch]);
-
-  const handleAddCity = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!newCityName.trim()) {
-      setError('City name is required');
-      return;
-    }
-
-    if (!formData.state) {
-      setError('Please select state first');
-      return;
-    }
-
-    setAddingCity(true);
-    setError('');
-
-    try {
-      const success = await addCityToLocal(formData.state, newCityName.trim());
-      if (success) {
-        const localCities = await getCitiesByStateFromLocal(formData.state);
-        const allCities = [...new Set(localCities)].sort();
-        setAvailableCities(allCities);
-        setFormData(prev => ({ ...prev, city: newCityName.trim() }));
-        setNewCityName('');
-        setShowAddCity(false);
-      } else {
-        setError('Failed to add city. Please contact an admin.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to add city');
-    } finally {
-      setAddingCity(false);
-    }
-  };
-
-  const handleAddCenter = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!newCenter.name.trim()) {
-      setError('Center name is required');
-      return;
-    }
-
-    if (!formData.state || !formData.city) {
-      setError('Please select state and city first');
-      return;
-    }
-
-    setAddingCenter(true);
-    setError('');
-
-    try {
-      const success = await addCenterToLocal({
-        name: newCenter.name.trim(),
-        state: formData.state,
-        city: formData.city,
-        address: newCenter.address.trim() || undefined,
-        contact: newCenter.contact.trim() || undefined,
+  // Pre-fill form with existing user data
+  useEffect(() => {
+    if (userData) {
+      const userAny = userData as any;
+      setFormData({
+        name: userAny.name || '',
+        phone: userAny.phone || '',
+        email: userAny.email || user?.email || '',
+        birthDate: userAny.birth_date || userAny.birthDate || '',
+        ashram: userAny.ashram || '',
+        parentTemple: userAny.parent_temple || userAny.parentTemple || '',
+        parentCenter: userAny.parent_center || userAny.parentCenter || '',
+        counselor: userAny.hierarchy?.counselor || userAny.counselor || '',
       });
-
-      if (success) {
-        const updatedCenters = await getCentersByLocationFromLocal(formData.state, formData.city);
-        setAvailableCenters(updatedCenters.map(c => ({ id: c.id, name: c.name })));
-
-        // Find the new center to get its ID
-        const addedCenter = updatedCenters.find(c => c.name === newCenter.name.trim());
-        setFormData(prev => ({
-          ...prev,
-          center: newCenter.name.trim(),
-          centerId: addedCenter?.id || ''
-        }));
-
-        setNewCenter({ name: '', address: '', contact: '' });
-        setShowAddCenter(false);
-      } else {
-        setError('Failed to add center. Please contact an admin.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to add center');
-    } finally {
-      setAddingCenter(false);
     }
-  };
-
-  const handleAddCounselor = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    // Reset field errors
-    setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-    setError('');
-
-    // Validate name
-    if (!newCounselor.name.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Counselor name is required' }));
-      setError('Please fill in all required fields');
-      return;
-    }
-
-    // Validate name format
-    if (!isValidName(newCounselor.name)) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Invalid characters in name. Only letters, numbers, and basic punctuation (.,-\'&) are allowed.' }));
-      setError('Invalid counselor name');
-      return;
-    }
-
-    // Validate mobile
-    const mobileValidation = validateMobile(newCounselor.mobile);
-    if (!mobileValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, mobile: mobileValidation.error || 'Invalid mobile number' }));
-      setError('Invalid mobile number');
-      return;
-    }
-
-    // Validate email
-    const emailValidation = validateEmail(newCounselor.email);
-    if (!emailValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, email: emailValidation.error || 'Invalid email address' }));
-      setError('Invalid email address');
-      return;
-    }
-
-    // Validate city
-    if (!newCounselor.city.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, city: 'City is required' }));
-      setError('City is required');
-      return;
-    }
-
-    setAddingCounselor(true);
-    setError('');
-
-    try {
-      const success = await addCounselorToLocal({
-        name: newCounselor.name.trim(),
-        mobile: newCounselor.mobile.trim(),
-        email: newCounselor.email.trim().toLowerCase(),
-        city: newCounselor.city.trim(),
-      });
-
-      if (success) {
-        // Reload counselors to get the updated list
-        const updatedCounselors = await getCounselorsFromLocal();
-        setAvailableCounselors(updatedCounselors);
-
-        // Select the newly added counselor
-        const addedCounselor = updatedCounselors.find(c =>
-          c.email.toLowerCase() === newCounselor.email.trim().toLowerCase()
-        );
-        if (addedCounselor) {
-          setFormData(prev => ({ ...prev, counselor: addedCounselor.name }));
-          setSelectedCounselor(addedCounselor);
-          setCounselorSearch(addedCounselor.name);
-        }
-
-        // Reset form and hide add counselor form
-        setNewCounselor({ name: '', mobile: '', email: '', city: '' });
-        setShowAddCounselor(false);
-        setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-      } else {
-        setError('Failed to add counselor. Please contact an admin.');
-      }
-    } catch (err: any) {
-      // Check if it's a duplicate error
-      if (err.message?.includes('already exists') || err.message?.includes('duplicate') || err.duplicate) {
-        setError(err.message || 'A counselor with this information already exists.');
-        // If there's an existing counselor, suggest selecting it
-        if (err.existingCounselor) {
-          setError(`${err.message} You can select "${err.existingCounselor.name}" from the dropdown.`);
-        }
-      } else {
-        setError(err.message || 'Failed to add counselor');
-      }
-    } finally {
-      setAddingCounselor(false);
-    }
-  };
+  }, [userData, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Validate photo upload
-    if (!profileImage || !profileImage.trim()) {
-      setError('Please upload your profile photo. It is required to complete your profile.');
+    // Validation
+    if (!formData.name || !isValidName(formData.name)) {
+      setError('Please enter a valid name');
       return;
     }
 
-    if (!formData.state || !formData.city || !formData.center || !formData.counselor) {
-      setError('Please fill in all required fields (State, City, Center, and Counselor)');
+    if (!formData.email || !validateEmail(formData.email)) {
+      setError('Please enter a valid email');
       return;
     }
 
-    if (!user || !supabase) {
-      setError('User session not found. Please sign in again.');
+    if (formData.phone && !validateMobile(formData.phone)) {
+      setError('Please enter a valid phone number');
+      return;
+    }
+
+    if (!formData.birthDate) {
+      setError('Please enter your date of birth');
+      return;
+    }
+
+    if (!formData.ashram) {
+      setError('Please select your ashram');
+      return;
+    }
+
+    if (!formData.parentTemple) {
+      setError('Please select your parent temple');
+      return;
+    }
+
+    if (!formData.parentCenter) {
+      setError('Please select your parent center');
       return;
     }
 
     setLoading(true);
 
     try {
-      // Use the selectedCounselor state which has email and ashram
-      let counselorData: any = {};
+      if (!user) throw new Error('No user found');
 
+      // Find selected counselor details
+      const selectedCounselor = counselors.find(c => c.id === formData.counselor);
+
+      const counselorData: any = {};
       if (selectedCounselor) {
-        if (selectedCounselor.ashram === 'Brahmachari Ashram') {
+        if (selectedCounselor.ashram === 'Brahmachari') {
           counselorData.brahmachari_counselor = selectedCounselor.name;
           counselorData.brahmachari_counselor_email = selectedCounselor.email;
         } else {
-          // Default to Grihastha for others or if unspecified
           counselorData.grihastha_counselor = selectedCounselor.name;
           counselorData.grihastha_counselor_email = selectedCounselor.email;
         }
-      } else {
-        // Fallback: try to find in availableCounselors if selectedCounselor is null
-        const foundCounselor = availableCounselors.find(c => c.name === formData.counselor);
-        if (foundCounselor) {
-          if (foundCounselor.ashram === 'Brahmachari Ashram') {
-            counselorData.brahmachari_counselor = foundCounselor.name;
-            counselorData.brahmachari_counselor_email = foundCounselor.email;
-          } else {
-            counselorData.grihastha_counselor = foundCounselor.name;
-            counselorData.grihastha_counselor_email = foundCounselor.email;
-          }
-        } else {
-          // Last resort fallback if name was manually typed
-          counselorData.grihastha_counselor = formData.counselor;
-        }
       }
 
-      // Build hierarchy object for backward compatibility
-      const hierarchy: any = {};
-      if (formData.state) hierarchy.state = formData.state;
-      if (formData.city) hierarchy.city = formData.city;
-      if (formData.center) hierarchy.center = formData.center;
-      if (formData.centerId) hierarchy.centerId = formData.centerId;
-      if (counselorData.brahmachari_counselor) {
-        hierarchy.brahmachariCounselor = counselorData.brahmachari_counselor;
-        hierarchy.brahmachariCounselorEmail = counselorData.brahmachari_counselor_email;
-      }
-      if (counselorData.grihastha_counselor) {
-        hierarchy.grihasthaCounselor = counselorData.grihastha_counselor;
-        hierarchy.grihasthaCounselorEmail = counselorData.grihastha_counselor_email;
-      }
-      if (formData.counselor) hierarchy.counselor = formData.counselor;
-
-      console.log('Updating user profile:', {
-        state: formData.state,
-        city: formData.city,
-        center: formData.center,
-        center_id: formData.centerId,
-        ...counselorData
-      });
-
-      // Update user profile in Supabase - using separate columns
-      const { data: updateData, error: updateError } = await supabase
+      // Update user profile
+      const { error: updateError } = await supabase!
         .from('users')
         .update({
-          state: formData.state || null,
-          city: formData.city || null,
-          center: formData.center || null,
-          center_id: formData.centerId || null,
+          name: formData.name,
+          phone: formData.phone || null,
+          email: formData.email,
+          birth_date: formData.birthDate,
+          ashram: formData.ashram,
+          parent_temple: formData.parentTemple,
+          parent_center: formData.parentCenter,
           ...counselorData,
-          profile_image: profileImage || null, // Google Drive photo link
-          hierarchy: hierarchy, // Keep for backward compatibility
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id)
-        .select('id, state, city, center, center_id, profile_image');
-
-      console.log('Update result:', { updateData, updateError });
+        .eq('id', user.id);
 
       if (updateError) {
         throw new Error(updateError.message || 'Failed to update profile');
       }
 
-      // Success - reload the page to refresh user data
-      window.location.reload();
+      // Success - close modal and let AuthProvider refresh user data
+      onComplete();
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
+  };
+
+  const onClose = () => {
+    // Cannot close modal - profile completion is required
   };
 
   if (!isOpen) return null;
@@ -470,17 +218,17 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" onClick={(e) => e.stopPropagation()}>
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <h2 className="text-2xl font-bold text-primary-700">
               Complete Your Profile
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mt-1">
               Required to continue
             </p>
           </div>
 
           <p className="text-gray-600 mb-6">
-            Please provide your location information (State, City, Center) first, then upload your profile photo. The photo will be organized in folders based on your location. This information is required to access the platform.
+            Please provide your basic information to access the platform.
           </p>
 
           {error && (
@@ -490,412 +238,156 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* State Selection */}
+            {/* Name */}
             <div>
-              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                State <span className="text-red-500">*</span>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-1">
+                Date of Birth <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="birthDate"
+                type="date"
+                value={formData.birthDate}
+                onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
+
+            {/* Ashram */}
+            <div>
+              <label htmlFor="ashram" className="block text-sm font-medium text-gray-700 mb-1">
+                Ashram <span className="text-red-500">*</span>
               </label>
               <select
-                id="state"
-                value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                id="ashram"
+                value={formData.ashram}
+                onChange={(e) => setFormData({ ...formData, ashram: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
               >
-                <option value="">Select State</option>
-                {states.map((state) => (
-                  <option key={state} value={state}>
-                    {state}
+                <option value="">Select Ashram</option>
+                <option value="Brahmachari">Brahmachari</option>
+                <option value="Grihastha">Grihastha</option>
+                <option value="Vanaprastha">Vanaprastha</option>
+                <option value="Sannyasi">Sannyasi</option>
+              </select>
+            </div>
+
+            {/* Parent Temple */}
+            <div>
+              <label htmlFor="parentTemple" className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Temple <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="parentTemple"
+                value={formData.parentTemple}
+                onChange={(e) => setFormData({ ...formData, parentTemple: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+                disabled={loadingTemples}
+              >
+                <option value="">{loadingTemples ? 'Loading temples...' : 'Select Parent Temple'}</option>
+                {temples.map((temple) => (
+                  <option key={temple.id} value={temple.name}>
+                    {temple.name} ({temple.city}, {temple.state})
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* City Selection */}
+            {/* Parent Center */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-                  City <span className="text-red-500">*</span>
-                </label>
-                {formData.state && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCity(!showAddCity)}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add City
-                  </button>
-                )}
-              </div>
-              {showAddCity ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newCityName}
-                      onChange={(e) => setNewCityName(e.target.value)}
-                      placeholder="Enter city name"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCity}
-                      disabled={addingCity}
-                      className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {addingCity ? 'Adding...' : 'Add'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAddCity(false);
-                        setNewCityName('');
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <select
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  required
-                  disabled={!formData.state}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">{formData.state ? 'Select City' : 'Select State first'}</option>
-                  {availableCities.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-
-            {/* Center Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="center" className="block text-sm font-medium text-gray-700">
-                  Center <span className="text-red-500">*</span>
-                </label>
-                {formData.state && formData.city && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCenter(!showAddCenter)}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Center
-                  </button>
-                )}
-              </div>
-              {showAddCenter ? (
-                <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Center Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newCenter.name}
-                      onChange={(e) => setNewCenter({ ...newCenter, name: e.target.value })}
-                      placeholder="Enter center name"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Address (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newCenter.address}
-                      onChange={(e) => setNewCenter({ ...newCenter, address: e.target.value })}
-                      placeholder="Enter center address"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Contact (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      value={newCenter.contact}
-                      onChange={(e) => setNewCenter({ ...newCenter, contact: e.target.value })}
-                      placeholder="Enter contact information"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddCenter}
-                      disabled={addingCenter}
-                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {addingCenter ? 'Adding...' : 'Add Center'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAddCenter(false);
-                        setNewCenter({ name: '', address: '', contact: '' });
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <select
-                  id="center"
-                  value={formData.centerId}
-                  onChange={(e) => {
-                    const selectedCenter = availableCenters.find(c => c.id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      center: selectedCenter?.name || '',
-                      centerId: e.target.value
-                    });
-                  }}
-                  required
-                  disabled={!formData.state || !formData.city}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {loadingCenters
-                      ? 'Loading centers...'
-                      : !formData.state || !formData.city
-                        ? 'Select State and City first'
-                        : 'Select Center'}
+              <label htmlFor="parentCenter" className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Center <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="parentCenter"
+                value={formData.parentCenter}
+                onChange={(e) => setFormData({ ...formData, parentCenter: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+                disabled={loadingCenters}
+              >
+                <option value="">{loadingCenters ? 'Loading centers...' : 'Select Parent Center'}</option>
+                {centers.map((center) => (
+                  <option key={center.id} value={center.name}>
+                    {center.name} ({center.city}, {center.state})
                   </option>
-                  {availableCenters.map((center) => (
-                    <option key={center.id} value={center.id}>
-                      {center.name}
-                    </option>
-                  ))}
-                </select>
-              )}
+                ))}
+              </select>
             </div>
 
-            {/* Profile Photo Upload - After location fields for folder structure */}
+            {/* Counselor/Care Giver */}
             <div>
-              <PhotoUpload
-                onUploadComplete={(url) => {
-                  setProfileImage(url);
-                  // Clear any photo-related errors when upload succeeds
-                  if (error && error.includes('profile photo')) {
-                    setError('');
-                  }
-                }}
-                onUploadError={(error) => setError(error)}
-                userName={userData?.name || user?.email || 'user'}
-                disabled={loading}
-                required={true}
-                showMessage={true}
-                state={formData.state}
-                city={formData.city}
-                center={formData.center}
-              />
+              <label htmlFor="counselor" className="block text-sm font-medium text-gray-700 mb-1">
+                Counselor / Care Giver
+              </label>
+              <select
+                id="counselor"
+                value={formData.counselor}
+                onChange={(e) => setFormData({ ...formData, counselor: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                disabled={loadingCounselors}
+              >
+                <option value="">{loadingCounselors ? 'Loading counselors...' : 'Select Counselor (Optional)'}</option>
+                {counselors.map((counselor) => (
+                  <option key={counselor.id} value={counselor.id}>
+                    {counselor.name} {counselor.ashram ? `(${counselor.ashram})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* Counselor Selection */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="counselor" className="block text-sm font-medium text-gray-700">
-                  Counselor Name <span className="text-red-500">*</span>
-                </label>
-                {!showAddCounselor && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCounselor(true)}
-                    className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add Counselor
-                  </button>
-                )}
-              </div>
-              {showAddCounselor ? (
-                <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Counselor Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newCounselor.name}
-                      onChange={(e) => {
-                        setNewCounselor({ ...newCounselor, name: e.target.value });
-                        if (counselorFieldErrors.name) {
-                          setCounselorFieldErrors(prev => ({ ...prev, name: '' }));
-                        }
-                      }}
-                      placeholder="Enter counselor name"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white ${counselorFieldErrors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                    />
-                    {counselorFieldErrors.name && (
-                      <p className="mt-1 text-xs text-red-600">{counselorFieldErrors.name}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Mobile Number <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={newCounselor.mobile}
-                      onChange={(e) => {
-                        setNewCounselor({ ...newCounselor, mobile: e.target.value });
-                        if (counselorFieldErrors.mobile) {
-                          setCounselorFieldErrors(prev => ({ ...prev, mobile: '' }));
-                        }
-                      }}
-                      placeholder="Enter mobile number (e.g., +91 9876543210)"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white ${counselorFieldErrors.mobile ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                    />
-                    {counselorFieldErrors.mobile && (
-                      <p className="mt-1 text-xs text-red-600">{counselorFieldErrors.mobile}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email ID <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      value={newCounselor.email}
-                      onChange={(e) => {
-                        setNewCounselor({ ...newCounselor, email: e.target.value });
-                        if (counselorFieldErrors.email) {
-                          setCounselorFieldErrors(prev => ({ ...prev, email: '' }));
-                        }
-                      }}
-                      placeholder="Enter email address (e.g., name@example.com)"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white ${counselorFieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                    />
-                    {counselorFieldErrors.email && (
-                      <p className="mt-1 text-xs text-red-600">{counselorFieldErrors.email}</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      City <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={newCounselor.city}
-                      onChange={(e) => {
-                        setNewCounselor({ ...newCounselor, city: e.target.value });
-                        if (counselorFieldErrors.city) {
-                          setCounselorFieldErrors(prev => ({ ...prev, city: '' }));
-                        }
-                      }}
-                      required
-                      placeholder="Enter city name (e.g., Mumbai)"
-                      className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white ${counselorFieldErrors.city ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                        }`}
-                    />
-                    {counselorFieldErrors.city && (
-                      <p className="mt-1 text-xs text-red-600">{counselorFieldErrors.city}</p>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleAddCounselor}
-                      disabled={addingCounselor || !newCounselor.name.trim() || !newCounselor.mobile.trim() || !newCounselor.email.trim() || !newCounselor.city.trim()}
-                      className="flex-1 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                    >
-                      {addingCounselor ? 'Adding...' : 'Add Counselor'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowAddCounselor(false);
-                        setNewCounselor({ name: '', mobile: '', email: '', city: '' });
-                        setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-                      }}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      id="counselor"
-                      value={counselorSearch}
-                      onChange={(e) => {
-                        setCounselorSearch(e.target.value);
-                        if (!e.target.value) {
-                          setFormData(prev => ({ ...prev, counselor: '' }));
-                        }
-                      }}
-                      onFocus={() => {
-                        if (!counselorSearch && !formData.counselor) {
-                          getCounselorsFromLocal().then(counselors => {
-                            setAvailableCounselors(counselors);
-                          });
-                        }
-                      }}
-                      placeholder={formData.counselor ? formData.counselor : "Search counselor by name..."}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-900 bg-white"
-                    />
-                    {counselorSearch && !formData.counselor && (
-                      <div className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-lg">
-                        {loadingCounselors ? (
-                          <div className="p-3 text-sm text-gray-500">Loading...</div>
-                        ) : availableCounselors.length > 0 ? (
-                          availableCounselors.map(counselor => (
-                            <button
-                              key={counselor.id}
-                              type="button"
-                              onClick={() => {
-                                setFormData(prev => ({ ...prev, counselor: counselor.name }));
-                                setSelectedCounselor(counselor);
-                                setCounselorSearch(counselor.name);
-                              }}
-                              className="w-full text-left px-4 py-2 hover:bg-gray-100 border-b border-gray-100 last:border-b-0"
-                            >
-                              <div className="font-medium text-gray-900">{counselor.name}</div>
-                              <div className="text-xs text-gray-500">{counselor.city}</div>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-3 text-sm text-gray-500">No counselors found. Click "Add Counselor" to add one.</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  {formData.counselor && (
-                    <p className="mt-1 text-xs text-gray-600">
-                      Selected: <strong>{formData.counselor}</strong>
-                    </p>
-                  )}
-                </>
-              )}
-            </div>
-
-            <div className="pt-4">
+            {/* Submit Button */}
+            <div className="flex justify-end pt-4">
               <button
                 type="submit"
-                disabled={loading || !profileImage || !formData.state || !formData.city || !formData.center || !formData.counselor}
-                className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading}
+                className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : 'Complete Profile'}
               </button>

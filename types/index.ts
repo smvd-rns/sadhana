@@ -1,4 +1,13 @@
 export type UserRole =
+  | 'vice_president'
+  | 'president'
+  | 'managing_director'
+  | 'director'
+  | 'central_voice_manager'
+  | 'project_advisor'
+  | 'project_manager'
+  | 'acting_manager'
+  | 'oc'
   | 'super_admin'
   | 'zonal_admin'
   | 'state_admin'
@@ -8,6 +17,16 @@ export type UserRole =
   | 'voice_manager' // Voice Manager
   | 'senior_counselor'
   | 'counselor'
+  | 'care_giver'
+  | 'youth_preacher'
+  | 'internal_manager'
+  | 'preaching_coordinator'
+  | 'morning_program_in_charge'
+  | 'mentor'
+  | 'frontliner'
+  | 'accountant'
+  | 'kitchen_head'
+  | 'study_in_charge'
   | 'student'
   | 1 // student
   | 2 // counselor
@@ -16,7 +35,26 @@ export type UserRole =
   | 5 // city_admin
   | 6 // state_admin
   | 7 // zonal_admin
-  | 8; // super_admin
+  | 8 // super_admin
+  | 9 // vice_president
+  | 10 // president
+  | 11 // managing_director
+  | 12 // director
+  | 13 // central_voice_manager
+  | 14 // project_advisor
+  | 15 // project_manager
+  | 16 // acting_manager
+  | 17 // oc
+  | 20 // care_giver
+  | 21 // youth_preacher
+  | 22 // internal_manager
+  | 23 // preaching_coordinator
+  | 24 // morning_program_in_charge
+  | 25 // mentor
+  | 26 // frontliner
+  | 27 // accountant
+  | 28 // kitchen_head
+  | 29; // study_in_charge
 
 export type SpiritualLevel = 'beginner' | 'intermediate' | 'advanced';
 
@@ -24,6 +62,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  verificationStatus?: 'incomplete' | 'pending' | 'approved' | 'rejected' | 'unverified';
+  rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
   role: UserRole | UserRole[]; // Support both single role (backward compatible) and multiple roles
   phone?: string;
   profileImage?: string;
@@ -85,6 +127,15 @@ export interface User {
   skills?: SkillEntry[];
   // Services rendered fields (up to 5 entries)
   services?: ServiceEntry[];
+  // Temple and Center fields
+  parentTemple?: string;
+  parentCenter?: string;
+  currentTemple?: string;
+  currentCenter?: string;
+  otherCounselor?: string;
+  otherCenter?: string;
+  otherParentCenter?: string;
+  introducedToKcIn?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -116,6 +167,7 @@ export interface ServiceEntry {
 }
 
 export interface HierarchyLocation {
+  [key: string]: any;
   zone?: string; // Geographic zone (for Zone Managers)
   state?: string;
   city?: string;
@@ -127,10 +179,15 @@ export interface HierarchyLocation {
   brahmachariCounselorEmail?: string;
   grihasthaCounselor?: string;
   grihasthaCounselorEmail?: string;
+  otherCounselor?: string;
+  otherCenter?: string;
   // Fields for admin role assignments (which area they manage)
   assignedZone?: string; // For Zone Managers (role 7)
   assignedState?: string; // For State Managers (role 6)
   assignedCity?: string; // For City Managers (role 5)
+  // New fields for extended location info
+  currentTemple?: string;
+  currentCenter?: string;
   // Spiritual fields
   initiationStatus?: string;
   initiatedName?: string;
@@ -140,6 +197,10 @@ export interface HierarchyLocation {
   rounds?: number;
   ashram?: string;
   royalMember?: boolean | string; // Allow string 'yes'/'no' for form handling
+  introducedToKcIn?: string;
+  parentTemple?: string;
+  parentCenter?: string;
+  otherParentCenter?: string;
 }
 
 export interface SadhanaReport {
@@ -258,4 +319,23 @@ export interface BCVoiceManagerRequest {
   reviewedAt?: Date;
   reviewedBy?: string;
   notes?: string;
+}
+
+export interface TempleData {
+  id: string;
+  name: string;
+  state: string;
+  city: string;
+  address?: string; // Optional
+  contact?: string; // Optional
+  created_at?: string;
+  updated_at?: string;
+  managing_director_id?: string;
+  managing_director_name?: string;
+  director_id?: string;
+  director_name?: string;
+  central_voice_manager_id?: string;
+  central_voice_manager_name?: string;
+  yp_id?: string;
+  yp_name?: string;
 }

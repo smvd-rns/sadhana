@@ -4,21 +4,30 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase/config';
-import { getCitiesByStateFromLocal, addCityToLocal } from '@/lib/data/local-cities';
-import { getCentersByLocationFromLocal, addCenterToLocal } from '@/lib/data/local-centers';
-import { getCounselorsFromLocal, addCounselorToLocal } from '@/lib/data/local-counselors';
-import { Plus, X, Save, User, Mail, Phone, MapPin, Building2, Users, BookOpen, GraduationCap, Briefcase, Calendar, Check, AlertTriangle } from 'lucide-react';
+
+import { Plus, X, Save, User, Mail, Phone, Users, BookOpen, GraduationCap, Briefcase, Calendar, Check, AlertTriangle, Clock, AlertCircle, Info, MessageCircle } from 'lucide-react';
 import { validateEmail, isValidName, validateMobile, validateTextInput, validatePhone, sanitizeTextInput, sanitizeInput, validateEducationField, validateWorkField } from '@/lib/utils/validation';
 import PhotoUpload from '@/components/ui/PhotoUpload';
+import SearchableSelect from '@/components/ui/SearchableSelect';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
 import { EducationEntry, WorkExperienceEntry, LanguageEntry, SkillEntry, ServiceEntry } from '@/types';
 
 export default function ProfilePage() {
-  const { user, userData, loading: authLoading } = useAuth();
+  const { user, userData, loading: authLoading, refreshUserData } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [loadingCounselors, setLoadingCounselors] = useState(true);
+  const [temples, setTemples] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingTemples, setLoadingTemples] = useState(true);
+  const [centers, setCenters] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingCenters, setLoadingCenters] = useState(false);
+  const [parentCenters, setParentCenters] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingParentCenters, setLoadingParentCenters] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [pendingRequest, setPendingRequest] = useState<any>(null);
+  const [loadingRequest, setLoadingRequest] = useState(false);
   // Track if form has unsaved changes
   const [isDirty, setIsDirty] = useState(false);
   const isInitializedRef = useRef(false);
@@ -38,14 +47,20 @@ export default function ProfilePage() {
     initiatedName: '',
     spiritualMasterName: '',
     aspiringSpiritualMasterName: '',
-    chantingSince: '',
+
+
+    introducedToKcIn: '',
     rounds: '',
+    parentTemple: '',
+    parentCenter: '',
+    currentTemple: '',
+    currentCenter: '',
+    counselor: '',
+    otherCounselor: '',
     ashram: '',
-    royalMember: '' as 'yes' | 'no' | '',
-    brahmachariCounselor: '',
-    brahmachariCounselorEmail: '',
-    grihasthaCounselor: '',
-    grihasthaCounselorEmail: '',
+    otherCenter: '',
+    otherParentCenter: '',
+
     // Camp completion fields
     campDys: false,
     campSankalpa: false,
@@ -117,74 +132,12 @@ export default function ProfilePage() {
     { name: '' }
   ]);
 
-  // Available options
-  const [states] = useState<string[]>([
-    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
-    'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-    'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-    'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-    'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-  ]);
-  const [availableCities, setAvailableCities] = useState<string[]>([]);
-  const [availableCenters, setAvailableCenters] = useState<Array<{ id: string; name: string }>>([]);
-
-  // Brahmachari Counselor state
-  const [availableBrahmachariCounselors, setAvailableBrahmachariCounselors] = useState<Array<{ id: string; name: string; email: string; mobile: string; city: string; ashram?: string }>>([]);
-  const [brahmachariCounselorSearch, setBrahmachariCounselorSearch] = useState('');
-  const [loadingBrahmachariCounselors, setLoadingBrahmachariCounselors] = useState(false);
-
-  // Grihastha Counselor state
-  const [availableGrihasthaCounselors, setAvailableGrihasthaCounselors] = useState<Array<{ id: string; name: string; email: string; mobile: string; city: string; ashram?: string }>>([]);
-  const [grihasthaCounselorSearch, setGrihasthaCounselorSearch] = useState('');
-  const [loadingGrihasthaCounselors, setLoadingGrihasthaCounselors] = useState(false);
-
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [loadingCenters, setLoadingCenters] = useState(false);
+  // Profile Image State
   const [profileImage, setProfileImage] = useState('');
-  // Add New City State
-  const [showAddCity, setShowAddCity] = useState(false);
-  const [newCityName, setNewCityName] = useState('');
-  const [addingCity, setAddingCity] = useState(false);
-
-  // Add New Center State
-  const [showAddCenter, setShowAddCenter] = useState(false);
-  const [newCenter, setNewCenter] = useState({
-    name: '',
-    address: '',
-    contact: '',
-  });
-  const [addingCenter, setAddingCenter] = useState(false);
-
-  // Add New Brahmachari Counselor State
-  const [showAddBrahmachariCounselor, setShowAddBrahmachariCounselor] = useState(false);
-  const [newBrahmachariCounselor, setNewBrahmachariCounselor] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    city: '',
-  });
-  const [addingBrahmachariCounselor, setAddingBrahmachariCounselor] = useState(false);
-
-  // Add New Grihastha Counselor State
-  const [showAddGrihasthaCounselor, setShowAddGrihasthaCounselor] = useState(false);
-  const [newGrihasthaCounselor, setNewGrihasthaCounselor] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    city: '',
-  });
-  const [addingGrihasthaCounselor, setAddingGrihasthaCounselor] = useState(false);
-
-  // Shared counselor field errors for new forms
-  const [counselorFieldErrors, setCounselorFieldErrors] = useState({
-    name: '',
-    mobile: '',
-    email: '',
-    city: '',
-  });
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
 
   const [mounted, setMounted] = useState(false);
+
 
   // Animation observer for scroll-triggered animations
   useEffect(() => {
@@ -221,7 +174,7 @@ export default function ProfilePage() {
     if (success) {
       const timer = setTimeout(() => {
         setSuccess('');
-      }, 5000);
+      }, 10000); // Increased to 10 seconds for readability
       return () => clearTimeout(timer);
     }
   }, [success]);
@@ -229,47 +182,214 @@ export default function ProfilePage() {
   // Field-level validation errors
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Refs for counselor inputs to calculate dropdown position
-  const brahmachariCounselorInputRef = useRef<HTMLInputElement>(null);
-  const grihasthaCounselorInputRef = useRef<HTMLInputElement>(null);
-  const [dropdownPosition, setDropdownPosition] = useState<{ top: number; left: number; width: number } | null>(null);
-  const [showCounselorDropdown, setShowCounselorDropdown] = useState(false);
-  const [currentCounselorType, setCurrentCounselorType] = useState<'brahmachari' | 'grihastha' | null>(null);
 
-  // Update dropdown position on scroll/resize when dropdown is visible
+
+  // Detect unsaved changes with deep comparison
   useEffect(() => {
-    const activeRef = currentCounselorType === 'brahmachari' ? brahmachariCounselorInputRef.current :
-      currentCounselorType === 'grihastha' ? grihasthaCounselorInputRef.current : null;
+    if (!isInitializedRef.current || !userData) return;
 
-    if (!showCounselorDropdown || !activeRef) return;
+    const checkChanges = () => {
+      // Helper to normalize values for comparison
+      const normalize = (val: any) => {
+        if (val === null || val === undefined) return '';
+        if (typeof val === 'boolean') return val;
+        return String(val).trim();
+      };
 
-    const updatePosition = () => {
-      if (activeRef) {
-        const rect = activeRef.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + 8,
-          left: rect.left,
-          width: rect.width,
-        });
+      // 1. Compare basic fields
+      if (normalize(formData.name) !== normalize(userData.name)) return true;
+      if (normalize(formData.email) !== normalize(userData.email)) return true;
+      if (normalize(formData.phone) !== normalize(userData.phone)) return true;
+      if (normalize(formData.birthDate) !== normalize(userData.birthDate)) return true;
+
+      // 2. Compare hierarchy/location fields
+      if (normalize(formData.state) !== normalize(userData.hierarchy?.state)) return true;
+      if (normalize(formData.city) !== normalize(userData.hierarchy?.city)) return true;
+
+      const currentCenter = (userData.hierarchy?.center === 'Other' && userData.hierarchy?.otherCenter)
+        ? userData.hierarchy.otherCenter
+        : (userData.hierarchy?.center || '');
+      if (normalize(formData.center) !== normalize(currentCenter)) return true;
+
+      // 3. Compare spiritual fields
+      if (normalize(formData.initiationStatus) !== normalize(userData.hierarchy?.initiationStatus)) return true;
+      if (normalize(formData.initiatedName) !== normalize(userData.hierarchy?.initiatedName)) return true;
+      if (normalize(formData.spiritualMasterName) !== normalize(userData.hierarchy?.spiritualMasterName)) return true;
+      if (normalize(formData.aspiringSpiritualMasterName) !== normalize(userData.hierarchy?.aspiringSpiritualMasterName)) return true;
+      if (normalize(formData.ashram) !== normalize(userData.hierarchy?.ashram)) return true;
+      if (normalize(formData.introducedToKcIn) !== normalize(userData.hierarchy?.introducedToKcIn)) return true;
+      if (normalize(formData.rounds) !== normalize(userData.hierarchy?.rounds)) return true;
+      if (normalize(formData.parentTemple) !== normalize(userData.hierarchy?.parentTemple)) return true;
+      if (normalize(formData.parentCenter) !== normalize(userData.hierarchy?.parentCenter)) return true;
+      if (normalize(formData.otherParentCenter) !== normalize(userData.hierarchy?.otherParentCenter)) return true;
+      if (normalize(formData.currentTemple) !== normalize(userData.hierarchy?.currentTemple)) return true;
+      if (normalize(formData.currentCenter) !== normalize(userData.hierarchy?.currentCenter || userData.hierarchy?.center)) return true;
+      if (normalize(formData.counselor) !== normalize(userData.hierarchy?.counselor)) return true;
+      if (normalize(formData.otherCounselor) !== normalize(userData.otherCounselor || userData.hierarchy?.otherCounselor)) return true;
+      if (normalize(formData.otherCenter) !== normalize(userData.otherCenter || userData.hierarchy?.otherCenter)) return true;
+
+      // 4. Compare Camps
+      if (formData.campDys !== (userData.campDys || userData.hierarchy?.campDys || false)) return true;
+      if (formData.campSankalpa !== (userData.campSankalpa || false)) return true;
+      if (formData.campSphurti !== (userData.campSphurti || false)) return true;
+      if (formData.campUtkarsh !== (userData.campUtkarsh || false)) return true;
+      if (formData.campFaithAndDoubt !== (userData.campFaithAndDoubt || false)) return true;
+      if (formData.campSrcgdWorkshop !== (userData.campSrcgdWorkshop || false)) return true;
+      if (formData.campNistha !== (userData.campNistha || false)) return true;
+      if (formData.campAshray !== (userData.campAshray || false)) return true;
+
+      // 5. Check if photo is selected
+      if (selectedPhoto) return true;
+
+      return false;
+    };
+
+    setIsDirty(checkChanges());
+  }, [formData, userData, education, workExperience, languages, skills, services, selectedPhoto]);
+
+  // Load counselors from Supabase
+  useEffect(() => {
+    const fetchCounselors = async () => {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from('counselors')
+          .select('id, name, email')
+          .order('name');
+
+        if (error) {
+          console.error('Error loading counselors:', error);
+        } else if (data) {
+          setCounselors(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchCounselors:', error);
+      } finally {
+        setLoadingCounselors(false);
+      }
+    };
+    fetchCounselors();
+  }, []);
+
+  // Load temples from Supabase
+  useEffect(() => {
+    const fetchTemples = async () => {
+      if (!supabase) return;
+      try {
+        const { data, error } = await supabase
+          .from('temples')
+          .select('id, name')
+          .order('name');
+
+        if (error) {
+          console.error('Error loading temples:', error);
+        } else if (data) {
+          setTemples(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchTemples:', error);
+      } finally {
+        setLoadingTemples(false);
+      }
+    };
+    fetchTemples();
+  }, []);
+
+  // Load centers based on selected temple
+  useEffect(() => {
+    const fetchCenters = async () => {
+      if (!supabase || !formData.currentTemple || formData.currentTemple === 'None') {
+        setCenters([]);
+        return;
+      }
+
+      setLoadingCenters(true);
+      try {
+        const { data, error } = await supabase
+          .from('centers')
+          .select('id, name')
+          .eq('temple_name', formData.currentTemple)
+          .order('name');
+
+        if (error) {
+          console.error('Error loading centers:', error);
+        } else if (data) {
+          setCenters(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchCenters:', error);
+      } finally {
+        setLoadingCenters(false);
+      }
+    };
+    fetchCenters();
+  }, [formData.currentTemple]);
+
+  // Load parent centers based on selected parent temple
+  useEffect(() => {
+    const fetchParentCenters = async () => {
+      if (!supabase || !formData.parentTemple || formData.parentTemple === 'None') {
+        setParentCenters([]);
+        return;
+      }
+
+      setLoadingParentCenters(true);
+      try {
+        const { data, error } = await supabase
+          .from('centers')
+          .select('id, name')
+          .eq('temple_name', formData.parentTemple)
+          .order('name');
+
+        if (error) {
+          console.error('Error loading parent centers:', error);
+        } else if (data) {
+          setParentCenters(data);
+        }
+      } catch (error) {
+        console.error('Error in fetchParentCenters:', error);
+      } finally {
+        setLoadingParentCenters(false);
+      }
+    };
+    fetchParentCenters();
+  }, [formData.parentTemple]);
+
+  // Check for pending profile update requests
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchPendingRequest = async () => {
+      if (!supabase) return;
+      try {
+        setLoadingRequest(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+
+        // Fetch user's latest pending or rejected request
+        const { data, error } = await supabase
+          .from('profile_update_requests')
+          .select('*')
+          .in('status', ['pending', 'rejected', 'approved'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching request status:', error);
+        } else if (data) {
+          setPendingRequest(data);
+        }
+      } catch (err) {
+        console.error('Error checking requests:', err);
+      } finally {
+        setLoadingRequest(false);
       }
     };
 
-    updatePosition();
-    window.addEventListener('scroll', updatePosition, true);
-    window.addEventListener('resize', updatePosition);
+    fetchPendingRequest();
+  }, [user]);
 
-    return () => {
-      window.removeEventListener('scroll', updatePosition, true);
-      window.removeEventListener('resize', updatePosition);
-    };
-  }, [showCounselorDropdown, currentCounselorType, brahmachariCounselorSearch, grihasthaCounselorSearch]);
-
-  // Detect unsaved changes
-  useEffect(() => {
-    if (isInitializedRef.current) {
-      setIsDirty(true);
-    }
-  }, [formData, education, workExperience, languages, skills, services]);
 
   // Load initial data
   useEffect(() => {
@@ -281,23 +401,31 @@ export default function ProfilePage() {
         birthDate: userData.birthDate || '',
         state: userData.hierarchy?.state || '',
         city: userData.hierarchy?.city || '',
-        center: userData.hierarchy?.center || '',
+        center: (userData.hierarchy?.center === 'Other' && userData.hierarchy?.otherCenter)
+          ? userData.hierarchy.otherCenter
+          : (userData.hierarchy?.center || ''),
         centerId: userData.hierarchy?.centerId || '', // Load centerId from database if available
         // Spiritual fields
         initiationStatus: (userData.hierarchy?.initiationStatus || '') as 'initiated' | 'aspiring' | '',
         initiatedName: userData.hierarchy?.initiatedName || '',
         spiritualMasterName: userData.hierarchy?.spiritualMasterName || '',
         aspiringSpiritualMasterName: userData.hierarchy?.aspiringSpiritualMasterName || '',
-        chantingSince: userData.hierarchy?.chantingSince || '',
-        rounds: userData.hierarchy?.rounds?.toString() || '',
+
+
+        introducedToKcIn: userData.hierarchy?.introducedToKcIn || '',
+        rounds: userData.hierarchy?.rounds ? userData.hierarchy.rounds.toString() : '',
+        parentTemple: userData.hierarchy?.parentTemple || '',
+        parentCenter: userData.hierarchy?.parentCenter || '',
+        currentTemple: userData.hierarchy?.currentTemple || '',
+        currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
+        counselor: userData.hierarchy?.counselor || '',
+        otherCounselor: userData.hierarchy?.otherCounselor || '',
         ashram: userData.hierarchy?.ashram || '',
-        royalMember: (userData.hierarchy?.royalMember || '') as 'yes' | 'no' | '',
-        brahmachariCounselor: userData.hierarchy?.brahmachariCounselor || '',
-        brahmachariCounselorEmail: userData.hierarchy?.brahmachariCounselorEmail || '',
-        grihasthaCounselor: userData.hierarchy?.grihasthaCounselor || '',
-        grihasthaCounselorEmail: userData.hierarchy?.grihasthaCounselorEmail || '',
+        otherCenter: userData.hierarchy?.otherCenter || '',
+        otherParentCenter: userData.hierarchy?.otherParentCenter || '',
+
         // Camp completion fields
-        campDys: userData.campDys || false,
+        campDys: userData.campDys || userData.hierarchy?.campDys || false,
         campSankalpa: userData.campSankalpa || false,
         campSphurti: userData.campSphurti || false,
         campUtkarsh: userData.campUtkarsh || false,
@@ -349,12 +477,10 @@ export default function ProfilePage() {
         spbookEighthKrishnaBook7889: userData.spbookEighthKrishnaBook7889 || false,
       });
       // Set counselor search values from spiritual fields
-      setBrahmachariCounselorSearch(userData.hierarchy?.brahmachariCounselor || '');
-      setGrihasthaCounselorSearch(userData.hierarchy?.grihasthaCounselor || '');
+
       // Set profile image from userData (Google Drive URL)
       const imageUrl = userData.profileImage || '';
       setProfileImage(imageUrl);
-      console.log('Loaded profile image from userData:', imageUrl);
 
       // Load education and work experience
       if (userData.education && userData.education.length > 0) {
@@ -390,361 +516,14 @@ export default function ProfilePage() {
     }
   }, [userData]);
 
-  // Load cities when state changes
-  useEffect(() => {
-    if (formData.state) {
-      setLoadingCities(true);
-      getCitiesByStateFromLocal(formData.state)
-        .then(cities => {
-          setAvailableCities(cities);
-          setLoadingCities(false);
-        })
-        .catch(err => {
-          console.error('Error loading cities:', err);
-          setAvailableCities([]);
-          setLoadingCities(false);
-        });
-    } else {
-      setAvailableCities([]);
-    }
-  }, [formData.state]);
 
-  // Load centers when state and city change
-  useEffect(() => {
-    if (formData.state && formData.city) {
-      setLoadingCenters(true);
-      getCentersByLocationFromLocal(formData.state, formData.city)
-        .then(centers => {
-          const centersList = centers.map(c => ({ id: c.id, name: c.name }));
-          setAvailableCenters(centersList);
-
-          // If we have a center name but no centerId, try to match it with the loaded centers
-          if (formData.center && !formData.centerId) {
-            const matchedCenter = centersList.find(c =>
-              c.name.toLowerCase().trim() === formData.center.toLowerCase().trim()
-            );
-            if (matchedCenter) {
-              setFormData(prev => ({ ...prev, centerId: matchedCenter.id }));
-            }
-          }
-          // If we have a centerId, verify it still exists in the loaded centers
-          else if (formData.centerId) {
-            const matchedCenter = centersList.find(c => c.id === formData.centerId);
-            if (matchedCenter && formData.center !== matchedCenter.name) {
-              // Update center name if it doesn't match
-              setFormData(prev => ({ ...prev, center: matchedCenter.name }));
-            } else if (!matchedCenter && formData.center) {
-              // If centerId doesn't match but we have a center name, try to find by name
-              const matchedByName = centersList.find(c =>
-                c.name.toLowerCase().trim() === formData.center.toLowerCase().trim()
-              );
-              if (matchedByName) {
-                setFormData(prev => ({ ...prev, centerId: matchedByName.id }));
-              }
-            }
-          }
-
-          setLoadingCenters(false);
-        })
-        .catch(err => {
-          console.error('Error loading centers:', err);
-          setAvailableCenters([]);
-          setLoadingCenters(false);
-        });
-    } else {
-      setAvailableCenters([]);
-    }
-  }, [formData.state, formData.city]);
 
   // Load Brahmachari counselors with search (with debounce)
-  useEffect(() => {
-    const loadCounselors = async () => {
-      setLoadingBrahmachariCounselors(true);
-      try {
-        const counselors = await getCounselorsFromLocal(brahmachariCounselorSearch || '', 'Brahmachari Ashram');
-        setAvailableBrahmachariCounselors(counselors);
-      } catch (error) {
-        console.error('Error loading Brahmachari counselors:', error);
-        setAvailableBrahmachariCounselors([]);
-      } finally {
-        setLoadingBrahmachariCounselors(false);
-      }
-    };
 
-    const timeoutId = setTimeout(() => {
-      loadCounselors();
-    }, 150);
 
-    return () => clearTimeout(timeoutId);
-  }, [brahmachariCounselorSearch]);
 
-  // Load Grihastha counselors with search (with debounce)
-  useEffect(() => {
-    const loadCounselors = async () => {
-      setLoadingGrihasthaCounselors(true);
-      try {
-        const counselors = await getCounselorsFromLocal(grihasthaCounselorSearch || '', 'Grihastha Ashram');
-        setAvailableGrihasthaCounselors(counselors);
-      } catch (error) {
-        console.error('Error loading Grihastha counselors:', error);
-        setAvailableGrihasthaCounselors([]);
-      } finally {
-        setLoadingGrihasthaCounselors(false);
-      }
-    };
 
-    const timeoutId = setTimeout(() => {
-      loadCounselors();
-    }, 150);
 
-    return () => clearTimeout(timeoutId);
-  }, [grihasthaCounselorSearch]);
-
-  const handleAddCity = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!newCityName.trim()) {
-      setError('City name is required');
-      return;
-    }
-
-    if (!formData.state) {
-      setError('Please select state first');
-      return;
-    }
-
-    setAddingCity(true);
-    setError('');
-
-    try {
-      const success = await addCityToLocal(formData.state, newCityName.trim());
-
-      if (success) {
-        const cities = await getCitiesByStateFromLocal(formData.state);
-        setAvailableCities(cities);
-        setFormData(prev => ({ ...prev, city: newCityName.trim(), center: '' }));
-        setNewCityName('');
-        setShowAddCity(false);
-        setSuccess('City added successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError('Failed to add city.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to add city');
-    } finally {
-      setAddingCity(false);
-    }
-  };
-
-  const handleAddCenter = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    if (!newCenter.name.trim()) {
-      setError('Center name is required');
-      return;
-    }
-
-    if (!newCenter.address.trim()) {
-      setError('Center address is required');
-      return;
-    }
-
-    if (!formData.state || !formData.city) {
-      setError('Please select state and city first');
-      return;
-    }
-
-    setAddingCenter(true);
-    setError('');
-
-    try {
-      const success = await addCenterToLocal({
-        name: newCenter.name.trim(),
-        state: formData.state,
-        city: formData.city,
-        address: newCenter.address.trim(),
-        contact: newCenter.contact.trim() || undefined,
-      });
-
-      if (success) {
-        const centers = await getCentersByLocationFromLocal(formData.state, formData.city);
-        setAvailableCenters(centers.map(c => ({ id: c.id, name: c.name })));
-        // Find the newly added center to get its ID
-        const updatedCenters = await getCentersByLocationFromLocal(formData.state, formData.city);
-        const newCenterData = updatedCenters.find(c => c.name === newCenter.name.trim());
-        setFormData(prev => ({
-          ...prev,
-          center: newCenter.name.trim(),
-          centerId: newCenterData?.id || ''
-        }));
-        setNewCenter({ name: '', address: '', contact: '' });
-        setShowAddCenter(false);
-        setSuccess('Center added successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError('Failed to add center.');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to add center');
-    } finally {
-      setAddingCenter(false);
-    }
-  };
-
-  const handleAddBrahmachariCounselor = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-    setError('');
-
-    if (!newBrahmachariCounselor.name.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Counselor name is required' }));
-      return;
-    }
-
-    if (!isValidName(newBrahmachariCounselor.name)) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Invalid characters in name.' }));
-      return;
-    }
-
-    const mobileValidation = validateMobile(newBrahmachariCounselor.mobile);
-    if (!mobileValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, mobile: mobileValidation.error || 'Invalid mobile number' }));
-      return;
-    }
-
-    const emailValidation = validateEmail(newBrahmachariCounselor.email);
-    if (!emailValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, email: emailValidation.error || 'Invalid email address' }));
-      return;
-    }
-
-    if (!newBrahmachariCounselor.city.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, city: 'City is required' }));
-      return;
-    }
-
-    setAddingBrahmachariCounselor(true);
-
-    try {
-      const success = await addCounselorToLocal({
-        name: newBrahmachariCounselor.name.trim(),
-        mobile: newBrahmachariCounselor.mobile.trim(),
-        email: newBrahmachariCounselor.email.trim().toLowerCase(),
-        city: newBrahmachariCounselor.city.trim(),
-        ashram: 'Brahmachari Ashram',
-      });
-
-      if (success) {
-        const updatedCounselors = await getCounselorsFromLocal('', 'Brahmachari Ashram');
-        setAvailableBrahmachariCounselors(updatedCounselors);
-        setFormData(prev => ({
-          ...prev,
-          brahmachariCounselor: newBrahmachariCounselor.name.trim(),
-          brahmachariCounselorEmail: newBrahmachariCounselor.email.trim().toLowerCase()
-        }));
-        setBrahmachariCounselorSearch(newBrahmachariCounselor.name.trim());
-        setNewBrahmachariCounselor({ name: '', mobile: '', email: '', city: '' });
-        setShowAddBrahmachariCounselor(false);
-        setSuccess('Counselor added successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError('Failed to add counselor.');
-      }
-    } catch (err: any) {
-      if (err.message?.includes('already exists')) {
-        setError(`${err.message}`);
-      } else {
-        setError(err.message || 'Failed to add counselor');
-      }
-    } finally {
-      setAddingBrahmachariCounselor(false);
-    }
-  };
-
-  const handleAddGrihasthaCounselor = async (e?: React.MouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-
-    setCounselorFieldErrors({ name: '', mobile: '', email: '', city: '' });
-    setError('');
-
-    if (!newGrihasthaCounselor.name.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Counselor name is required' }));
-      return;
-    }
-
-    if (!isValidName(newGrihasthaCounselor.name)) {
-      setCounselorFieldErrors(prev => ({ ...prev, name: 'Invalid characters in name.' }));
-      return;
-    }
-
-    const mobileValidation = validateMobile(newGrihasthaCounselor.mobile);
-    if (!mobileValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, mobile: mobileValidation.error || 'Invalid mobile number' }));
-      return;
-    }
-
-    const emailValidation = validateEmail(newGrihasthaCounselor.email);
-    if (!emailValidation.valid) {
-      setCounselorFieldErrors(prev => ({ ...prev, email: emailValidation.error || 'Invalid email address' }));
-      return;
-    }
-
-    if (!newGrihasthaCounselor.city.trim()) {
-      setCounselorFieldErrors(prev => ({ ...prev, city: 'City is required' }));
-      return;
-    }
-
-    setAddingGrihasthaCounselor(true);
-
-    try {
-      const success = await addCounselorToLocal({
-        name: newGrihasthaCounselor.name.trim(),
-        mobile: newGrihasthaCounselor.mobile.trim(),
-        email: newGrihasthaCounselor.email.trim().toLowerCase(),
-        city: newGrihasthaCounselor.city.trim(),
-        ashram: 'Grihastha Ashram',
-      });
-
-      if (success) {
-        const updatedCounselors = await getCounselorsFromLocal('', 'Grihastha Ashram');
-        setAvailableGrihasthaCounselors(updatedCounselors);
-        setFormData(prev => ({
-          ...prev,
-          grihasthaCounselor: newGrihasthaCounselor.name.trim(),
-          grihasthaCounselorEmail: newGrihasthaCounselor.email.trim().toLowerCase()
-        }));
-        setGrihasthaCounselorSearch(newGrihasthaCounselor.name.trim());
-        setNewGrihasthaCounselor({ name: '', mobile: '', email: '', city: '' });
-        setShowAddGrihasthaCounselor(false);
-        setSuccess('Counselor added successfully!');
-        setTimeout(() => setSuccess(''), 3000);
-      } else {
-        setError('Failed to add counselor.');
-      }
-    } catch (err: any) {
-      if (err.message?.includes('already exists')) {
-        setError(`${err.message}`);
-      } else {
-        setError(err.message || 'Failed to add counselor');
-      }
-    } finally {
-      setAddingGrihasthaCounselor(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -752,11 +531,53 @@ export default function ProfilePage() {
     setSuccess('');
     setFieldErrors({});
 
+    if (!user || !supabase) {
+      setError('User session not found. Please sign in again.');
+      return;
+    }
+
+    setSaving(true);
+    let finalProfileImageUrl = profileImage; // Default to current image
+
+    // 0. Handle Photo Upload first if selected
+    if (selectedPhoto) {
+      try {
+        const photoFormData = new FormData();
+        photoFormData.append('file', selectedPhoto);
+        photoFormData.append('userName', formData.name);
+
+        const uploadResponse = await fetch('/api/upload/google-drive', {
+          method: 'POST',
+          body: photoFormData,
+        });
+
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json();
+          throw new Error(errorData.error || 'Failed to upload photo');
+        }
+
+        const uploadData = await uploadResponse.json();
+
+        if (uploadData.success && uploadData.data) {
+          finalProfileImageUrl = uploadData.data.directImageUrl || uploadData.data.webViewLink || uploadData.data.webContentLink || uploadData.data.fileId;
+        } else {
+          throw new Error('Upload failed: No data returned');
+        }
+      } catch (error: any) {
+        console.error('Photo upload error:', error);
+        setError(`Failed to upload profile photo: ${error.message || 'Unknown error'}`);
+        setSaving(false);
+        return; // Stop saving if photo upload fails
+      }
+    }
+
+
     // Validate and sanitize name
     const nameValidation = validateTextInput(formData.name, 'Full Name', 100);
     if (!nameValidation.valid) {
       setFieldErrors({ name: nameValidation.error || 'Invalid name' });
       setError(nameValidation.error || 'Invalid name');
+      setSaving(false);
       return;
     }
     const sanitizedName = sanitizeTextInput(formData.name.trim());
@@ -766,6 +587,7 @@ export default function ProfilePage() {
     if (!emailValidation.valid) {
       setFieldErrors({ email: emailValidation.error || 'Invalid email address' });
       setError(emailValidation.error || 'Invalid email address');
+      setSaving(false);
       return;
     }
 
@@ -776,51 +598,54 @@ export default function ProfilePage() {
       if (!phoneValidation.valid) {
         setFieldErrors({ phone: phoneValidation.error || 'Invalid phone number' });
         setError(phoneValidation.error || 'Invalid phone number');
+        setSaving(false);
         return;
       }
       sanitizedPhone = formData.phone.trim();
     }
 
-    // Validate required hierarchy fields
-    if (!formData.state || !formData.city || !formData.center) {
-      setError('Please fill in all required location fields (State, City, and Center)');
-      return;
-    }
+    // ALL FIELDS BELOW ARE NOW OPTIONAL - VALIDATIONS COMMENTED OUT
 
-    // Validate spiritual fields
-    if (!formData.initiationStatus) {
-      setError('Please select whether you are Initiated or Aspiring');
-      return;
-    }
+    // // Validate required hierarchy fields
+    // if (!formData.state || !formData.city || !formData.center) {
+    //   setError('Please fill in all required location fields (State, City, and Center)');
+    //   return;
+    // }
 
-    if (formData.initiationStatus === 'initiated') {
-      if (!formData.initiatedName || !formData.spiritualMasterName) {
-        setError('Please fill in Initiated Name and Spiritual Master Name');
-        return;
-      }
-    } else if (formData.initiationStatus === 'aspiring') {
-      // Aspiring Spiritual Master Name is optional - no validation needed
-    }
+    // // Validate spiritual fields
+    // if (!formData.initiationStatus) {
+    //   setError('Please select whether you are Initiated or Aspiring');
+    //   return;
+    // }
 
-    if (!formData.chantingSince) {
-      setError('Please select Chanting Since date');
-      return;
-    }
+    // if (formData.initiationStatus === 'initiated') {
+    //   if (!formData.initiatedName || !formData.spiritualMasterName) {
+    //     setError('Please fill in Initiated Name and Spiritual Master Name');
+    //     return;
+    //   }
+    // } else if (formData.initiationStatus === 'aspiring') {
+    //   // Aspiring Spiritual Master Name is optional - no validation needed
+    // }
 
-    if (!formData.ashram) {
-      setError('Please select Ashram');
-      return;
-    }
+    // if (!formData.chantingSince) {
+    //   setError('Please select Chanting Since date');
+    //   return;
+    // }
 
-    if (!formData.royalMember) {
-      setError('Please select Royal Member status');
-      return;
-    }
+    // if (!formData.ashram) {
+    //   setError('Please select Ashram');
+    //   return;
+    // }
 
-    if (!formData.brahmachariCounselor) {
-      setError('Please select Brahmachari Counselor');
-      return;
-    }
+    // if (!formData.royalMember) {
+    //   setError('Please select Royal Member status');
+    //   return;
+    // }
+
+    // if (!formData.brahmachariCounselor) {
+    //   setError('Please select Brahmachari Counselor');
+    //   return;
+    // }
 
     // Validate and sanitize education entries
     const educationErrors: string[] = [];
@@ -846,6 +671,7 @@ export default function ProfilePage() {
     if (educationErrors.length > 0) {
       setError(educationErrors[0]);
       setFieldErrors({ education: educationErrors[0] });
+      setSaving(false);
       return;
     }
 
@@ -875,15 +701,10 @@ export default function ProfilePage() {
     if (workErrors.length > 0) {
       setError(workErrors[0]);
       setFieldErrors({ work: workErrors[0] });
+      setSaving(false);
       return;
     }
 
-    if (!user || !supabase) {
-      setError('User session not found. Please sign in again.');
-      return;
-    }
-
-    setSaving(true);
 
     try {
       // Build hierarchy object for backward compatibility (using sanitized values)
@@ -892,28 +713,27 @@ export default function ProfilePage() {
       if (formData.city) hierarchy.city = sanitizeTextInput(formData.city.trim());
       if (formData.center) {
         hierarchy.center = sanitizeTextInput(formData.center.trim());
-        if (formData.centerId) hierarchy.centerId = formData.centerId; // Store center ID
+        if (formData.centerId) hierarchy.centerId = formData.centerId;
       }
 
-      // Add spiritual fields to hierarchy
+      // Add spiritual fields to hierarchy object
       if (formData.initiationStatus) hierarchy.initiationStatus = formData.initiationStatus;
       if (formData.initiatedName) hierarchy.initiatedName = sanitizeTextInput(formData.initiatedName.trim());
       if (formData.spiritualMasterName) hierarchy.spiritualMasterName = sanitizeTextInput(formData.spiritualMasterName.trim());
       if (formData.aspiringSpiritualMasterName) hierarchy.aspiringSpiritualMasterName = sanitizeTextInput(formData.aspiringSpiritualMasterName.trim());
-      if (formData.chantingSince) hierarchy.chantingSince = formData.chantingSince;
-      if (formData.rounds) hierarchy.rounds = formData.rounds;
       if (formData.ashram) hierarchy.ashram = formData.ashram;
-      if (formData.royalMember) hierarchy.royalMember = formData.royalMember;
-      if (formData.brahmachariCounselor) {
-        hierarchy.brahmachariCounselor = sanitizeTextInput(formData.brahmachariCounselor.trim());
-        hierarchy.brahmachariCounselorEmail = formData.brahmachariCounselorEmail || null;
-      }
-      if (formData.grihasthaCounselor) {
-        hierarchy.grihasthaCounselor = sanitizeTextInput(formData.grihasthaCounselor.trim());
-        hierarchy.grihasthaCounselorEmail = formData.grihasthaCounselorEmail || null;
-      }
+      if (formData.introducedToKcIn) hierarchy.introducedToKcIn = sanitizeTextInput(formData.introducedToKcIn.trim());
+      if (formData.rounds) hierarchy.rounds = parseInt(formData.rounds) || 0;
+      if (formData.parentTemple) hierarchy.parentTemple = sanitizeTextInput(formData.parentTemple.trim());
+      if (formData.parentCenter) hierarchy.parentCenter = sanitizeTextInput(formData.parentCenter.trim());
+      if (formData.otherParentCenter) hierarchy.otherParentCenter = sanitizeTextInput(formData.otherParentCenter.trim());
+      if (formData.currentTemple) hierarchy.currentTemple = sanitizeTextInput(formData.currentTemple.trim());
+      if (formData.currentCenter) hierarchy.currentCenter = sanitizeTextInput(formData.currentCenter.trim());
+      if (formData.counselor) hierarchy.counselor = sanitizeTextInput(formData.counselor.trim());
+      if (formData.otherCounselor) hierarchy.otherCounselor = sanitizeTextInput(formData.otherCounselor.trim());
+      if (formData.otherCenter) hierarchy.otherCenter = sanitizeTextInput(formData.otherCenter.trim());
 
-      // Build education update object (up to 5 entries) - filter out empty entries using sanitized data
+      // Build expanded update objects (education, work, etc.)
       const educationUpdate: any = {};
       const validEducation = sanitizedEducation.filter(edu => edu.institution?.trim() || edu.field?.trim());
       validEducation.slice(0, 5).forEach((edu, index) => {
@@ -922,14 +742,12 @@ export default function ProfilePage() {
         educationUpdate[`edu_${num}_field`] = edu.field?.trim() || null;
         educationUpdate[`edu_${num}_year`] = edu.year || null;
       });
-      // Clear remaining education slots if user has fewer than 5 entries
       for (let i = validEducation.length + 1; i <= 5; i++) {
         educationUpdate[`edu_${i}_institution`] = null;
         educationUpdate[`edu_${i}_field`] = null;
         educationUpdate[`edu_${i}_year`] = null;
       }
 
-      // Build work experience update object (up to 5 entries) - filter out empty entries using sanitized data
       const workUpdate: any = {};
       const validWork = sanitizedWork.filter(work => work.company?.trim() || work.position?.trim());
       validWork.slice(0, 5).forEach((work, index) => {
@@ -940,7 +758,6 @@ export default function ProfilePage() {
         workUpdate[`work_${num}_end_date`] = work.current ? null : (work.endDate || null);
         workUpdate[`work_${num}_current`] = work.current || false;
       });
-      // Clear remaining work slots if user has fewer than 5 entries
       for (let i = validWork.length + 1; i <= 5; i++) {
         workUpdate[`work_${i}_company`] = null;
         workUpdate[`work_${i}_position`] = null;
@@ -949,7 +766,6 @@ export default function ProfilePage() {
         workUpdate[`work_${i}_current`] = false;
       }
 
-      // Build languages update object (up to 5 entries)
       const languagesUpdate: any = {};
       const filteredLanguages = languages.filter(lang => lang.name?.trim());
       filteredLanguages.slice(0, 5).forEach((lang, index) => {
@@ -960,7 +776,6 @@ export default function ProfilePage() {
         languagesUpdate[`language_${i}`] = null;
       }
 
-      // Build skills update object (up to 5 entries)
       const skillsUpdate: any = {};
       const filteredSkills = skills.filter(skill => skill.name?.trim());
       filteredSkills.slice(0, 5).forEach((skill, index) => {
@@ -971,7 +786,6 @@ export default function ProfilePage() {
         skillsUpdate[`skill_${i}`] = null;
       }
 
-      // Build services update object (up to 5 entries)
       const servicesUpdate: any = {};
       const filteredServices = services.filter(service => service.name?.trim());
       filteredServices.slice(0, 5).forEach((service, index) => {
@@ -982,41 +796,38 @@ export default function ProfilePage() {
         servicesUpdate[`service_${i}`] = null;
       }
 
-      // Update user profile in Supabase - using separate columns (with sanitized values)
-      // Update user profile via Secure API to handle role revocation logic
-      console.log('Updating profile via Secure API...');
-
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
 
-      if (!token) {
-        throw new Error('No active session token found');
-      }
+      if (!token) throw new Error('No active session token found');
 
       // Construct the main updates object
       const updates: any = {
         name: sanitizedName,
         phone: sanitizedPhone,
         birth_date: formData.birthDate || null,
-        profile_image: profileImage || null,
+        profile_image: finalProfileImageUrl || null,
         state: hierarchy.state || null,
         city: hierarchy.city || null,
         center: hierarchy.center || null,
         center_id: formData.centerId || null,
-        // Spiritual information columns
+        // Spiritual fields
         initiation_status: formData.initiationStatus || null,
         initiated_name: formData.initiatedName ? sanitizeTextInput(formData.initiatedName.trim()) : null,
         spiritual_master_name: formData.spiritualMasterName ? sanitizeTextInput(formData.spiritualMasterName.trim()) : null,
         aspiring_spiritual_master_name: formData.aspiringSpiritualMasterName ? sanitizeTextInput(formData.aspiringSpiritualMasterName.trim()) : null,
-        chanting_since: formData.chantingSince || null,
-        rounds: formData.rounds ? parseInt(formData.rounds) || null : null,
         ashram: formData.ashram || null,
-        royal_member: formData.royalMember || null,
-        brahmachari_counselor: formData.brahmachariCounselor ? sanitizeTextInput(formData.brahmachariCounselor.trim()) : null,
-        brahmachari_counselor_email: formData.brahmachariCounselorEmail || null,
-        grihastha_counselor: formData.grihasthaCounselor ? sanitizeTextInput(formData.grihasthaCounselor.trim()) : null,
-        grihastha_counselor_email: formData.grihasthaCounselorEmail || null,
-        // Camp completion fields
+        introduced_to_kc_in: formData.introducedToKcIn ? sanitizeTextInput(formData.introducedToKcIn.trim()) : null,
+        rounds: formData.rounds ? parseInt(formData.rounds) : null,
+        parent_temple: formData.parentTemple ? sanitizeTextInput(formData.parentTemple.trim()) : null,
+        parent_center: formData.parentCenter ? sanitizeTextInput(formData.parentCenter.trim()) : null,
+        other_parent_center: formData.parentCenter === 'Other' ? (formData.otherParentCenter ? sanitizeTextInput(formData.otherParentCenter.trim()) : null) : null,
+        current_temple: formData.currentTemple ? sanitizeTextInput(formData.currentTemple.trim()) : null,
+        current_center: formData.currentCenter ? sanitizeTextInput(formData.currentCenter.trim()) : null,
+        counselor: formData.counselor ? sanitizeTextInput(formData.counselor.trim()) : null,
+        other_counselor: formData.counselor === 'Other' ? (formData.otherCounselor ? sanitizeTextInput(formData.otherCounselor.trim()) : null) : null,
+        other_center: formData.currentCenter === 'Other' || formData.center === 'Other' ? (formData.otherCenter ? sanitizeTextInput(formData.otherCenter.trim()) : null) : null,
+        // Camp fields
         camp_dys: formData.campDys || false,
         camp_sankalpa: formData.campSankalpa || false,
         camp_sphurti: formData.campSphurti || false,
@@ -1025,7 +836,7 @@ export default function ProfilePage() {
         camp_srcgd_workshop: formData.campSrcgdWorkshop || false,
         camp_nistha: formData.campNistha || false,
         camp_ashray: formData.campAshray || false,
-        // SP Books Study Course fields (Third Semester)
+        // SP Books fields
         spbook_third_ssr_1_5: formData.spbookThirdSsr15 || false,
         spbook_third_coming_back: formData.spbookThirdComingBack || false,
         spbook_third_pqpa: formData.spbookThirdPqpa || false,
@@ -1034,7 +845,6 @@ export default function ProfilePage() {
         spbook_third_elevation_kc: formData.spbookThirdElevationKc || false,
         spbook_third_beyond_birth_death: formData.spbookThirdBeyondBirthDeath || false,
         spbook_third_krishna_reservoir: formData.spbookThirdKrishnaReservoir || false,
-        // SP Books Study Course fields (Fourth Semester)
         spbook_fourth_ssr_6_8: formData.spbookFourthSsr68 || false,
         spbook_fourth_laws_of_nature: formData.spbookFourthLawsOfNature || false,
         spbook_fourth_dharma: formData.spbookFourthDharma || false,
@@ -1043,7 +853,6 @@ export default function ProfilePage() {
         spbook_fourth_queen_kunti_video: formData.spbookFourthQueenKuntiVideo || false,
         spbook_fourth_enlightenment_natural: formData.spbookFourthEnlightenmentNatural || false,
         spbook_fourth_krishna_book_1_21: formData.spbookFourthKrishnaBook121 || false,
-        // SP Books Study Course fields (Fifth Semester)
         spbook_fifth_life_from_life: formData.spbookFifthLifeFromLife || false,
         spbook_fifth_prahlad_teachings: formData.spbookFifthPrahladTeachings || false,
         spbook_fifth_journey_self_discovery: formData.spbookFifthJourneySelfDiscovery || false,
@@ -1052,7 +861,6 @@ export default function ProfilePage() {
         spbook_fifth_nectar_1_6: formData.spbookFifthNectar16 || false,
         spbook_fifth_gita_1_6: formData.spbookFifthGita16 || false,
         spbook_fifth_krishna_book_24_28: formData.spbookFifthKrishnaBook2428 || false,
-        // SP Books Study Course fields (Sixth Semester)
         spbook_sixth_nectar_7_11: formData.spbookSixthNectar711 || false,
         spbook_sixth_path_perfection: formData.spbookSixthPathPerfection || false,
         spbook_sixth_civilisation_transcendence: formData.spbookSixthCivilisationTranscendence || false,
@@ -1060,53 +868,130 @@ export default function ProfilePage() {
         spbook_sixth_gita_7_12: formData.spbookSixthGita712 || false,
         spbook_sixth_sb_1st_canto_1_6: formData.spbookSixthSb1stCanto16 || false,
         spbook_sixth_krishna_book_35_59: formData.spbookSixthKrishnaBook3559 || false,
-        // SP Books Study Course fields (Seventh Semester)
         spbook_seventh_gita_13_18: formData.spbookSeventhGita1318 || false,
         spbook_seventh_sb_1st_canto_7_13: formData.spbookSeventhSb1stCanto713 || false,
         spbook_seventh_krishna_book_63_78: formData.spbookSeventhKrishnaBook6378 || false,
-        // SP Books Study Course fields (Eighth Semester)
         spbook_eighth_sb_1st_canto_14_19: formData.spbookEighthSb1stCanto1419 || false,
         spbook_eighth_krishna_book_78_89: formData.spbookEighthKrishnaBook7889 || false,
-
-        // Arrays (expanded)
         ...educationUpdate,
         ...workUpdate,
         ...languagesUpdate,
         ...skillsUpdate,
         ...servicesUpdate,
-
-        hierarchy: hierarchy, // Keep for backward compatibility
         updated_at: new Date().toISOString(),
       };
 
-      const response = await fetch('/api/users/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          updates: updates
-        })
+      // Split spiritual changes from basic profile changes
+      const spiritualFields = [
+        'initiation_status', 'initiated_name', 'spiritual_master_name',
+        'aspiring_spiritual_master_name', 'rounds', 'introduced_to_kc_in',
+        'parent_temple', 'parent_center', 'other_parent_center',
+        'current_temple', 'current_center', 'counselor',
+        'other_counselor', 'other_center', 'ashram'
+      ];
+
+      const spiritualUpdates: any = {};
+      const basicUpdates: any = { ...updates };
+
+      // Identify spiritual updates and remove from basic
+      spiritualFields.forEach(field => {
+        if (updates[field] !== undefined) {
+          spiritualUpdates[field] = updates[field];
+          delete basicUpdates[field];
+        }
       });
 
-      const data = await response.json();
+      // Check if any spiritual field has actually changed
+      const actualSpiritualChanges: any = {};
+      let hasSpiritualChanges = false;
+      const snakeToCamel = (s: string) => s.replace(/(_\w)/g, k => k[1].toUpperCase());
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to update profile');
+      spiritualFields.forEach(field => {
+        const camelField = snakeToCamel(field);
+        const newValue = updates[field];
+        const oldValue = userData?.hierarchy?.[camelField];
+
+        const normNew = (newValue === null || newValue === undefined) ? '' : newValue.toString().trim();
+        const normOld = (oldValue === null || oldValue === undefined) ? '' : oldValue.toString().trim();
+
+        if (normNew !== normOld) {
+          actualSpiritualChanges[camelField] = newValue;
+          hasSpiritualChanges = true;
+        }
+      });
+
+      // Prepare final basic updates in hierarchy
+      const finalBasicUpdates = {
+        ...basicUpdates,
+        hierarchy: {
+          ...hierarchy,
+          ...Object.keys(userData?.hierarchy || {}).reduce((acc: any, key) => {
+            if (!spiritualFields.map(snakeToCamel).includes(key)) {
+              acc[key] = userData?.hierarchy?.[key];
+            }
+            return acc;
+          }, {})
+        }
+      };
+
+      const promises = [];
+      // 1. Update basic info
+      promises.push(
+        fetch('/api/users/update-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ userId: user.id, updates: finalBasicUpdates })
+        }).then(res => res.json())
+      );
+
+      // 2. Submit spiritual changes for approval
+      if (hasSpiritualChanges) {
+        const currentSpiritualValues: any = {};
+        spiritualFields.forEach(field => {
+          const camelField = snakeToCamel(field);
+          currentSpiritualValues[camelField] = userData?.hierarchy?.[camelField] || '';
+        });
+
+        promises.push(
+          fetch('/api/profile-requests', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              requestedChanges: actualSpiritualChanges,
+              currentValues: currentSpiritualValues
+            })
+          }).then(res => res.json())
+        );
       }
 
-      console.log('Profile updated successfully:', data);
-      console.log('Profile updated successfully:', data);
-      setSuccess('Profile updated successfully!');
-      setIsDirty(false); // Reset dirty state on success
+      const results = await Promise.all(promises);
+      if (results[0].error) throw new Error(results[0].error);
+      if (hasSpiritualChanges && results[1].error) throw new Error(results[1].error);
 
-      // Reload user data after a short delay to reflect changes (e.g. role revocation)
+      setSuccess(hasSpiritualChanges ? 'Profile updated! Spiritual changes pending approval.' : 'Profile updated successfully!');
+      await refreshUserData();
+
+      if (hasSpiritualChanges) {
+        const { data } = await supabase.from('profile_update_requests')
+          .select('*').eq('user_id', user.id).eq('status', 'pending')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (data) setPendingRequest(data);
+      }
+
+      setIsDirty(false);
+      isInitializedRef.current = false;
+      setSelectedPhoto(null); // Clear selected photo after successful submission
+
+      // Refresh page after a short delay to ensure all updates are visible
       setTimeout(() => {
         window.location.reload();
-      }, 1500);
-
+      }, 2000);
     } catch (err: any) {
       console.error('Update error:', err);
       setError(err.message || 'Failed to update profile');
@@ -1278,6 +1163,54 @@ export default function ProfilePage() {
         {/* Alert Messages with Enhanced Animations */}
         {/* Toasts removed from here and moved to fixed position container at the bottom */}
 
+        {pendingRequest && (pendingRequest.status === 'pending' || pendingRequest.status === 'rejected' || (pendingRequest.status === 'approved' && pendingRequest.admin_feedback && pendingRequest.admin_feedback.trim() !== '')) && (
+          <div className={`${pendingRequest.status === 'pending' ? 'bg-amber-50 border-amber-400' : pendingRequest.status === 'approved' ? 'bg-emerald-50 border-emerald-400' : 'bg-red-50 border-red-400'} border-l-4 p-4 rounded-r-xl shadow-sm animate-fadeIn`}>
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                {pendingRequest.status === 'pending' ? (
+                  <Clock className="h-5 w-5 text-amber-400" />
+                ) : pendingRequest.status === 'approved' ? (
+                  <Check className="h-5 w-5 text-emerald-500" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                )}
+              </div>
+              <div className="ml-3 flex-1">
+                <p className={`text-sm font-medium ${pendingRequest.status === 'pending' ? 'text-amber-700' : pendingRequest.status === 'approved' ? 'text-emerald-800' : 'text-red-800'}`}>
+                  {pendingRequest.status === 'pending'
+                    ? 'Spiritual Information Update Pending Approval'
+                    : pendingRequest.status === 'approved'
+                      ? 'Spiritual Information Update Approved with Remarks'
+                      : 'Spiritual Information Update Rejected'}
+                </p>
+                <div className="mt-1 space-y-2">
+                  <p className={`text-xs ${pendingRequest.status === 'pending' ? 'text-amber-600' : pendingRequest.status === 'approved' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {pendingRequest.status === 'pending'
+                      ? `Your changes submitted on ${new Date(pendingRequest.created_at).toLocaleDateString()} are currently under review by authority. Other profile data can still be updated immediately.`
+                      : pendingRequest.status === 'approved'
+                        ? `Your update request from ${new Date(pendingRequest.created_at).toLocaleDateString()} was approved by authority, but with some observations.`
+                        : `Your update request from ${new Date(pendingRequest.created_at).toLocaleDateString()} was reviewed by authority.`}
+                  </p>
+
+                  {(pendingRequest.status === 'rejected' || pendingRequest.status === 'approved') && pendingRequest.admin_feedback && (
+                    <div className={`bg-white/50 rounded-lg p-2.5 border ${pendingRequest.status === 'approved' ? 'border-emerald-100' : 'border-red-100'} mt-2`}>
+                      <p className={`text-[10px] font-bold ${pendingRequest.status === 'approved' ? 'text-emerald-800' : 'text-red-800'} uppercase tracking-wider mb-1`}>Reason / Feedback from Authority:</p>
+                      <p className={`text-xs ${pendingRequest.status === 'approved' ? 'text-emerald-700' : 'text-red-700'} italic font-medium leading-relaxed`}>
+                        " {pendingRequest.admin_feedback} "
+                      </p>
+                    </div>
+                  )}
+
+                  {pendingRequest.status === 'rejected' && (
+                    <p className="text-[10px] text-red-500 font-medium">Please review the feedback above and update your information accordingly.</p>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-8 relative">
           {/* Personal Information Card with Animations */}
           <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-blue-100 overflow-hidden transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1">
@@ -1294,55 +1227,23 @@ export default function ProfilePage() {
             <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div className="flex justify-center mb-4 sm:mb-6">
                 <PhotoUpload
-                  onUploadComplete={async (url) => {
-                    console.log('PhotoUpload callback received URL:', url);
-                    const previousImageUrl = profileImage;
-                    setProfileImage(url);
+                  onFileSelect={(file) => {
+                    console.log('ProfilePage: onFileSelect called', file);
+                    setSelectedPhoto(file);
+                    // Update preview temporarily if file is selected, or revert if null
+                    if (file) {
+                      // Use createObjectURL for instant preview instead of FileReader
+                      const objectUrl = URL.createObjectURL(file);
+                      setProfileImage(objectUrl);
 
-                    // Auto-save the profile image immediately after upload
-                    if (user && supabase && url) {
-                      try {
-                        console.log('Auto-saving profile image to database...');
-                        console.log('User ID:', user.id);
-                        console.log('Image URL:', url);
-
-                        const { error: updateError, data: updateData } = await supabase
-                          .from('users')
-                          .update({
-                            profile_image: url,
-                            updated_at: new Date().toISOString(),
-                          })
-                          .eq('id', user.id)
-                          .select('id, profile_image');
-
-                        console.log('Database update response:', { updateData, updateError });
-
-                        if (updateError) {
-                          console.error('Error auto-saving profile image:', updateError);
-                          console.error('Error code:', updateError.code);
-                          console.error('Error message:', updateError.message);
-                          console.error('Error details:', updateError);
-                          setError(`Failed to save profile image: ${updateError.message || 'Unknown error'}`);
-                          // Revert the profileImage state if save failed
-                          setProfileImage(previousImageUrl);
-                        } else {
-                          console.log('✅ Profile image saved successfully!');
-                          console.log('Saved data:', updateData);
-                          // Don't show success message here - PhotoUpload component handles its own success message
-                          // This prevents duplicate messages - the PhotoUpload component will show the success message once
-                        }
-                      } catch (err: any) {
-                        console.error('Exception in auto-save:', err);
-                        console.error('Error stack:', err.stack);
-                        setError(`Failed to save profile image: ${err.message || 'Unknown error'}`);
-                        // Revert the profileImage state if save failed
-                        setProfileImage(previousImageUrl);
-                      }
+                      // Cleanup previous object URL if any (optional but good practice)
+                      // We can just let it be GC'd or revoke it later, but for now simple is better.
+                    } else if (userData?.profileImage) {
+                      setProfileImage(userData.profileImage);
                     } else {
-                      console.warn('Cannot auto-save: missing user, supabase, or URL', { user: !!user, supabase: !!supabase, url: !!url });
+                      setProfileImage(''); // Clear preview if no file and no existing image
                     }
                   }}
-                  onUploadError={(error) => setError(error)}
                   userName={formData.name || userData?.name || 'user'}
                   currentImageUrl={profileImage}
                   disabled={saving}
@@ -1495,839 +1396,402 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Location Information Card with Animations */}
-          <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-visible transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1 relative z-0 mb-2">
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-4 sm:px-6 py-3 sm:py-4 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2 sm:gap-3 relative z-10">
-                <div className="p-1.5 sm:p-2 bg-white/20 rounded-lg backdrop-blur-sm shadow-sm transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-6">
-                  <MapPin className="h-4 w-4 sm:h-5 sm:w-5" />
-                </div>
-                Address
-              </h2>
-            </div>
 
-            <div className="p-4 sm:p-6 relative z-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <div className="group animate-on-scroll" style={{ animationDelay: '0.1s' }}>
-                  <label htmlFor="state" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2 transform transition-all duration-200 group-hover:translate-x-1">
-                    <MapPin className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 transform transition-all duration-200 group-hover:scale-110 group-hover:rotate-12" />
-                    State <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value, city: '', center: '' })}
-                    required
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-blue-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50/50 hover:bg-blue-50 transition-all duration-300 group-hover:border-blue-200 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                  >
-                    <option value="">📍 Select State</option>
-                    {states.map(state => (
-                      <option key={state} value={state}>{state}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="group animate-on-scroll" style={{ animationDelay: '0.2s' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="city" className="block text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2 transform transition-all duration-200 group-hover:translate-x-1">
-                      <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 transform transition-all duration-200 group-hover:scale-110 group-hover:rotate-12" />
-                      City <span className="text-red-500">*</span>
-                    </label>
-                    {formData.state && !showAddCity && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCity(true)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 hover:underline transition-all"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add New
-                      </button>
-                    )}
-                  </div>
-                  {!showAddCity ? (
-                    <select
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData({ ...formData, city: e.target.value, center: '', centerId: '' })}
-                      required
-                      disabled={!formData.state || loadingCities}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-blue-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50/50 hover:bg-blue-50 transition-all duration-300 group-hover:border-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                    >
-                      <option value="">
-                        {loadingCities ? '⏳ Loading...' : formData.state ? '🏙️ Select City' : '⬆️ Select State first'}
-                      </option>
-                      {availableCities.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="border-2 border-blue-200 rounded-lg sm:rounded-xl p-3 bg-blue-50 animate-fadeInUp shadow-inner">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-blue-800">Add New City</span>
-                        <button onClick={(e) => { e.preventDefault(); setShowAddCity(false); setNewCityName(''); }} className="text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-3 w-3" /></button>
-                      </div>
-                      <input
-                        type="text"
-                        value={newCityName}
-                        onChange={(e) => setNewCityName(e.target.value)}
-                        placeholder="Enter city name..."
-                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 mb-2 bg-white"
-                      />
-                      <button
-                        onClick={handleAddCity}
-                        disabled={addingCity || !newCityName.trim()}
-                        type="button"
-                        className="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50"
-                      >
-                        {addingCity ? 'Adding...' : 'Add City'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group animate-on-scroll" style={{ animationDelay: '0.3s' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="center" className="block text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-2 transform transition-all duration-200 group-hover:translate-x-1">
-                      <Building2 className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600 transform transition-all duration-200 group-hover:scale-110 group-hover:rotate-12" />
-                      Center <span className="text-red-500">*</span>
-                    </label>
-                    {formData.city && !showAddCenter && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddCenter(true)}
-                        className="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1 hover:underline transition-all"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add New
-                      </button>
-                    )}
-                  </div>
-                  {!showAddCenter ? (
-                    <select
-                      id="center"
-                      value={formData.centerId || formData.center}
-                      onChange={(e) => {
-                        const selectedCenter = availableCenters.find(c => c.id === e.target.value || c.name === e.target.value);
-                        setFormData({
-                          ...formData,
-                          center: selectedCenter?.name || e.target.value,
-                          centerId: selectedCenter?.id || e.target.value
-                        });
-                      }}
-                      required
-                      disabled={!formData.state || !formData.city || loadingCenters}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-blue-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-blue-50/50 hover:bg-blue-50 transition-all duration-300 group-hover:border-blue-200 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                    >
-                      <option value="">
-                        {loadingCenters ? '⏳ Loading...' : !formData.state || !formData.city ? '⬆️ Select State and City first' : '🏛️ Select Center'}
-                      </option>
-                      {availableCenters.map(center => (
-                        <option key={center.id} value={center.id}>{center.name}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="border-2 border-blue-200 rounded-lg sm:rounded-xl p-3 bg-blue-50 animate-fadeInUp shadow-inner space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-blue-800">Add New Center</span>
-                        <button onClick={(e) => { e.preventDefault(); setShowAddCenter(false); setNewCenter({ name: '', address: '', contact: '' }); }} className="text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-3 w-3" /></button>
-                      </div>
-                      <input
-                        type="text"
-                        value={newCenter.name}
-                        onChange={(e) => setNewCenter({ ...newCenter, name: e.target.value })}
-                        placeholder="Center Name*"
-                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={newCenter.address}
-                        onChange={(e) => setNewCenter({ ...newCenter, address: e.target.value })}
-                        placeholder="Address*"
-                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                      />
-                      <input
-                        type="text"
-                        value={newCenter.contact}
-                        onChange={(e) => setNewCenter({ ...newCenter, contact: e.target.value })}
-                        placeholder="Contact (Optional)"
-                        className="w-full px-3 py-2 text-sm border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-                      />
-                      <button
-                        onClick={handleAddCenter}
-                        disabled={addingCenter || !newCenter.name.trim()}
-                        type="button"
-                        className="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50"
-                      >
-                        {addingCenter ? 'Adding...' : 'Add Center'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Spiritual Information Card with Animations */}
-          <div className="animate-on-scroll bg-white rounded-lg sm:rounded-xl shadow-md border border-purple-100 overflow-hidden relative z-10">
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-3 sm:px-4 py-2 sm:py-3 relative overflow-hidden group">
+          {/* Spiritual Information Card with Animations */}
+          <div className="animate-on-scroll bg-white rounded-lg sm:rounded-xl shadow-md border border-purple-100 overflow-visible relative" style={{ zIndex: 1 }}>
+            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-3 sm:px-4 py-2 sm:py-3 relative overflow-hidden group flex items-center justify-between">
               <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 relative z-10">
                 <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />
                 Spiritual Information
               </h2>
+              {pendingRequest && (pendingRequest.status === 'pending' || pendingRequest.status === 'rejected' || (pendingRequest.status === 'approved' && pendingRequest.admin_feedback && pendingRequest.admin_feedback.trim() !== '')) && (
+                <div className={`relative z-10 flex items-center gap-1.5 px-2 py-1 ${pendingRequest.status === 'pending' ? 'bg-white/20' : pendingRequest.status === 'approved' ? 'bg-emerald-500/30' : 'bg-red-500/30'} backdrop-blur-md rounded-lg border border-white/30 text-[10px] sm:text-xs font-bold text-white uppercase tracking-wider animate-pulse transition-all hover:bg-white/30`}>
+                  {pendingRequest.status === 'pending' ? <Clock className="h-3 w-3" /> : pendingRequest.status === 'approved' ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                  {pendingRequest.status === 'pending' ? 'Pending Approval' : pendingRequest.status === 'approved' ? 'Approved with Remarks' : 'Review Feedback'}
+                </div>
+              )}
             </div>
 
-            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
-                {/* Initiated/Aspiring Field */}
-                <div>
-                  <label htmlFor="initiationStatus" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                    Initiated/Aspiring <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="initiationStatus"
-                    value={formData.initiationStatus}
-                    onChange={(e) => {
-                      const newStatus = e.target.value as 'initiated' | 'aspiring' | '';
-                      setFormData(prev => {
-                        // Only clear fields if switching between initiated and aspiring
-                        // Preserve existing values when switching back
-                        if (newStatus === 'initiated' && prev.initiationStatus === 'aspiring') {
-                          // Switching from aspiring to initiated - clear aspiring field only
-                          return {
-                            ...prev,
-                            initiationStatus: newStatus,
-                            aspiringSpiritualMasterName: ''
-                          };
-                        } else if (newStatus === 'aspiring' && prev.initiationStatus === 'initiated') {
-                          // Switching from initiated to aspiring - clear initiated fields only
-                          return {
-                            ...prev,
-                            initiationStatus: newStatus,
-                            initiatedName: '',
-                            spiritualMasterName: ''
-                          };
-                        } else {
-                          // No change or switching from empty - just update status
-                          return {
-                            ...prev,
-                            initiationStatus: newStatus
-                          };
-                        }
-                      });
-                    }}
-                    required
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-purple-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                  >
-                    <option value="">Select...</option>
-                    <option value="initiated">Initiated</option>
-                    <option value="aspiring">Aspiring</option>
-                  </select>
+            <div className="p-3 sm:p-4 space-y-6">
+              {pendingRequest && (pendingRequest.status === 'pending' || pendingRequest.status === 'rejected' || (pendingRequest.status === 'approved' && pendingRequest.admin_feedback && pendingRequest.admin_feedback.trim() !== '')) && (
+                <div className={`${pendingRequest.status === 'pending' ? 'bg-purple-50 border-purple-100' : pendingRequest.status === 'approved' ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'} border p-3 rounded-xl flex items-start gap-3 animate-fadeIn mb-2`}>
+                  <div className={`p-1.5 ${pendingRequest.status === 'pending' ? 'bg-purple-100' : pendingRequest.status === 'approved' ? 'bg-emerald-100' : 'bg-red-100'} rounded-lg`}>
+                    {pendingRequest.status === 'pending'
+                      ? <AlertCircle className="h-4 w-4 text-purple-600" />
+                      : pendingRequest.status === 'approved'
+                        ? <Check className="h-4 w-4 text-emerald-600" />
+                        : <MessageCircle className="h-4 w-4 text-red-600" />}
+                  </div>
+                  <div>
+                    <p className={`text-xs font-bold leading-tight ${pendingRequest.status === 'pending' ? 'text-purple-800' : pendingRequest.status === 'approved' ? 'text-emerald-800' : 'text-red-800'}`}>
+                      {pendingRequest.status === 'pending' ? 'Review in Progress' : pendingRequest.status === 'approved' ? 'Approved with Remarks' : 'Authority Feedback Available'}
+                    </p>
+                    <p className={`text-[10px] mt-0.5 leading-relaxed ${pendingRequest.status === 'pending' ? 'text-purple-600' : pendingRequest.status === 'approved' ? 'text-emerald-600' : 'text-red-600'}`}>
+                      {pendingRequest.status === 'pending'
+                        ? `Changes made on ${new Date(pendingRequest.created_at).toLocaleDateString()} are currently under review by authority. They will be applied once approved.`
+                        : pendingRequest.status === 'approved'
+                          ? `Your changes have been approved, but please note the feedback: "${pendingRequest.admin_feedback || 'No detail provided.'}"`
+                          : `Your last request was reviewed. Reason: "${pendingRequest.admin_feedback || 'No detail provided.'}"`}
+                    </p>
+                  </div>
                 </div>
+              )}
 
-                {/* Initiated Name - only shown if Initiated */}
-                {formData.initiationStatus === 'initiated' && (
-                  <>
-                    <div>
-                      <label htmlFor="initiatedName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                        Initiated Name <span className="text-red-500">*</span>
+              {/* Group 1: Initiation Details - Indigo Theme */}
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4 transition-all hover:bg-indigo-50 hover:shadow-sm">
+                <h3 className="text-sm font-bold text-indigo-800 mb-4 border-b border-indigo-100 pb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                  Initiation Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  {/* Initiated/Aspiring Field */}
+                  <div>
+                    <label htmlFor="initiationStatus" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Initiated/Aspiring
+                    </label>
+                    <select
+                      id="initiationStatus"
+                      value={formData.initiationStatus}
+                      onChange={(e) => {
+                        const newStatus = e.target.value as 'initiated' | 'aspiring' | '';
+                        setFormData(prev => {
+                          if (newStatus === 'initiated' && prev.initiationStatus === 'aspiring') {
+                            return { ...prev, initiationStatus: newStatus, aspiringSpiritualMasterName: '' };
+                          } else if (newStatus === 'aspiring' && prev.initiationStatus === 'initiated') {
+                            return { ...prev, initiationStatus: newStatus, initiatedName: '', spiritualMasterName: '' };
+                          } else {
+                            return { ...prev, initiationStatus: newStatus };
+                          }
+                        });
+                      }}
+                      required
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-indigo-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
+                    >
+                      <option value="">Select...</option>
+                      <option value="initiated">Initiated</option>
+                      <option value="aspiring">Aspiring</option>
+                    </select>
+                  </div>
+
+                  {/* Initiated Name - only shown if Initiated */}
+                  {formData.initiationStatus === 'initiated' && (
+                    <>
+                      <div>
+                        <label htmlFor="initiatedName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                          Initiated Name
+                        </label>
+                        <input
+                          id="initiatedName"
+                          type="text"
+                          value={formData.initiatedName}
+                          onChange={(e) => {
+                            const sanitized = sanitizeTextInput(e.target.value);
+                            setFormData({ ...formData, initiatedName: sanitized });
+                            if (fieldErrors.initiatedName) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.initiatedName;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          required
+                          placeholder="Enter your initiated name"
+                          className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.initiatedName
+                            ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
+                            : 'border-indigo-100 focus:ring-indigo-500 focus:border-indigo-500'
+                            }`}
+                        />
+                        {fieldErrors.initiatedName && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.initiatedName}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label htmlFor="spiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                          Spiritual Master Name
+                        </label>
+                        <input
+                          id="spiritualMasterName"
+                          type="text"
+                          value={formData.spiritualMasterName}
+                          onChange={(e) => {
+                            const sanitized = sanitizeTextInput(e.target.value);
+                            setFormData({ ...formData, spiritualMasterName: sanitized });
+                            if (fieldErrors.spiritualMasterName) {
+                              setFieldErrors(prev => {
+                                const newErrors = { ...prev };
+                                delete newErrors.spiritualMasterName;
+                                return newErrors;
+                              });
+                            }
+                          }}
+                          required
+                          placeholder="Enter your spiritual master name"
+                          className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.spiritualMasterName
+                            ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
+                            : 'border-indigo-100 focus:ring-indigo-500 focus:border-indigo-500'
+                            }`}
+                        />
+                        {fieldErrors.spiritualMasterName && (
+                          <p className="mt-1 text-xs text-red-600">{fieldErrors.spiritualMasterName}</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Aspiring Spiritual Master Name - only shown if Aspiring */}
+                  {formData.initiationStatus === 'aspiring' && (
+                    <div className="sm:col-span-2 lg:col-span-2">
+                      <label htmlFor="aspiringSpiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        Aspiring Spiritual Master Name
                       </label>
                       <input
-                        id="initiatedName"
+                        id="aspiringSpiritualMasterName"
                         type="text"
-                        value={formData.initiatedName}
+                        value={formData.aspiringSpiritualMasterName}
                         onChange={(e) => {
                           const sanitized = sanitizeTextInput(e.target.value);
-                          setFormData({ ...formData, initiatedName: sanitized });
-                          if (fieldErrors.initiatedName) {
+                          setFormData({ ...formData, aspiringSpiritualMasterName: sanitized });
+                          if (fieldErrors.aspiringSpiritualMasterName) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
-                              delete newErrors.initiatedName;
+                              delete newErrors.aspiringSpiritualMasterName;
                               return newErrors;
                             });
                           }
                         }}
-                        required
-                        placeholder="Enter your initiated name"
-                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.initiatedName
+                        placeholder="Enter aspiring spiritual master name (optional)"
+                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.aspiringSpiritualMasterName
                           ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                          : 'border-purple-100 focus:ring-purple-500 focus:border-purple-500'
+                          : 'border-indigo-100 focus:ring-indigo-500 focus:border-indigo-500'
                           }`}
                       />
-                      {fieldErrors.initiatedName && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.initiatedName}</p>
+                      {fieldErrors.aspiringSpiritualMasterName && (
+                        <p className="mt-1 text-xs text-red-600">{fieldErrors.aspiringSpiritualMasterName}</p>
                       )}
                     </div>
-                    <div>
-                      <label htmlFor="spiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                        Spiritual Master Name <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        id="spiritualMasterName"
-                        type="text"
-                        value={formData.spiritualMasterName}
-                        onChange={(e) => {
-                          const sanitized = sanitizeTextInput(e.target.value);
-                          setFormData({ ...formData, spiritualMasterName: sanitized });
-                          if (fieldErrors.spiritualMasterName) {
-                            setFieldErrors(prev => {
-                              const newErrors = { ...prev };
-                              delete newErrors.spiritualMasterName;
-                              return newErrors;
-                            });
-                          }
-                        }}
-                        required
-                        placeholder="Enter your spiritual master name"
-                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.spiritualMasterName
-                          ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                          : 'border-purple-100 focus:ring-purple-500 focus:border-purple-500'
-                          }`}
-                      />
-                      {fieldErrors.spiritualMasterName && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.spiritualMasterName}</p>
-                      )}
-                    </div>
-                  </>
-                )}
+                  )}
+                </div>
+              </div>
 
-                {/* Aspiring Spiritual Master Name - only shown if Aspiring */}
-                {formData.initiationStatus === 'aspiring' && (
-                  <div className="sm:col-span-2 lg:col-span-2">
-                    <label htmlFor="aspiringSpiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                      Aspiring Spiritual Master Name
+              {/* Group 2: Spiritual Practice - Amber Theme */}
+              <div className="bg-amber-50/50 border border-amber-100 rounded-xl p-4 transition-all hover:bg-amber-50 hover:shadow-sm">
+                <h3 className="text-sm font-bold text-amber-800 mb-4 border-b border-amber-100 pb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  Spiritual Practice
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  {/* Ashram */}
+                  <div>
+                    <label htmlFor="ashram" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Ashram
+                    </label>
+                    <select
+                      id="ashram"
+                      value={formData.ashram}
+                      onChange={(e) => setFormData({ ...formData, ashram: e.target.value })}
+                      required
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
+                    >
+                      <option value="">Select Ashram</option>
+                      <option value="Student">Student</option>
+                      <option value="Not decided">Not Decided</option>
+                      <option value="Gauranga Sabha">Gauranga Sabha</option>
+                      <option value="Nityananda Sabha">Nityananda Sabha</option>
+                      <option value="Grihastha">Grihastha Ashram</option>
+                      <option value="Brahmachari">Brahmachari Ashram</option>
+                      <option value="Staying Single (Not planing to Marry)">Staying Single (Not planning to Marry)</option>
+                    </select>
+                    {fieldErrors.ashram && (
+                      <p className="mt-1 text-xs text-red-600">{fieldErrors.ashram}</p>
+                    )}
+                  </div>
+
+                  {/* Introduced to KC */}
+                  <div>
+                    <label htmlFor="introducedToKcIn" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Introduced to KC in (Year)
                     </label>
                     <input
-                      id="aspiringSpiritualMasterName"
+                      id="introducedToKcIn"
                       type="text"
-                      value={formData.aspiringSpiritualMasterName}
-                      onChange={(e) => {
-                        const sanitized = sanitizeTextInput(e.target.value);
-                        setFormData({ ...formData, aspiringSpiritualMasterName: sanitized });
-                        if (fieldErrors.aspiringSpiritualMasterName) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.aspiringSpiritualMasterName;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      placeholder="Enter aspiring spiritual master name (optional)"
-                      className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.aspiringSpiritualMasterName
-                        ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                        : 'border-purple-100 focus:ring-purple-500 focus:border-purple-500'
-                        }`}
+                      value={formData.introducedToKcIn}
+                      onChange={(e) => setFormData({ ...formData, introducedToKcIn: e.target.value })}
+                      placeholder="e.g., 2015"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
                     />
-                    {fieldErrors.aspiringSpiritualMasterName && (
-                      <p className="mt-1 text-xs text-red-600">{fieldErrors.aspiringSpiritualMasterName}</p>
-                    )}
                   </div>
-                )}
 
-                {/* Chanting Since and Rounds */}
-                <div>
-                  <label htmlFor="chantingSince" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                    Chanting Since <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="chantingSince"
-                    type="date"
-                    value={formData.chantingSince}
-                    onChange={(e) => {
-                      const selectedDate = e.target.value;
-                      const today = new Date().toISOString().split('T')[0];
-                      // Prevent future dates
-                      if (selectedDate > today) {
-                        setFieldErrors(prev => ({ ...prev, chantingSince: 'Future dates are not allowed' }));
-                        return;
-                      }
-                      setFormData({ ...formData, chantingSince: selectedDate });
-                      if (fieldErrors.chantingSince) {
-                        setFieldErrors(prev => {
-                          const newErrors = { ...prev };
-                          delete newErrors.chantingSince;
-                          return newErrors;
-                        });
-                      }
-                    }}
-                    max={new Date().toISOString().split('T')[0]}
-                    required
-                    className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors.chantingSince
-                      ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                      : 'border-purple-100 focus:ring-purple-500 focus:border-purple-500'
-                      }`}
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Future dates are not allowed</p>
-                  {fieldErrors.chantingSince && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.chantingSince}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="rounds" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                    How many Rounds
-                  </label>
-                  <input
-                    id="rounds"
-                    type="number"
-                    min="0"
-                    value={formData.rounds}
-                    onChange={(e) => setFormData({ ...formData, rounds: e.target.value })}
-                    placeholder="Enter number of rounds"
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-purple-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md"
-                  />
-                </div>
-
-                {/* Ashram */}
-                <div>
-                  <label htmlFor="ashram" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                    Ashram <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="ashram"
-                    value={formData.ashram}
-                    onChange={(e) => setFormData({ ...formData, ashram: e.target.value })}
-                    required
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-purple-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                  >
-                    <option value="">Select Ashram</option>
-                    <option value="Gauranga Sabha">Gauranga Sabha</option>
-                    <option value="Nityananda Sabha">Nityananda Sabha</option>
-                    <option value="Grihastha Ashram">Grihastha Ashram</option>
-                    <option value="Brahmachari Ashram">Brahmachari Ashram</option>
-                    <option value="Not Decided">Not Decided</option>
-                  </select>
-                  {fieldErrors.ashram && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.ashram}</p>
-                  )}
-                </div>
-
-                {/* Royal Member */}
-                <div>
-                  <label htmlFor="royalMember" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                    Royal Member <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="royalMember"
-                    value={formData.royalMember}
-                    onChange={(e) => setFormData({ ...formData, royalMember: e.target.value as 'yes' | 'no' | '' })}
-                    required
-                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-purple-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
-                  >
-                    <option value="">Select...</option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                  </select>
-                  {fieldErrors.royalMember && (
-                    <p className="mt-1 text-xs text-red-600">{fieldErrors.royalMember}</p>
-                  )}
-                </div>
-
-                {/* Brahmachari Counselor */}
-                <div className="sm:col-span-2 lg:col-span-1 relative" style={{ zIndex: 1000 }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="brahmachariCounselor" className="block text-xs sm:text-sm font-semibold text-gray-700">
-                      Brahmachari Counselor <span className="text-red-500">*</span>
+                  {/* Rounds */}
+                  <div>
+                    <label htmlFor="rounds" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      No. of Rounds Chanting
                     </label>
-                    {!showAddBrahmachariCounselor && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddBrahmachariCounselor(true)}
-                        className="text-xs text-purple-600 hover:text-purple-700 font-bold flex items-center gap-1 hover:underline transition-all"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add New
-                      </button>
-                    )}
+                    <input
+                      id="rounds"
+                      type="number"
+                      min="0"
+                      max="64"
+                      value={formData.rounds}
+                      onChange={(e) => setFormData({ ...formData, rounds: e.target.value })}
+                      placeholder="e.g., 16"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                    />
                   </div>
-                  {!showAddBrahmachariCounselor ? (
-                    <div className="relative" style={{ zIndex: 1000 }}>
+                </div>
+              </div>
+
+              {/* Group 3: Counseling Details - Emerald Theme */}
+              <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 transition-all hover:bg-emerald-50 hover:shadow-sm">
+                <h3 className="text-sm font-bold text-emerald-800 mb-4 border-b border-emerald-100 pb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  Counseling Details
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  <div>
+                    <label htmlFor="counselor" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Counselor Name
+                    </label>
+                    <SearchableSelect
+                      options={[
+                        ...counselors.map(c => ({ id: c.name, name: c.name })),
+                        { id: 'None', name: 'None' },
+                        { id: 'Other', name: 'Other' }
+                      ]}
+                      value={formData.counselor}
+                      onChange={(value) => setFormData({ ...formData, counselor: value })}
+                      placeholder="Select Counselor"
+                      disabled={loadingCounselors}
+                    />
+                  </div>
+
+                  {formData.counselor === 'Other' && (
+                    <div className="animate-fadeIn">
+                      <label htmlFor="otherCounselor" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        Other Counselor Name
+                      </label>
                       <input
-                        ref={brahmachariCounselorInputRef}
+                        id="otherCounselor"
                         type="text"
-                        id="brahmachariCounselor"
-                        value={brahmachariCounselorSearch}
-                        onChange={(e) => {
-                          const sanitized = sanitizeTextInput(e.target.value);
-                          setBrahmachariCounselorSearch(sanitized);
-                          setCurrentCounselorType('brahmachari');
-
-                          if (formData.brahmachariCounselor && sanitized !== formData.brahmachariCounselor) {
-                            setFormData(prev => ({ ...prev, brahmachariCounselor: '' }));
-                          } else if (!sanitized) {
-                            setFormData(prev => ({ ...prev, brahmachariCounselor: '' }));
-                          }
-
-                          if (sanitized && brahmachariCounselorInputRef.current) {
-                            const rect = brahmachariCounselorInputRef.current.getBoundingClientRect();
-                            setDropdownPosition({
-                              top: rect.bottom + 8,
-                              left: rect.left,
-                              width: rect.width,
-                            });
-                            setShowCounselorDropdown(true);
-                          } else {
-                            setShowCounselorDropdown(false);
-                            setDropdownPosition(null);
-                          }
-
-                          if (fieldErrors.brahmachariCounselor) {
-                            setFieldErrors(prev => {
-                              const newErrors = { ...prev };
-                              delete newErrors.brahmachariCounselor;
-                              return newErrors;
-                            });
-                          }
-                        }}
-                        onFocus={(e) => {
-                          if (brahmachariCounselorInputRef.current) {
-                            const rect = brahmachariCounselorInputRef.current.getBoundingClientRect();
-                            setDropdownPosition({
-                              top: rect.bottom + 8,
-                              left: rect.left,
-                              width: rect.width,
-                            });
-                          }
-                          setCurrentCounselorType('brahmachari');
-                          if (!brahmachariCounselorSearch && !formData.brahmachariCounselor) {
-                            getCounselorsFromLocal('', 'Brahmachari Ashram').then(counselors => {
-                              setAvailableBrahmachariCounselors(counselors);
-                              setShowCounselorDropdown(true);
-                            });
-                          } else {
-                            setShowCounselorDropdown(true);
-                            getCounselorsFromLocal(brahmachariCounselorSearch, 'Brahmachari Ashram').then(counselors => {
-                              setAvailableBrahmachariCounselors(counselors);
-                            });
-                          }
-                        }}
-                        onBlur={() => {
-                          setTimeout(() => {
-                            setShowCounselorDropdown(false);
-                            setDropdownPosition(null);
-                            if (formData.brahmachariCounselor && formData.brahmachariCounselor.trim()) {
-                              const validation = validateTextInput(formData.brahmachariCounselor, 'Brahmachari Counselor', 100);
-                              if (!validation.valid) {
-                                setFieldErrors(prev => ({ ...prev, brahmachariCounselor: validation.error || 'Invalid counselor name' }));
-                              }
-                            }
-                          }, 200);
-                        }}
-                        placeholder={formData.brahmachariCounselor ? formData.brahmachariCounselor : "Search Brahmachari counselor by name..."}
-                        required
-                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.brahmachariCounselor
-                          ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                          : 'border-purple-100 focus:ring-purple-500 focus:border-purple-500'
-                          }`}
+                        value={formData.otherCounselor}
+                        onChange={(e) => setFormData({ ...formData, otherCounselor: e.target.value })}
+                        placeholder="Enter counselor name"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-emerald-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-900 bg-emerald-50/50 hover:bg-emerald-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
                       />
-                      {fieldErrors.brahmachariCounselor && (
-                        <p className="mt-1 text-xs text-red-600">{fieldErrors.brahmachariCounselor}</p>
-                      )}
-                      {typeof window !== 'undefined' && showCounselorDropdown && dropdownPosition && currentCounselorType === 'brahmachari' && createPortal(
-                        <div
-                          className="fixed z-[99999] max-h-48 overflow-y-auto border-2 border-purple-300 rounded-xl bg-white shadow-2xl text-sm animate-fadeIn"
-                          style={{
-                            zIndex: 99999,
-                            position: 'fixed',
-                            top: `${dropdownPosition.top}px`,
-                            left: `${dropdownPosition.left}px`,
-                            width: `${Math.min(dropdownPosition.width, typeof window !== 'undefined' ? window.innerWidth - 32 : 400)}px`,
-                          }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                          }}
-                        >
-                          {loadingBrahmachariCounselors ? (
-                            <div className="p-3 sm:p-4 text-sm text-gray-500 flex items-center gap-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                              Loading...
-                            </div>
-                          ) : availableBrahmachariCounselors.length > 0 ? (
-                            availableBrahmachariCounselors.map(counselor => (
-                              <button
-                                key={counselor.id}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                }}
-                                onClick={() => {
-                                  const sanitizedCounselor = sanitizeTextInput(counselor.name);
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    brahmachariCounselor: sanitizedCounselor,
-                                    brahmachariCounselorEmail: counselor.email
-                                  }));
-                                  setBrahmachariCounselorSearch(sanitizedCounselor);
-                                  setShowCounselorDropdown(false);
-                                  setDropdownPosition(null);
-                                  setCurrentCounselorType(null);
-                                }}
-                                className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-all duration-200 text-xs sm:text-sm transform hover:scale-[1.02] hover:translate-x-1 hover:shadow-sm"
-                              >
-                                <div className="font-semibold text-gray-900">{counselor.name}</div>
-                                <div className="text-xs text-purple-600 mt-0.5">📍 {counselor.city}</div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="p-3 sm:p-4 text-xs sm:text-sm text-gray-500">No Brahmachari counselors found.</div>
-                          )}
-                        </div>,
-                        document.body
-                      )}
-                    </div>
-                  ) : (
-                    <div className="border-2 border-purple-200 rounded-lg sm:rounded-xl p-3 bg-purple-50 animate-fadeInUp shadow-inner space-y-2 relative" style={{ zIndex: 1000 }}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-purple-800">Add New Counselor</span>
-                        <button onClick={(e) => { e.preventDefault(); setShowAddBrahmachariCounselor(false); setNewBrahmachariCounselor({ name: '', mobile: '', email: '', city: '' }); }} className="text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-3 w-3" /></button>
-                      </div>
-                      <input
-                        type="text"
-                        value={newBrahmachariCounselor.name}
-                        onChange={(e) => setNewBrahmachariCounselor({ ...newBrahmachariCounselor, name: e.target.value })}
-                        placeholder="Name*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.name && <p className="text-xs text-red-600">{counselorFieldErrors.name}</p>}
-
-                      <input
-                        type="tel"
-                        value={newBrahmachariCounselor.mobile}
-                        onChange={(e) => setNewBrahmachariCounselor({ ...newBrahmachariCounselor, mobile: e.target.value })}
-                        placeholder="Mobile Number*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.mobile && <p className="text-xs text-red-600">{counselorFieldErrors.mobile}</p>}
-
-                      <input
-                        type="email"
-                        value={newBrahmachariCounselor.email}
-                        onChange={(e) => setNewBrahmachariCounselor({ ...newBrahmachariCounselor, email: e.target.value })}
-                        placeholder="Email (lowercase)*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.email && <p className="text-xs text-red-600">{counselorFieldErrors.email}</p>}
-
-                      <input
-                        type="text"
-                        value={newBrahmachariCounselor.city}
-                        onChange={(e) => setNewBrahmachariCounselor({ ...newBrahmachariCounselor, city: e.target.value })}
-                        placeholder="Temple Connected To*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.city && <p className="text-xs text-red-600">{counselorFieldErrors.city}</p>}
-
-                      <button
-                        onClick={handleAddBrahmachariCounselor}
-                        disabled={addingBrahmachariCounselor}
-                        type="button"
-                        className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50"
-                      >
-                        {addingBrahmachariCounselor ? 'Adding...' : 'Add Counselor'}
-                      </button>
-                    </div>
-                  )}
-                  {formData.brahmachariCounselor && (
-                    <div className="mt-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-                      <p className="text-xs text-purple-800 flex items-center gap-2">
-                        <span className="font-semibold">✓ Selected:</span>
-                        <span className="break-words">{formData.brahmachariCounselor}</span>
-                      </p>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Grihastha Counselor (Optional) */}
-                <div className="sm:col-span-2 lg:col-span-1 relative" style={{ zIndex: 999 }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <label htmlFor="grihasthaCounselor" className="block text-xs font-medium text-gray-700">
-                      Grihastha Counselor <span className="text-gray-500 text-xs">(Optional)</span>
+              {/* Group 4: Current Location - Sky Theme */}
+              <div className="bg-sky-50/50 border border-sky-100 rounded-xl p-4 transition-all hover:bg-sky-50 hover:shadow-sm">
+                <h3 className="text-sm font-bold text-sky-800 mb-4 border-b border-sky-100 pb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-500"></span>
+                  Current Location
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  <div>
+                    <label htmlFor="currentTemple" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Current Temple
                     </label>
-                    {!showAddGrihasthaCounselor && (
-                      <button
-                        type="button"
-                        onClick={() => setShowAddGrihasthaCounselor(true)}
-                        className="text-xs text-purple-600 hover:text-purple-700 font-bold flex items-center gap-1 hover:underline transition-all"
-                      >
-                        <Plus className="h-3 w-3" />
-                        Add New
-                      </button>
-                    )}
+                    <SearchableSelect
+                      options={[
+                        ...temples.map(t => ({ id: t.name, name: t.name }))
+                      ]}
+                      value={formData.currentTemple}
+                      onChange={(value) => setFormData({ ...formData, currentTemple: value })}
+                      placeholder="Select Current Temple"
+                      disabled={loadingTemples}
+                    />
                   </div>
-                  {!showAddGrihasthaCounselor ? (
-                    <div className="relative" style={{ zIndex: 999 }}>
+
+                  <div>
+                    <label htmlFor="currentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Current Center
+                    </label>
+                    <SearchableSelect
+                      options={[
+                        ...centers.map(c => ({ id: c.name, name: c.name })),
+                        { id: 'Other', name: 'Other' }
+                      ]}
+                      value={formData.currentCenter}
+                      onChange={(value) => setFormData({ ...formData, currentCenter: value, center: value })}
+                      placeholder="Select Current Center"
+                      disabled={loadingCenters || !formData.currentTemple || formData.currentTemple === 'None'}
+                    />
+                  </div>
+
+                  {formData.currentCenter === 'Other' && (
+                    <div className="animate-fadeIn">
+                      <label htmlFor="otherCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        Other Center Name
+                      </label>
                       <input
-                        ref={grihasthaCounselorInputRef}
+                        id="otherCenter"
                         type="text"
-                        id="grihasthaCounselor"
-                        value={grihasthaCounselorSearch}
-                        onChange={(e) => {
-                          const sanitized = sanitizeTextInput(e.target.value);
-                          setGrihasthaCounselorSearch(sanitized);
-
-                          if (formData.grihasthaCounselor && sanitized !== formData.grihasthaCounselor) {
-                            setFormData(prev => ({ ...prev, grihasthaCounselor: '' }));
-                          } else if (!sanitized) {
-                            setFormData(prev => ({ ...prev, grihasthaCounselor: '' }));
-                          }
-
-                          if (sanitized && grihasthaCounselorInputRef.current) {
-                            const rect = grihasthaCounselorInputRef.current.getBoundingClientRect();
-                            setDropdownPosition({
-                              top: rect.bottom + 8,
-                              left: rect.left,
-                              width: rect.width,
-                            });
-                            setShowCounselorDropdown(true);
-                            setCurrentCounselorType('grihastha');
-                          } else {
-                            setShowCounselorDropdown(false);
-                            setDropdownPosition(null);
-                            setCurrentCounselorType(null);
-                          }
-                        }}
-                        onFocus={() => {
-                          if (grihasthaCounselorInputRef.current) {
-                            const rect = grihasthaCounselorInputRef.current.getBoundingClientRect();
-                            setDropdownPosition({
-                              top: rect.bottom + 8,
-                              left: rect.left,
-                              width: rect.width,
-                            });
-                          }
-                          setCurrentCounselorType('grihastha');
-                          if (!grihasthaCounselorSearch && !formData.grihasthaCounselor) {
-                            getCounselorsFromLocal('', 'Grihastha Ashram').then(counselors => {
-                              setAvailableGrihasthaCounselors(counselors);
-                              setShowCounselorDropdown(true);
-                            });
-                          } else {
-                            setShowCounselorDropdown(true);
-                            getCounselorsFromLocal(grihasthaCounselorSearch, 'Grihastha Ashram').then(counselors => {
-                              setAvailableGrihasthaCounselors(counselors);
-                            });
-                          }
-                        }}
-                        onBlur={() => {
-                          setTimeout(() => {
-                            setShowCounselorDropdown(false);
-                            setDropdownPosition(null);
-                            setCurrentCounselorType(null);
-                          }, 200);
-                        }}
-                        placeholder={formData.grihasthaCounselor ? formData.grihasthaCounselor : "Search Grihastha counselor by name..."}
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-purple-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-purple-50/50 hover:bg-purple-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md"
+                        value={formData.otherCenter}
+                        onChange={(e) => setFormData({ ...formData, otherCenter: e.target.value })}
+                        placeholder="Enter center name"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-sky-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-gray-900 bg-sky-50/50 hover:bg-sky-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
                       />
-                      {typeof window !== 'undefined' && showCounselorDropdown && dropdownPosition && currentCounselorType === 'grihastha' && createPortal(
-                        <div
-                          className="fixed z-[99998] max-h-48 overflow-y-auto border-2 border-purple-300 rounded-xl bg-white shadow-2xl text-sm animate-fadeIn"
-                          style={{
-                            zIndex: 99998,
-                            position: 'fixed',
-                            top: `${dropdownPosition.top}px`,
-                            left: `${dropdownPosition.left}px`,
-                            width: `${Math.min(dropdownPosition.width, typeof window !== 'undefined' ? window.innerWidth - 32 : 400)}px`,
-                          }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                          }}
-                        >
-                          {loadingGrihasthaCounselors ? (
-                            <div className="p-3 sm:p-4 text-sm text-gray-500 flex items-center gap-2">
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                              Loading...
-                            </div>
-                          ) : availableGrihasthaCounselors.length > 0 ? (
-                            availableGrihasthaCounselors.map(counselor => (
-                              <button
-                                key={counselor.id}
-                                type="button"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                }}
-                                onClick={() => {
-                                  const sanitizedCounselor = sanitizeTextInput(counselor.name);
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    grihasthaCounselor: sanitizedCounselor,
-                                    grihasthaCounselorEmail: counselor.email
-                                  }));
-                                  setGrihasthaCounselorSearch(sanitizedCounselor);
-                                  setShowCounselorDropdown(false);
-                                  setDropdownPosition(null);
-                                  setCurrentCounselorType(null);
-                                }}
-                                className="w-full text-left px-3 sm:px-4 py-2 sm:py-3 hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-all duration-200 text-xs sm:text-sm transform hover:scale-[1.02] hover:translate-x-1 hover:shadow-sm"
-                              >
-                                <div className="font-semibold text-gray-900">{counselor.name}</div>
-                                <div className="text-xs text-purple-600 mt-0.5">📍 {counselor.city}</div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="p-3 sm:p-4 text-xs sm:text-sm text-gray-500">No Grihastha counselors found.</div>
-                          )}
-                        </div>,
-                        document.body
-                      )}
-                    </div>
-                  ) : (
-                    <div className="border-2 border-purple-200 rounded-lg sm:rounded-xl p-3 bg-purple-50 animate-fadeInUp shadow-inner space-y-2 relative" style={{ zIndex: 999 }}>
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-purple-800">Add New Counselor</span>
-                        <button onClick={(e) => { e.preventDefault(); setShowAddGrihasthaCounselor(false); setNewGrihasthaCounselor({ name: '', mobile: '', email: '', city: '' }); }} className="text-gray-500 hover:text-gray-700 bg-white rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-3 w-3" /></button>
-                      </div>
-                      <input
-                        type="text"
-                        value={newGrihasthaCounselor.name}
-                        onChange={(e) => setNewGrihasthaCounselor({ ...newGrihasthaCounselor, name: e.target.value })}
-                        placeholder="Name*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.name && <p className="text-xs text-red-600">{counselorFieldErrors.name}</p>}
-
-                      <input
-                        type="tel"
-                        value={newGrihasthaCounselor.mobile}
-                        onChange={(e) => setNewGrihasthaCounselor({ ...newGrihasthaCounselor, mobile: e.target.value })}
-                        placeholder="Mobile Number*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.mobile && <p className="text-xs text-red-600">{counselorFieldErrors.mobile}</p>}
-
-                      <input
-                        type="email"
-                        value={newGrihasthaCounselor.email}
-                        onChange={(e) => setNewGrihasthaCounselor({ ...newGrihasthaCounselor, email: e.target.value })}
-                        placeholder="Email (lowercase)*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.email && <p className="text-xs text-red-600">{counselorFieldErrors.email}</p>}
-
-                      <input
-                        type="text"
-                        value={newGrihasthaCounselor.city}
-                        onChange={(e) => setNewGrihasthaCounselor({ ...newGrihasthaCounselor, city: e.target.value })}
-                        placeholder="Temple Connected To*"
-                        className="w-full px-3 py-2 text-sm border border-purple-300 rounded-lg focus:ring-2 focus:ring-purple-500 bg-white text-gray-900"
-                      />
-                      {counselorFieldErrors.city && <p className="text-xs text-red-600">{counselorFieldErrors.city}</p>}
-
-                      <button
-                        onClick={handleAddGrihasthaCounselor}
-                        disabled={addingGrihasthaCounselor}
-                        type="button"
-                        className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg text-sm font-bold hover:shadow-lg transition-all disabled:opacity-50"
-                      >
-                        {addingGrihasthaCounselor ? 'Adding...' : 'Add Counselor'}
-                      </button>
                     </div>
                   )}
-                  {formData.grihasthaCounselor && (
-                    <div className="mt-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg">
-                      <p className="text-xs text-purple-800 flex items-center gap-2">
-                        <span className="font-semibold">✓ Selected:</span>
-                        <span className="break-words">{formData.grihasthaCounselor}</span>
-                      </p>
+                </div>
+              </div>
+
+              {/* Group 5: Parent Location - Fuchsia Theme */}
+              <div className="bg-fuchsia-50/50 border border-fuchsia-100 rounded-xl p-4 transition-all hover:bg-fuchsia-50 hover:shadow-sm">
+                <h3 className="text-sm font-bold text-fuchsia-800 mb-4 border-b border-fuchsia-100 pb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500"></span>
+                  Parent Location
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 items-start">
+                  <div>
+                    <label htmlFor="parentTemple" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Parent Temple
+                    </label>
+                    <SearchableSelect
+                      options={[
+                        ...temples.map(t => ({ id: t.name, name: t.name }))
+                      ]}
+                      value={formData.parentTemple}
+                      onChange={(value) => setFormData({ ...formData, parentTemple: value })}
+                      placeholder="Select Parent Temple"
+                      disabled={loadingTemples}
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="parentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                      Parent Center
+                    </label>
+                    <SearchableSelect
+                      options={[
+                        ...parentCenters.map(c => ({ id: c.name, name: c.name })),
+                        { id: 'Other', name: 'Other' }
+                      ]}
+                      value={formData.parentCenter}
+                      onChange={(value) => setFormData({ ...formData, parentCenter: value })}
+                      placeholder="Select Parent Center"
+                      disabled={loadingParentCenters || !formData.parentTemple}
+                    />
+                  </div>
+
+                  {formData.parentCenter === 'Other' && (
+                    <div className="animate-fadeIn">
+                      <label htmlFor="otherParentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        Other Parent Center Name
+                      </label>
+                      <input
+                        id="otherParentCenter"
+                        type="text"
+                        value={formData.otherParentCenter}
+                        onChange={(e) => setFormData({ ...formData, otherParentCenter: e.target.value })}
+                        placeholder="Enter center name"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                      />
                     </div>
                   )}
                 </div>
@@ -2336,7 +1800,8 @@ export default function ProfilePage() {
           </div>
 
           {/* Education Section Card with Animations */}
-          <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1 relative z-10" style={{ zIndex: 10 }}>
+          {/* Education Section Card with Animations */}
+          <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-visible transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1 relative" style={{ zIndex: 1 }}>
             <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-4 sm:px-6 py-3 sm:py-4 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 relative z-10">
@@ -2553,7 +2018,7 @@ export default function ProfilePage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
                     <div>
                       <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1 transform transition-all duration-200 group-hover:translate-x-1">
-                        🏢 Company Name <span className="text-red-500">*</span>
+                        🏢 Company Name
                       </label>
                       <input
                         type="text"
@@ -3354,7 +2819,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Fixed Toast Notifications */}
-      <div className="fixed top-20 right-4 z-50 flex flex-col gap-4 w-full max-w-md pointer-events-none p-4">
+      <div className="fixed top-24 right-4 z-[1000000] flex flex-col gap-4 w-full max-w-md pointer-events-none p-4">
         {error && (
           <div className="pointer-events-auto bg-white border-l-4 border-red-500 text-gray-800 px-6 py-4 rounded-xl shadow-2xl flex items-start gap-4 animate-slideInRight ring-1 ring-black/5">
             <div className="flex-shrink-0">
@@ -3390,7 +2855,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Sticky Save Button - Floating Action Button Style */}
-      <div className={`fixed bottom-6 right-6 z-40 transform transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isDirty ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-32 opacity-0 scale-75 pointer-events-none'}`}>
+      <div className={`fixed bottom-6 right-6 z-[101] transform transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) ${isDirty ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-32 opacity-0 scale-75 pointer-events-none'}`}>
         <button
           type="button"
           onClick={(e) => handleSubmit({ preventDefault: () => { } } as React.FormEvent)}

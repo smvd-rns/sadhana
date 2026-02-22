@@ -12,36 +12,36 @@
  */
 export function extractFileId(url: string): string | null {
   if (!url) return null;
-  
+
   // If it's already just an ID (no URL structure)
   if (!url.includes('http') && !url.includes('/')) {
     return url;
   }
-  
+
   // Extract from uc?export=view&id= format
   const ucMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (ucMatch) {
     return ucMatch[1];
   }
-  
+
   // Extract from /file/d/FILE_ID/ format
   const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileMatch) {
     return fileMatch[1];
   }
-  
+
   // Extract from /open?id= format
   const openMatch = url.match(/\/open\?id=([a-zA-Z0-9_-]+)/);
   if (openMatch) {
     return openMatch[1];
   }
-  
+
   // If it looks like a direct file ID (alphanumeric with dashes/underscores)
   const directIdMatch = url.match(/^([a-zA-Z0-9_-]{20,})$/);
   if (directIdMatch) {
     return directIdMatch[1];
   }
-  
+
   return null;
 }
 
@@ -54,16 +54,24 @@ export function extractFileId(url: string): string | null {
  */
 export function getThumbnailUrl(url: string | null | undefined, width: number = 400, height: number = 400): string | null {
   if (!url) return null;
-  
+
   const fileId = extractFileId(url);
   if (!fileId) {
     // If we can't extract the file ID, return the original URL
     return url;
   }
-  
+
+  // Explicitly check for data URLs (base64 images)
+  if (url.startsWith('data:')) {
+    return url;
+  }
+
   // Use Google Drive thumbnail API
-  // Format: https://drive.google.com/thumbnail?id=FILE_ID&sz=w{width}-h{height}
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${width}-h${height}`;
+  // Use Google Drive thumbnail API
+  // Format: https://drive.google.com/thumbnail?id=FILE_ID&sz=s{size}
+  // valid sizes: s200, s400, s800, s1000, etc.
+  // We use width as the primary size driver
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=s${width}`;
 }
 
 /**

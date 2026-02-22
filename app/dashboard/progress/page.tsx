@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { SadhanaReport } from '@/types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Calendar, TrendingUp, BookOpen, Clock, Share2, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -27,7 +27,7 @@ export default function ProgressPage() {
       setLoading(true);
       // For 'all', fetch 6 months of data (180 days)
       const limit = timeRange === 'week' ? 7 : timeRange === 'month' ? 30 : timeRange === 'custom' ? 365 : 180;
-      const allReports = await getUserSadhanaReports(userData.id, limit);
+      const allReports = await fetchSadhanaHistory(limit);
 
       // Filter by custom date range if selected
       if (timeRange === 'custom') {

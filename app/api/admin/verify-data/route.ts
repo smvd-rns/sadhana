@@ -47,16 +47,22 @@ export async function POST(request: Request) {
 
         // Check if role 8 (Super Admin) is present
         // Role can be number or array
+        // Check if role 8 (Super Admin) or MD/Extended Roles are present
         const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
-        if (!roles.includes(8)) {
-            return NextResponse.json({ error: 'Forbidden: Super Admin access required' }, { status: 403 });
+        const allowedRoles = [8, 11, 12, 13, 14, 15, 16, 17];
+
+        const hasPermission = roles.some((r: any) => allowedRoles.includes(Number(r)));
+
+        if (!hasPermission) {
+            return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
         }
 
         // Perform Action
         const tableMap: Record<string, string> = {
             'center': 'centers',
             'city': 'cities',
-            'counselor': 'counselors'
+            'counselor': 'counselors',
+            'user': 'users'
         };
         const tableName = tableMap[type];
 
@@ -64,22 +70,48 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid type' }, { status: 400 });
         }
 
-        if (action === 'approve') {
+        if (tableName === 'users') {
+            const { reason } = body;
+            const updateData: any = {
+                reviewed_at: new Date().toISOString(),
+                reviewed_by: user.id
+            };
+
+            if (action === 'approve') {
+                updateData.verification_status = 'approved';
+                updateData.rejection_reason = null; // Clear any previous reason
+            } else if (action === 'reject') {
+                updateData.verification_status = 'rejected';
+                updateData.rejection_reason = reason || null;
+            } else {
+                return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+            }
+
             const { error } = await supabase
-                .from(tableName)
-                .update({ is_verified: true })
+                .from('users')
+                .update(updateData)
                 .in('id', targetIds);
 
             if (error) throw error;
-        } else if (action === 'reject') {
-            const { error } = await supabase
-                .from(tableName)
-                .delete()
-                .in('id', targetIds);
 
-            if (error) throw error;
         } else {
-            return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+            if (action === 'approve') {
+                const { error } = await supabase
+                    .from(tableName)
+                    .update({ is_verified: true })
+                    .in('id', targetIds);
+
+                if (error) throw error;
+            } else if (action === 'reject') {
+                const { error } = await supabase
+                    .from(tableName)
+                    .delete()
+                    .in('id', targetIds);
+
+                if (error) throw error;
+            } else {
+                return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+            }
         }
 
         return NextResponse.json({ success: true, count: targetIds.length });

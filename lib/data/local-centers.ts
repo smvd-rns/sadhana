@@ -9,6 +9,30 @@ export interface CenterData {
   city: string;
   address?: string;
   contact?: string;
+  temple_id?: string;
+  temple_name?: string;
+  project_manager_id?: string;
+  project_manager_name?: string;
+  project_advisor_id?: string;
+  project_advisor_name?: string;
+  acting_manager_id?: string;
+  acting_manager_name?: string;
+  internal_manager_id?: string;
+  internal_manager_name?: string;
+  preaching_coordinator_id?: string;
+  preaching_coordinator_name?: string;
+  morning_program_in_charge_id?: string;
+  morning_program_in_charge_name?: string;
+  mentor_id?: string;
+  mentor_name?: string;
+  frontliner_id?: string;
+  frontliner_name?: string;
+  accountant_id?: string;
+  accountant_name?: string;
+  kitchen_head_id?: string;
+  kitchen_head_name?: string;
+  study_in_charge_id?: string;
+  study_in_charge_name?: string;
 }
 
 export interface CentersData {

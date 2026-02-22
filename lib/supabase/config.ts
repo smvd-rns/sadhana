@@ -21,7 +21,7 @@ if (supabaseUrl && supabaseAnonKey) {
   // Log warning on both client and server (for debugging)
   const hasUrl = !!supabaseUrl;
   const hasKey = !!supabaseAnonKey;
-  
+
   if (typeof window === 'undefined') {
     // Server-side (API routes) - always log errors
     if (!hasUrl || !hasKey) {

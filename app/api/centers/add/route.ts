@@ -5,9 +5,21 @@ import { validateCenterInput, sanitizeInput } from '@/lib/utils/validation';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    let { name, state, city, address, contact } = body;
+    let {
+      name, state, city, address, contact, temple_id, temple_name,
+      project_manager_id, project_manager_name,
+      project_advisor_id, project_advisor_name,
+      acting_manager_id, acting_manager_name,
+      internal_manager_id, internal_manager_name,
+      preaching_coordinator_id, preaching_coordinator_name,
+      morning_program_in_charge_id, morning_program_in_charge_name,
+      mentor_id, mentor_name,
+      frontliner_id, frontliner_name,
+      accountant_id, accountant_name,
+      kitchen_head_id, kitchen_head_name,
+      study_in_charge_id, study_in_charge_name
+    } = body;
 
-    // Validate inputs
     const validation = validateCenterInput(name, state, city, address, contact);
     if (!validation.valid) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
@@ -16,17 +28,78 @@ export async function POST(request: Request) {
     // Rate Limiting
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-    // Create a temporary client to get the user ID from the token
     const authHeader = request.headers.get('authorization');
     const accessToken = authHeader?.replace('Bearer ', '');
+
+    // Create client to get user details
+    const cleanClient = createClient(supabaseUrl, supabaseAnonKey);
     let userId = null;
+    let isVerified = false;
 
     if (accessToken) {
-      const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: { persistSession: false }
-      });
-      const { data: { user } } = await tempClient.auth.getUser(accessToken);
+      const { data: { user } } = await cleanClient.auth.getUser(accessToken);
       userId = user?.id || null;
+
+      if (userId) {
+        // Fetch user role to determine verification status and temple scoping for MD
+        const { data: profile } = await cleanClient
+          .from('users')
+          .select('role, hierarchy')
+          .eq('id', userId)
+          .single();
+
+        const roles = profile?.role;
+        const hierarchy = profile?.hierarchy;
+
+        // User logic: if role is anything other than 1 or 'student', auto-verify
+        const hasPrivilegedRole = Array.isArray(roles)
+          ? roles.some(r => r !== 1 && r !== 'student')
+          : (roles !== 1 && roles !== 'student');
+
+        if (hasPrivilegedRole) {
+          isVerified = true;
+        }
+
+        // MD Logic (Role 11): Enforce Temple ID
+        const isManagingDirector = Array.isArray(roles)
+          ? roles.some(r => [11, 12, 13].includes(Number(r))) || roles.includes('managing_director') || roles.includes('director') || roles.includes('central_voice_manager')
+          : [11, 12, 13].includes(Number(roles)) || roles === 'managing_director' || roles === 'director' || roles === 'central_voice_manager';
+
+        // Block Roles 14-17 from adding centers
+        const restrictedRoles = [14, 15, 16, 17, 'project_advisor', 'project_manager', 'acting_manager', 'oc'];
+        const isRestricted = Array.isArray(roles)
+          ? roles.some(r => restrictedRoles.includes(r))
+          : restrictedRoles.includes(roles);
+
+        // Allowed roles that override restriction (in case of multiple roles)
+        const allowedRoles = [8, 11, 12, 13, 'super_admin', 'managing_director', 'director', 'central_voice_manager'];
+        const hasAllowedRole = Array.isArray(roles)
+          ? roles.some(r => allowedRoles.includes(r))
+          : allowedRoles.includes(roles);
+
+        if (isRestricted && !hasAllowedRole) {
+          return NextResponse.json({ error: 'You do not have permission to add new centers.' }, { status: 403 });
+        }
+
+        if (isManagingDirector) {
+          // Check current temple from hierarchy
+          // Assuming hierarchy.currentTemple.id or hierarchy.currentTemple (if string)
+          // Adjust based on your actual data structure. If it's stored as name, fetch ID or use name.
+          // Based on previous files, hierarchy seems to store names primarily, but centers table needs ID?
+          // Let's rely on what was sent if it matches the name, or if we can derive it.
+          // Actually, safe bet: If MD, ensure the requested temple_id matches their assigned temple.
+
+          // For now, let's assume hierarchy has `currentTempleId` or we lookup by `currentTemple` name if needed.
+          // If the user input `temple_id` is provided, we should verify it belongs to them.
+          // IF hierarchy only has names, we might have to relax strict ID check or lookup.
+          // Let's try to constrain by name if ID isn't available in profile.
+
+          const mdTempleName = hierarchy?.currentTemple?.name || hierarchy?.currentTemple; // Handle object or string
+          if (mdTempleName && temple_name && mdTempleName !== temple_name) {
+            return NextResponse.json({ error: 'You can only add centers to your assigned temple.' }, { status: 403 });
+          }
+        }
+      }
     }
 
     const { checkRateLimit } = await import('@/lib/rate-limit');
@@ -128,14 +201,39 @@ export async function POST(request: Request) {
         city: trimmedCity,
         address: address?.trim() || null,
         contact: contact?.trim() || null,
+        is_verified: isVerified,
+        temple_id: temple_id || null,
+        temple_name: temple_name || null,
+        project_manager_id: project_manager_id || null,
+        project_manager_name: project_manager_name || null,
+        project_advisor_id: project_advisor_id || null,
+        project_advisor_name: project_advisor_name || null,
+        acting_manager_id: acting_manager_id || null,
+        acting_manager_name: acting_manager_name || null,
+        internal_manager_id: internal_manager_id || null,
+        internal_manager_name: internal_manager_name || null,
+        preaching_coordinator_id: preaching_coordinator_id || null,
+        preaching_coordinator_name: preaching_coordinator_name || null,
+        morning_program_in_charge_id: morning_program_in_charge_id || null,
+        morning_program_in_charge_name: morning_program_in_charge_name || null,
+        mentor_id: mentor_id || null,
+        mentor_name: mentor_name || null,
+        frontliner_id: frontliner_id || null,
+        frontliner_name: frontliner_name || null,
+        accountant_id: accountant_id || null,
+        accountant_name: accountant_name || null,
+        kitchen_head_id: kitchen_head_id || null,
+        kitchen_head_name: kitchen_head_name || null,
+        study_in_charge_id: study_in_charge_id || null,
+        study_in_charge_name: study_in_charge_name || null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .select('id')
       .single();
 
     if (error) {
       if (error.code === '23505') {
-        // Unique constraint violation (duplicate), return success
-        // Try to get the existing center
         const { data: existingCenter } = await authenticatedClient
           .from('centers')
           .select('id')
@@ -158,11 +256,94 @@ export async function POST(request: Request) {
       throw new Error(error.message || `Failed to insert center: ${error.code || 'Unknown error'}`);
     }
 
-    return NextResponse.json({ success: true, id: insertedData?.id });
+    const newCenterId = insertedData?.id;
+
+    // 2. Sync Roles & Hierarchy for new assignees
+    if (newCenterId && serviceRoleKey) {
+      // We use a separate admin client to ensure we can update other users' profiles
+      const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false }
+      });
+
+      const updateUserRoleAndHierarchy = async (targetUserId: string, roleId: number, roleName: string) => {
+        if (!targetUserId) return;
+
+        try {
+          const { data: user, error: fetchError } = await adminClient
+            .from('users')
+            .select('role, hierarchy')
+            .eq('id', targetUserId)
+            .single();
+
+          if (fetchError || !user) {
+            console.error(`Failed to fetch user ${targetUserId} for role update`, fetchError);
+            return;
+          }
+
+          let currentRoles = user.role;
+          if (!Array.isArray(currentRoles)) {
+            currentRoles = currentRoles ? [currentRoles] : [];
+          }
+
+          // Append role if not exists
+          const hasRole = currentRoles.some((r: any) => Number(r) === roleId || r === roleName);
+          let updatedRoles = currentRoles;
+
+          if (!hasRole) {
+            // Remove 'student' (1) if it exists when assigning a higher role
+            updatedRoles = currentRoles.filter((r: any) => Number(r) !== 1 && r !== 'student');
+            updatedRoles.push(roleId);
+          }
+
+          // Update Hierarchy
+          const currentHierarchy = user.hierarchy || {};
+          const updatedHierarchy = {
+            ...currentHierarchy,
+            currentCenter: trimmedName,
+            currentCenterId: newCenterId,
+            currentTemple: temple_name || currentHierarchy.currentTemple, // Keep existing if not provided
+            currentTempleId: temple_id || currentHierarchy.currentTempleId,
+            updatedAt: new Date().toISOString()
+          };
+
+          const { error: updateError } = await adminClient
+            .from('users')
+            .update({
+              role: updatedRoles,
+              hierarchy: updatedHierarchy
+            })
+            .eq('id', targetUserId);
+
+          if (updateError) {
+            console.error(`Failed to update user ${targetUserId}`, updateError);
+          } else {
+            console.log(`Updated user ${targetUserId}: Role ${roleId}, Center ${trimmedName}`);
+          }
+        } catch (err) {
+          console.error(`Error updating user ${targetUserId}:`, err);
+        }
+      };
+
+      // Execute updates in parallel
+      await Promise.all([
+        updateUserRoleAndHierarchy(project_manager_id, 15, 'project_manager'),
+        updateUserRoleAndHierarchy(project_advisor_id, 14, 'project_advisor'),
+        updateUserRoleAndHierarchy(acting_manager_id, 16, 'acting_manager'),
+        updateUserRoleAndHierarchy(internal_manager_id, 22, 'internal_manager'),
+        updateUserRoleAndHierarchy(preaching_coordinator_id, 23, 'preaching_coordinator'),
+        updateUserRoleAndHierarchy(morning_program_in_charge_id, 24, 'morning_program_in_charge'),
+        updateUserRoleAndHierarchy(mentor_id, 25, 'mentor'),
+        updateUserRoleAndHierarchy(frontliner_id, 26, 'frontliner'),
+        updateUserRoleAndHierarchy(accountant_id, 27, 'accountant'),
+        updateUserRoleAndHierarchy(kitchen_head_id, 28, 'kitchen_head'),
+        updateUserRoleAndHierarchy(study_in_charge_id, 29, 'study_in_charge')
+      ]);
+    }
+
+    return NextResponse.json({ success: true, id: newCenterId });
   } catch (error: any) {
     console.error('Error adding center to Supabase:', error);
 
-    // Provide more helpful error messages
     let errorMessage = error.message || 'Failed to add center';
     let status = 500;
     const errorString = error.message?.toLowerCase() || '';

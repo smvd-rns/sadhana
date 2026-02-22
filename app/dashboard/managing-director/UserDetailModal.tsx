@@ -1,0 +1,607 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { User, SadhanaReport } from '@/types';
+import { fetchSadhanaReportsByRange } from '@/lib/api/sadhana-client';
+import {
+    X, Calendar, User as UserIcon, Activity, BookOpen,
+    Moon, Sun, Coffee, Bed, ChevronRight, Check, AlertCircle,
+    MapPin, Phone, Mail, Shield, Award, Briefcase, GraduationCap, Tent, Book, CheckCircle2, XCircle, Clock, Filter
+} from 'lucide-react';
+import { getRoleDisplayName } from '@/lib/utils/roles';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { format, subDays, startOfWeek, endOfWeek, parseISO, differenceInCalendarDays } from 'date-fns';
+
+const CAMP_MAPPINGS = [
+    { key: 'campDys', label: 'Discover Your Self (DYS)' },
+    { key: 'campSankalpa', label: 'Sankalpa Camp' },
+    { key: 'campSphurti', label: 'Sphurti Camp' },
+    { key: 'campUtkarsh', label: 'Utkarsh Camp' },
+    { key: 'campFaithAndDoubt', label: 'Faith & Doubt Workshop' },
+    { key: 'campSrcgdWorkshop', label: 'SRCGD Workshop' },
+    { key: 'campNistha', label: 'Nistha Camp' },
+    { key: 'campAshray', label: 'Ashray Camp' },
+];
+
+const BOOK_MAPPINGS = {
+    'Semester 3': [
+        { key: 'spbookThirdSsr15', label: 'SSR (1-5)' },
+        { key: 'spbookThirdComingBack', label: 'Coming Back' },
+        { key: 'spbookThirdPqpa', label: 'Perfect Questions, Perfect Answers' },
+        { key: 'spbookThirdMatchlessGift', label: 'Matchless Gift' },
+        { key: 'spbookThirdRajaVidya', label: 'Raja Vidya' },
+        { key: 'spbookThirdElevationKc', label: 'Elevation to KC' },
+        { key: 'spbookThirdBeyondBirthDeath', label: 'Beyond Birth & Death' },
+        { key: 'spbookThirdKrishnaReservoir', label: 'Krishna: Resvr. of Pleasure' },
+    ],
+    'Semester 4': [
+        { key: 'spbookFourthSsr68', label: 'SSR (6-8)' },
+        { key: 'spbookFourthLawsOfNature', label: 'Laws of Nature' },
+        { key: 'spbookFourthDharma', label: 'Dharma' },
+        { key: 'spbookFourthSecondChance', label: 'Second Chance' },
+        { key: 'spbookFourthIsopanishad110', label: 'Isopanishad (1-10)' },
+        { key: 'spbookFourthQueenKuntiVideo', label: 'Queen Kunti (Video)' },
+        { key: 'spbookFourthEnlightenmentNatural', label: 'Enlightenment' },
+        { key: 'spbookFourthKrishnaBook121', label: 'Krishna Book (1-21)' },
+    ],
+    'Semester 5': [
+        { key: 'spbookFifthLifeFromLife', label: 'Life From Life' },
+        { key: 'spbookFifthPrahladTeachings', label: 'Teachings of Prahlada' },
+        { key: 'spbookFifthJourneySelfDiscovery', label: 'Journey of Self Discovery' },
+        { key: 'spbookFifthQueenKuntiHearing', label: 'Queen Kunti (Hearing)' },
+        { key: 'spbookFifthLordKapila', label: 'Lord Kapila' },
+        { key: 'spbookFifthNectar16', label: 'Nectar of Instruction (1-6)' },
+        { key: 'spbookFifthGita16', label: 'Gita (1-6)' },
+        { key: 'spbookFifthKrishnaBook2428', label: 'Krishna Book (24-28)' },
+    ],
+    'Semester 6': [
+        { key: 'spbookSixthNectar711', label: 'Nectar of Instruction (7-11)' },
+        { key: 'spbookSixthPathPerfection', label: 'Path of Perfection' },
+        { key: 'spbookSixthCivilisationTranscendence', label: 'Civilization & Transcendence' },
+        { key: 'spbookSixthHareKrishnaChallenge', label: 'Hare Krishna Challenge' },
+        { key: 'spbookSixthGita712', label: 'Gita (7-12)' },
+        { key: 'spbookSixthSb1stCanto16', label: 'SB 1st Canto (1-6)' },
+        { key: 'spbookSixthKrishnaBook3559', label: 'Krishna Book (35-59)' },
+    ],
+    'Semester 7': [
+        { key: 'spbookSeventhGita1318', label: 'Gita (13-18)' },
+        { key: 'spbookSeventhSb1stCanto713', label: 'SB 1st Canto (7-13)' },
+        { key: 'spbookSeventhKrishnaBook6378', label: 'Krishna Book (63-78)' },
+    ],
+    'Semester 8': [
+        { key: 'spbookEighthSb1stCanto1419', label: 'SB 1st Canto (14-19)' },
+        { key: 'spbookEighthKrishnaBook7889', label: 'Krishna Book (78-89)' },
+    ]
+};
+
+interface UserDetailModalProps {
+    user: User | null;
+    isOpen: boolean;
+    onClose: () => void;
+}
+
+export default function UserDetailModal({ user, isOpen, onClose }: UserDetailModalProps) {
+    const [activeTab, setActiveTab] = useState<'profile' | 'sadhana'>('profile');
+    const [loadingSadhana, setLoadingSadhana] = useState(false);
+
+    // Custom Date Range State
+    const [dateRange, setDateRange] = useState({
+        from: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+        to: format(new Date(), 'yyyy-MM-dd'),
+    });
+
+    const [reports, setReports] = useState<SadhanaReport[]>([]);
+
+    // Reset state when modal opens/closes or user changes
+    useEffect(() => {
+        if (isOpen && user) {
+            setActiveTab('profile');
+            // Default to last 30 days
+            setDateRange({
+                from: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
+                to: format(new Date(), 'yyyy-MM-dd'),
+            });
+            setReports([]);
+        }
+    }, [isOpen, user]);
+
+    // Fetch sadhana details based on date range
+    useEffect(() => {
+        if (isOpen && user && activeTab === 'sadhana') {
+            loadSadhanaDetails();
+        }
+    }, [isOpen, user, activeTab, dateRange]);
+
+    const loadSadhanaDetails = async () => {
+        if (!user) return;
+        setLoadingSadhana(true);
+        try {
+            console.log('Fetching reports for range:', dateRange);
+            const fetchedReports = await fetchSadhanaReportsByRange(dateRange.from, dateRange.to, user.id);
+            console.log('Fetched reports:', fetchedReports);
+            setReports(fetchedReports);
+        } catch (error) {
+            console.error('Error loading sadhana details:', error);
+        } finally {
+            setLoadingSadhana(false);
+        }
+    };
+
+    // Prepare weekly aggregated data for Body & Soul percentage chart
+    const getWeeklyChartData = () => {
+        if (!reports.length) return [];
+
+        const weeklyData: { [key: string]: { reports: SadhanaReport[], weekStart: Date, weekEnd: Date } } = {};
+
+        reports.forEach((report) => {
+            const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
+            const weekStart = startOfWeek(reportDate, { weekStartsOn: 1 }); // Monday
+            const weekEnd = endOfWeek(reportDate, { weekStartsOn: 1 }); // Sunday
+            const weekKey = format(weekStart, 'yyyy-MM-dd');
+
+            if (!weeklyData[weekKey]) {
+                weeklyData[weekKey] = { reports: [], weekStart, weekEnd };
+            }
+            weeklyData[weekKey].reports.push(report);
+        });
+
+        return Object.values(weeklyData)
+            .map(({ reports: weekReports, weekStart, weekEnd }) => {
+                // Calculate totals for the week
+                const weeklyJapa = weekReports.reduce((sum, r) => sum + (r.japa || 0), 0);
+                const weeklyHearing = weekReports.reduce((sum, r) => sum + (r.hearing || 0), 0);
+                const weeklyReading = weekReports.reduce((sum, r) => sum + (r.reading || 0), 0);
+
+                const weeklyToBed = weekReports.reduce((sum, r) => sum + (r.toBed || 0), 0);
+                const weeklyWakeUp = weekReports.reduce((sum, r) => sum + (r.wakeUp || 0), 0);
+                const weeklyDailyFilling = weekReports.reduce((sum, r) => sum + (r.dailyFilling || 0), 0);
+                const weeklyDaySleep = weekReports.reduce((sum, r) => sum + (r.daySleep || 0), 0);
+
+                // Weekly Soul Total Possible = 70 * 3 = 210
+                // NOTE: This assumes 7 days. If partial week, maybe we should adjust? 
+                // For now, keeping it simple as requested.
+                const avgSoulPercent = ((weeklyJapa + weeklyHearing + weeklyReading) / 210) * 100;
+
+                // Weekly Body Total Possible = 70 * 4 = 280
+                const avgBodyPercent = ((weeklyToBed + weeklyWakeUp + weeklyDailyFilling + weeklyDaySleep) / 280) * 100;
+
+                return {
+                    week: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d')}`,
+                    bodyPercent: Math.min(100, Math.round(avgBodyPercent * 10) / 10),
+                    soulPercent: Math.min(100, Math.round(avgSoulPercent * 10) / 10),
+                };
+            })
+            .sort((a, b) => {
+                const dateA = new Date(a.week.split(' - ')[0]);
+                const dateB = new Date(b.week.split(' - ')[0]);
+                return dateA.getTime() - dateB.getTime();
+            });
+    };
+
+    const weeklyChartData = getWeeklyChartData();
+
+    // Calculate aggregated stats for the selected period
+    const getAggregatedStats = () => {
+        if (!reports.length) return { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0 };
+
+        const totals = reports.reduce((acc, report) => ({
+            japa: acc.japa + (report.japa || 0),
+            hearing: acc.hearing + (report.hearing || 0),
+            reading: acc.reading + (report.reading || 0),
+            toBed: acc.toBed + (report.toBed || 0),
+            wakeUp: acc.wakeUp + (report.wakeUp || 0),
+            dailyFilling: acc.dailyFilling + (report.dailyFilling || 0),
+            daySleep: acc.daySleep + (report.daySleep || 0),
+        }), { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0 });
+
+        return totals;
+    };
+
+    const periodStats = getAggregatedStats();
+
+    // Calculate averages based on total days in the selected range
+    const totalDaysInRange = Math.max(1, differenceInCalendarDays(parseISO(dateRange.to), parseISO(dateRange.from)) + 1);
+
+    const averages = {
+        soulPercent: Math.round(((periodStats.japa + periodStats.hearing + periodStats.reading) / (30 * totalDaysInRange)) * 100),
+        bodyPercent: Math.round(((periodStats.toBed + periodStats.wakeUp + periodStats.dailyFilling + periodStats.daySleep) / (40 * totalDaysInRange)) * 100)
+    };
+
+
+    if (!isOpen || !user) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="bg-[#fffdfa] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl shadow-orange-100/20 w-[92%] sm:w-full max-w-4xl overflow-hidden transform transition-all scale-100 border sm:border-amber-200 animate-in zoom-in-95 duration-300 relative flex flex-col h-[80vh] sm:h-auto sm:max-h-[90vh]">
+
+                {/* Header */}
+                <div className="relative z-10 px-4 py-4 sm:px-8 sm:py-5 border-b border-gray-100 flex justify-between items-center bg-white/50 backdrop-blur-sm">
+                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-lg flex-shrink-0">
+                            {user.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="overflow-hidden">
+                            <h2 className="text-base sm:text-xl font-black text-gray-900 tracking-tight truncate">{user.name}</h2>
+                            <p className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest truncate">{user.email}</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 sm:p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 transition-all flex-shrink-0 ml-4"
+                        aria-label="Close modal"
+                    >
+                        <X className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5px]" />
+                    </button>
+                </div>
+
+                {/* Tabs */}
+                <div className="px-4 sm:px-8 py-1 bg-gray-50/50 border-b border-gray-100 flex gap-2 sm:gap-4">
+                    <button
+                        onClick={() => setActiveTab('profile')}
+                        className={`py-3 px-2 sm:px-4 text-[10px] sm:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'profile'
+                            ? 'border-primary-500 text-primary-600'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        <UserIcon className="inline-block w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 mb-0.5" />
+                        Profile
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('sadhana')}
+                        className={`py-3 px-2 sm:px-4 text-[10px] sm:text-xs font-black uppercase tracking-widest border-b-2 transition-all ${activeTab === 'sadhana'
+                            ? 'border-amber-500 text-amber-600'
+                            : 'border-transparent text-gray-400 hover:text-gray-600'
+                            }`}
+                    >
+                        <Activity className="inline-block w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 mb-0.5" />
+                        Sadhana
+                    </button>
+                </div>
+
+                {/* Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#fffdfa]">
+
+                    {/* Profile Tab */}
+                    {activeTab === 'profile' && (
+                        <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Personal Info */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <UserIcon className="h-4 w-4 text-blue-500" /> Personal Information
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">Phone</span>
+                                            <span className="text-sm font-bold text-gray-700">{user.phone || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Date of Birth</span>
+                                            <span className="text-sm font-bold text-gray-700">{user.birthDate || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">Roles</span>
+                                            <div className="flex flex-wrap gap-1 sm:justify-end">
+                                                {(Array.isArray(user.role) ? user.role : [user.role]).map((r: any, i: number) => {
+                                                    const roleVal = Number(r);
+                                                    return (
+                                                        <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[9px] sm:text-[10px] uppercase font-bold">
+                                                            {getRoleDisplayName(roleVal as any)}
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Status</span>
+                                            <span className={`w-fit px-2 py-1 rounded text-[10px] sm:text-xs font-bold uppercase ${user.verificationStatus === 'approved' ? 'bg-green-100 text-green-700' :
+                                                user.verificationStatus === 'rejected' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                {user.verificationStatus}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Hierarchy Info */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-purple-500" /> Spiritual Hierarchy
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">Temple</span>
+                                            <span className="text-sm font-bold text-gray-700 sm:text-right">{(user.hierarchy?.currentTemple as any)?.name || user.hierarchy?.currentTemple || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">Center</span>
+                                            <span className="text-sm font-bold text-gray-700 sm:text-right">
+                                                {(() => {
+                                                    const center = (user.hierarchy?.currentCenter as any)?.name || user.hierarchy?.currentCenter || (user.hierarchy?.center as any)?.name || user.hierarchy?.center;
+                                                    const other = user.hierarchy?.otherCenter;
+                                                    if (center === 'Other' || (!center && other)) {
+                                                        return <span className="text-rose-600">Other: {other}</span>;
+                                                    }
+                                                    return center || (other ? `Other: ${other}` : 'Not set');
+                                                })()}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase">Counselor</span>
+                                            <span className="text-sm font-bold text-gray-700 sm:text-right">
+                                                {(() => {
+                                                    const counselor = (user.hierarchy?.counselor as any)?.name || user.hierarchy?.counselor || user.hierarchy?.grihasthaCounselor || user.hierarchy?.brahmachariCounselor;
+                                                    const other = user.hierarchy?.otherCounselor;
+                                                    if (counselor === 'Other' || (!counselor && other)) {
+                                                        return <span className="text-rose-600">Other: {other}</span>;
+                                                    }
+                                                    return counselor || (other ? `Other: ${other}` : 'Not set');
+                                                })()}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Ashram</span>
+                                            <span className="text-sm font-bold text-gray-700 sm:text-right">{user.hierarchy?.ashram || 'Not set'}</span>
+                                        </div>
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                            <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Initiation</span>
+                                            <span className="text-sm font-bold text-gray-700 sm:text-right">{user.hierarchy?.initiationStatus || 'Not set'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Education and Work Experience */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Education */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <GraduationCap className="h-4 w-4 text-indigo-500" /> Education
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {user.education && user.education.length > 0 ? (
+                                            user.education.map((edu, i) => (
+                                                <div key={i} className="flex flex-col py-2 border-b border-gray-50 last:border-0">
+                                                    <span className="text-sm font-black text-gray-800">{edu.field}</span>
+                                                    <span className="text-xs font-bold text-gray-500">{edu.institution}</span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{edu.year || 'Year N/A'}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs font-medium text-gray-400 italic">No education details available.</p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Work Experience */}
+                                <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Briefcase className="h-4 w-4 text-emerald-500" /> Work Experience
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {user.workExperience && user.workExperience.length > 0 ? (
+                                            user.workExperience.map((work, i) => (
+                                                <div key={i} className="flex flex-col py-2 border-b border-gray-50 last:border-0">
+                                                    <span className="text-sm font-black text-gray-800">{work.position}</span>
+                                                    <span className="text-xs font-bold text-gray-500">{work.company}</span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                                                        {work.startDate ? new Date(work.startDate).getFullYear() : 'N/A'} - {work.current ? 'Present' : (work.endDate ? new Date(work.endDate).getFullYear() : 'N/A')}
+                                                    </span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-xs font-medium text-gray-400 italic">No work experience details available.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Camps */}
+                            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Tent className="h-4 w-4 text-emerald-500" /> Camps Completed
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {CAMP_MAPPINGS.map(camp => {
+                                        const isCompleted = (user as any)[camp.key] || (user.hierarchy as any)?.[camp.key];
+                                        if (!isCompleted) return null;
+                                        return (
+                                            <span key={camp.key} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold border border-emerald-100">
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                                {camp.label}
+                                            </span>
+                                        );
+                                    })}
+                                    {!CAMP_MAPPINGS.some(camp => (user as any)[camp.key] || (user.hierarchy as any)?.[camp.key]) && (
+                                        <p className="text-xs font-medium text-gray-400 italic">No camps completed yet.</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Books Read */}
+                            <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Book className="h-4 w-4 text-purple-500" /> Books Read
+                                </h3>
+                                <div className="space-y-6">
+                                    {Object.entries(BOOK_MAPPINGS).map(([semester, books]) => {
+                                        const readBooks = books.filter(book => (user as any)[book.key]);
+                                        if (readBooks.length === 0) return null;
+
+                                        const semesterColors: Record<string, { header: string, card: string, icon: string, text: string, border: string, dot: string }> = {
+                                            'Semester 3': { header: 'text-indigo-500', card: 'bg-indigo-50/40', icon: 'text-indigo-600', text: 'text-indigo-900', border: 'border-indigo-100', dot: 'bg-indigo-400' },
+                                            'Semester 4': { header: 'text-emerald-500', card: 'bg-emerald-50/40', icon: 'text-emerald-600', text: 'text-emerald-900', border: 'border-emerald-100', dot: 'bg-emerald-400' },
+                                            'Semester 5': { header: 'text-amber-500', card: 'bg-amber-50/40', icon: 'text-amber-600', text: 'text-amber-900', border: 'border-amber-100', dot: 'bg-amber-400' },
+                                            'Semester 6': { header: 'text-rose-500', card: 'bg-rose-50/40', icon: 'text-rose-600', text: 'text-rose-900', border: 'border-rose-100', dot: 'bg-rose-400' },
+                                            'Semester 7': { header: 'text-sky-500', card: 'bg-sky-50/40', icon: 'text-sky-600', text: 'text-sky-900', border: 'border-sky-100', dot: 'bg-sky-400' },
+                                            'Semester 8': { header: 'text-violet-500', card: 'bg-violet-50/40', icon: 'text-violet-600', text: 'text-violet-900', border: 'border-violet-100', dot: 'bg-violet-400' },
+                                        };
+
+                                        const colors = semesterColors[semester] || { header: 'text-gray-500', card: 'bg-gray-50/40', icon: 'text-gray-600', text: 'text-gray-900', border: 'border-gray-100', dot: 'bg-gray-400' };
+
+                                        return (
+                                            <div key={semester} className="space-y-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`h-1.5 w-1.5 rounded-full ${colors.dot}`} />
+                                                    <h4 className={`text-xs font-black ${colors.header} uppercase tracking-widest`}>{semester}</h4>
+                                                    <div className="flex-1 h-px bg-gray-100" />
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                    {readBooks.map(book => (
+                                                        <div key={book.key} className={`flex items-center gap-2 p-2.5 ${colors.card} rounded-xl border ${colors.border} hover:shadow-sm transition-all`}>
+                                                            <div className={`p-1 rounded-md bg-white shadow-sm border ${colors.border}`}>
+                                                                <CheckCircle2 className={`h-3 w-3 ${colors.icon} flex-shrink-0`} />
+                                                            </div>
+                                                            <span className={`text-[11px] font-black ${colors.text} leading-tight`}>{book.label}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {!Object.values(BOOK_MAPPINGS).flat().some(book => (user as any)[book.key]) && (
+                                        <p className="text-xs font-medium text-gray-400 italic">No books marked as read.</p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sadhana Tab with Custom Range & Chart */}
+                    {activeTab === 'sadhana' && (
+                        <div className="space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+
+                            {/* Date Range Selection */}
+                            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm">
+                                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-4">
+                                    <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                        <Filter className="h-4 w-4 text-amber-500" />
+                                        Select Period:
+                                    </label>
+                                    <div className="flex flex-row gap-2 sm:gap-4 w-full sm:w-auto overflow-hidden">
+                                        <div className="flex-1 sm:flex-none">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">From</label>
+                                            <input
+                                                type="date"
+                                                value={dateRange.from}
+                                                max={format(new Date(), 'yyyy-MM-dd')}
+                                                onChange={(e) => setDateRange(prev => ({ ...prev, from: e.target.value }))}
+                                                className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg sm:rounded-xl px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-bold text-gray-800 focus:border-amber-400 focus:outline-none transition-colors"
+                                            />
+                                        </div>
+                                        <div className="flex-1 sm:flex-none">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">To</label>
+                                            <input
+                                                type="date"
+                                                value={dateRange.to}
+                                                max={format(new Date(), 'yyyy-MM-dd')}
+                                                onChange={(e) => setDateRange(prev => ({ ...prev, to: e.target.value }))}
+                                                className="w-full bg-gray-50 border-2 border-gray-200 rounded-lg sm:rounded-xl px-2 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-sm font-bold text-gray-800 focus:border-amber-400 focus:outline-none transition-colors"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {loadingSadhana ? (
+                                <div className="flex flex-col items-center justify-center py-20">
+                                    <div className="animate-spin h-8 w-8 border-4 border-amber-200 border-t-amber-500 rounded-full mb-4"></div>
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Fetching spiritual data...</p>
+                                </div>
+                            ) : reports.length > 0 ? (
+                                <div className="space-y-6">
+                                    {/* Weekly Progress Chart */}
+                                    <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-orange-200 p-4 sm:p-6">
+                                        <h2 className="text-xl font-bold text-orange-700 mb-4 flex items-center justify-between">
+                                            <div className="flex items-center">
+                                                <Activity className="h-5 w-5 mr-2" />
+                                                Weekly Progress
+                                            </div>
+                                            <div className="flex gap-4 text-xs font-medium">
+                                                <div className="flex items-center gap-1">
+                                                    <div className="w-3 h-3 rounded bg-amber-500"></div>
+                                                    <span>Soul %</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <div className="w-3 h-3 rounded bg-blue-500"></div>
+                                                    <span>Body %</span>
+                                                </div>
+                                            </div>
+                                        </h2>
+                                        <div className="w-full overflow-x-auto overflow-y-hidden py-4">
+                                            <div
+                                                className="mx-auto transition-all duration-500"
+                                                style={{
+                                                    minWidth: weeklyChartData.length > 8 ? `${weeklyChartData.length * 80}px` : '100%',
+                                                    maxWidth: weeklyChartData.length <= 4
+                                                        ? `${Math.max(300, weeklyChartData.length * 150)}px`
+                                                        : '100%',
+                                                    minHeight: '300px'
+                                                }}
+                                            >
+                                                <ResponsiveContainer width="100%" height={300}>
+                                                    <BarChart data={weeklyChartData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" vertical={false} />
+                                                        <XAxis
+                                                            dataKey="week"
+                                                            stroke="#9a3412"
+                                                            tick={{ fontSize: 10, fontWeight: 600 }}
+                                                            interval={0}
+                                                            angle={weeklyChartData.length > 5 ? -45 : 0}
+                                                            textAnchor={weeklyChartData.length > 5 ? "end" : "middle"}
+                                                            height={weeklyChartData.length > 5 ? 60 : 30}
+                                                        />
+                                                        <YAxis domain={[0, 100]} stroke="#9a3412" tick={{ fontSize: 10, fontWeight: 600 }} />
+                                                        <Tooltip
+                                                            contentStyle={{
+                                                                backgroundColor: 'rgba(255, 247, 237, 0.95)',
+                                                                backdropFilter: 'blur(4px)',
+                                                                border: '2px solid #fb923c',
+                                                                borderRadius: '16px',
+                                                                padding: '12px',
+                                                                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+                                                            }}
+                                                            labelStyle={{ fontWeight: 800, color: '#9a3412', marginBottom: '8px', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                                                            cursor={{ fill: '#fff7ed', opacity: 0.4 }}
+                                                        />
+                                                        <Bar dataKey="soulPercent" fill="#f59e0b" name="Soul %" radius={[6, 6, 0, 0]} barSize={weeklyChartData.length <= 3 ? 30 : 20} />
+                                                        <Bar dataKey="bodyPercent" fill="#3b82f6" name="Body %" radius={[6, 6, 0, 0]} barSize={weeklyChartData.length <= 3 ? 30 : 20} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* High-level Summary - Simplified based on user request */}
+                                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                        <div className="bg-amber-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-amber-100 flex flex-col items-center justify-center text-center">
+                                            <span className="text-[10px] sm:text-xs font-bold text-amber-800 uppercase tracking-wider mb-0.5 sm:mb-1">Avg Soul</span>
+                                            <span className="text-lg sm:text-2xl font-black text-amber-600">{averages.soulPercent}%</span>
+                                        </div>
+                                        <div className="bg-blue-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-blue-100 flex flex-col items-center justify-center text-center">
+                                            <span className="text-[10px] sm:text-xs font-bold text-blue-800 uppercase tracking-wider mb-0.5 sm:mb-1">Avg Body</span>
+                                            <span className="text-lg sm:text-2xl font-black text-blue-600">{averages.bodyPercent}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center py-16 bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200">
+                                    <div className="h-20 w-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                                        <Activity className="h-10 w-10 text-gray-300" />
+                                    </div>
+                                    <h3 className="text-lg font-black text-gray-700">No Reports Found</h3>
+                                    <p className="text-sm text-gray-400 font-medium mt-1">Try selecting a different date range.</p>
+                                </div>
+                            )}
+                        </div>
+
+                    )}
+
+                </div>
+            </div>
+        </div>
+    );
+}
+
+

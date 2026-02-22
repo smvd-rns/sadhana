@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByCity } from '@/lib/supabase/users';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { User } from '@/types';
 import { Users, Loader2, Mail, Phone, MapPin, Building2, UserCircle, TrendingUp, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoleDisplayName, getUserMaxRoleLevel } from '@/lib/utils/roles';
@@ -91,7 +91,7 @@ export default function CityManagerPage() {
             const usersWithProgress = await Promise.all(
                 students.map(async (user) => {
                     try {
-                        const reports = await getUserSadhanaReports(user.id, 30);
+                        const reports = await fetchSadhanaHistory(30, user.id);
 
                         if (reports.length === 0) {
                             return {
@@ -551,8 +551,8 @@ export default function CityManagerPage() {
                                                             <button
                                                                 onClick={() => setCurrentPage(page)}
                                                                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${currentPage === page
-                                                                        ? 'bg-orange-600 text-white'
-                                                                        : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
+                                                                    ? 'bg-orange-600 text-white'
+                                                                    : 'border border-orange-200 hover:bg-orange-50 text-gray-700'
                                                                     }`}
                                                             >
                                                                 {page}

@@ -1,5 +1,21 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from './config';
 import { SadhanaReport } from '@/types';
+
+// Helper to get a fresh client for critical calculations using main DB
+const getSadhanaAdminClient = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+};
+
+// Switch to the 1st main database for Sadhana storage as requested
+// Automatically use the service role key on the server-side to bypass RLS,
+// replicating the exact previous behavior from `sadhana-config.ts`
+const activeSupabase = (typeof window === 'undefined') ? (getSadhanaAdminClient() || supabase) : supabase;
 
 // Helper function to normalize date to ISO string
 const normalizeDate = (date: Date | string | any): string => {
@@ -33,8 +49,9 @@ export const calculateSadhanaScores = (japa: number, hearing: number, reading: n
   // These are stored per day but calculated weekly
   // Body % = (To Bed + Wake Up + Daily Filling + Day Sleep) / 280 × 100 (weekly)
   // Soul % = (Japa + Hearing + Reading) / 210 × 100 (weekly)
-  const bodyPercent = ((toBed + wakeUp + dailyFilling + daySleep) / 280) * 100;
-  const soulPercent = ((japa + hearing + reading) / 210) * 100;
+  // Capping each component at its weekly maximum (70)
+  const bodyPercent = ((Math.min(70, toBed) + Math.min(70, wakeUp) + Math.min(70, dailyFilling) + Math.min(70, daySleep)) / 280) * 100;
+  const soulPercent = ((Math.min(70, japa) + Math.min(70, hearing) + Math.min(70, reading)) / 210) * 100;
   return {
     bodyPercent: Math.min(100, Math.max(0, bodyPercent)),
     soulPercent: Math.min(100, Math.max(0, soulPercent)),
@@ -43,84 +60,76 @@ export const calculateSadhanaScores = (japa: number, hearing: number, reading: n
 
 // Get weekly totals for a specific date (for validation and calculations)
 export const getWeeklyTotals = async (userId: string, date: Date | string): Promise<{ japa: number; hearing: number; reading: number; toBed: number; wakeUp: number; dailyFilling: number; daySleep: number }> => {
-  if (!supabase) {
+  const freshClient = getSadhanaAdminClient() || activeSupabase;
+  if (!freshClient) {
     return { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0 };
   }
 
   try {
-    const dateObj = typeof date === 'string' ? new Date(date + 'T00:00:00') : date;
-    const startOfWeek = new Date(dateObj);
-    // Calculate Monday (day 0 = Sunday, so Monday = day 1)
-    const day = dateObj.getDay();
-    const diff = dateObj.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
+    // Manually parse YYYY-MM-DD or handle Date object to avoid timezone shifts
+    let year: number, month: number, dayVal: number;
 
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
-    endOfWeek.setHours(23, 59, 59, 999);
+    if (typeof date === 'string') {
+      const parts = date.split('T')[0].split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+      dayVal = parseInt(parts[2], 10);
+    } else {
+      year = date.getFullYear();
+      month = date.getMonth();
+      dayVal = date.getDate();
+    }
 
-    const startDateStr = startOfWeek.toISOString().split('T')[0];
-    const endDateStr = endOfWeek.toISOString().split('T')[0];
+    const inputDate = new Date(year, month, dayVal, 12, 0, 0); // Midday to be safe
 
-    // Fetch all reports for the user in this week
-    const { data, error } = await supabase
+    // Calculate Monday of the week
+    const dayOfWeek = inputDate.getDay(); // 0 is Sunday
+    const diff = inputDate.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+
+    const startOfWeek = new Date(year, month, diff, 0, 0, 0, 0);
+    const endOfWeek = new Date(year, month, diff + 6, 23, 59, 59, 999);
+
+    const formatDateStr = (d: Date) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${dd}`;
+    };
+
+    const startDateStr = formatDateStr(startOfWeek);
+    const endDateStr = formatDateStr(endOfWeek);
+
+    console.log(`[SadhanaBackend] getWeeklyTotals Query:`, { userId, date, startDateStr, endDateStr });
+
+    const { data, error } = await freshClient
       .from('sadhana_reports')
       .select('*')
       .eq('user_id', userId)
       .gte('date', startDateStr)
-      .lte('date', endDateStr)
-      .order('date', { ascending: true });
+      .lte('date', endDateStr);
 
-    if (error) {
-      console.error('Error fetching weekly totals:', error);
-      return { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0 };
-    }
+    if (error) throw error;
 
-    let japaTotal = 0;
-    let hearingTotal = 0;
-    let readingTotal = 0;
-    let toBedTotal = 0;
-    let wakeUpTotal = 0;
-    let dailyFillingTotal = 0;
-    let daySleepTotal = 0;
+    console.log(`[SadhanaBackend] Found ${data?.length || 0} rows for user ${userId}`);
+
+    let japaTotal = 0, hearingTotal = 0, readingTotal = 0;
+    let toBedTotal = 0, wakeUpTotal = 0, dailyFillingTotal = 0, daySleepTotal = 0;
 
     if (data) {
       data.forEach((report: any) => {
-        japaTotal += (typeof report.japa === 'number' ? report.japa : 0);
-        hearingTotal += (typeof report.hearing === 'number' ? report.hearing : 0);
-        readingTotal += (typeof report.reading === 'number' ? report.reading : 0);
-        toBedTotal += (typeof report.to_bed === 'number' ? report.to_bed : 0);
-        wakeUpTotal += (typeof report.wake_up === 'number' ? report.wake_up : 0);
-        dailyFillingTotal += (typeof report.daily_filling === 'number' ? report.daily_filling : 0);
-        daySleepTotal += (typeof report.day_sleep === 'number' ? report.day_sleep : 0);
+        japaTotal += Number(report.japa || 0);
+        hearingTotal += Number(report.hearing || 0);
+        readingTotal += Number(report.reading || 0);
+        toBedTotal += Number(report.to_bed || 0);
+        wakeUpTotal += Number(report.wake_up || 0);
+        dailyFillingTotal += Number(report.daily_filling || 0);
+        daySleepTotal += Number(report.day_sleep || 0);
       });
     }
 
-    // console.log('Weekly totals calculated:', {
-    //   userId,
-    //   startDate: startDateStr,
-    //   endDate: endDateStr,
-    //   reportsFound: data?.length || 0,
-    //   totals: {
-    //     japa: japaTotal,
-    //     hearing: hearingTotal,
-    //     reading: readingTotal,
-    //     toBed: toBedTotal,
-    //     wakeUp: wakeUpTotal,
-    //     dailyFilling: dailyFillingTotal,
-    //     daySleep: daySleepTotal
-    //   }
-    // });
-
     return {
-      japa: japaTotal,
-      hearing: hearingTotal,
-      reading: readingTotal,
-      toBed: toBedTotal,
-      wakeUp: wakeUpTotal,
-      dailyFilling: dailyFillingTotal,
-      daySleep: daySleepTotal
+      japa: japaTotal, hearing: hearingTotal, reading: readingTotal,
+      toBed: toBedTotal, wakeUp: wakeUpTotal, dailyFilling: dailyFillingTotal, daySleep: daySleepTotal
     };
   } catch (error) {
     console.error('Error in getWeeklyTotals:', error);
@@ -128,8 +137,67 @@ export const getWeeklyTotals = async (userId: string, date: Date | string): Prom
   }
 };
 
+// Get monthly totals for a specific date
+export const getMonthlyTotals = async (userId: string, date: Date | string): Promise<{ japa: number; hearing: number; reading: number; toBed: number; wakeUp: number; dailyFilling: number; daySleep: number; daysInMonth: number }> => {
+  if (!activeSupabase) {
+    return { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0, daysInMonth: 30 };
+  }
+
+  try {
+    let year: number, month: number;
+    if (typeof date === 'string') {
+      const parts = date.split('T')[0].split('-');
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10) - 1;
+    } else {
+      year = date.getFullYear();
+      month = date.getMonth();
+    }
+
+    const startOfMonth = new Date(year, month, 1);
+    const endOfMonth = new Date(year, month + 1, 0);
+    const daysInMonth = endOfMonth.getDate();
+
+    const startDateStr = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
+
+    const { data, error } = await activeSupabase
+      .from('sadhana_reports')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', startDateStr)
+      .lte('date', endDateStr);
+
+    if (error) throw error;
+
+    let japaTotal = 0, hearingTotal = 0, readingTotal = 0;
+    let toBedTotal = 0, wakeUpTotal = 0, dailyFillingTotal = 0, daySleepTotal = 0;
+
+    if (data) {
+      data.forEach((report: any) => {
+        japaTotal += Number(report.japa || 0);
+        hearingTotal += Number(report.hearing || 0);
+        readingTotal += Number(report.reading || 0);
+        toBedTotal += Number(report.to_bed || 0);
+        wakeUpTotal += Number(report.wake_up || 0);
+        dailyFillingTotal += Number(report.daily_filling || 0);
+        daySleepTotal += Number(report.day_sleep || 0);
+      });
+    }
+
+    return {
+      japa: japaTotal, hearing: hearingTotal, reading: readingTotal,
+      toBed: toBedTotal, wakeUp: wakeUpTotal, dailyFilling: dailyFillingTotal, daySleep: daySleepTotal,
+      daysInMonth
+    };
+  } catch (error) {
+    console.error('Error in getMonthlyTotals:', error);
+    return { japa: 0, hearing: 0, reading: 0, toBed: 0, wakeUp: 0, dailyFilling: 0, daySleep: 0, daysInMonth: 30 };
+  }
+};
+
 export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'submittedAt' | 'bodyPercent' | 'soulPercent' | 'updatedAt'>) => {
-  if (!supabase) {
+  if (!activeSupabase) {
     throw new Error('Supabase is not initialized');
   }
 
@@ -152,9 +220,12 @@ export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'su
     const currentDailyFillingTotal = weeklyTotals.dailyFilling - (existingReport?.dailyFilling || 0) + report.dailyFilling;
     const currentDaySleepTotal = weeklyTotals.daySleep - (existingReport?.daySleep || 0) + report.daySleep;
 
-    // Calculate weekly percentages
-    const bodyPercent = ((currentToBedTotal + currentWakeUpTotal + currentDailyFillingTotal + currentDaySleepTotal) / 280) * 100;
-    const soulPercent = ((currentJapaTotal + currentHearingTotal + currentReadingTotal) / 210) * 100;
+    // Calculate weekly percentages capped at 70 per practice
+    const cappedSoulTotal = Math.min(70, currentJapaTotal) + Math.min(70, currentHearingTotal) + Math.min(70, currentReadingTotal);
+    const soulPercent = (cappedSoulTotal / 210) * 100;
+
+    const cappedBodyTotal = Math.min(70, currentToBedTotal) + Math.min(70, currentWakeUpTotal) + Math.min(70, currentDailyFillingTotal) + Math.min(70, currentDaySleepTotal);
+    const bodyPercent = (cappedBodyTotal / 280) * 100;
 
     const reportData = {
       user_id: report.userId,
@@ -175,7 +246,7 @@ export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'su
 
     if (existingReport) {
       // Update existing report
-      const { data, error } = await supabase
+      const { data, error } = await activeSupabase
         .from('sadhana_reports')
         .update(reportData)
         .eq('id', existingReport.id)
@@ -189,7 +260,7 @@ export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'su
       return existingReport.id;
     } else {
       // Create new report
-      const { data, error } = await supabase
+      const { data, error } = await activeSupabase
         .from('sadhana_reports')
         .insert(reportData)
         .select()
@@ -208,13 +279,13 @@ export const submitSadhanaReport = async (report: Omit<SadhanaReport, 'id' | 'su
 };
 
 export const getUserSadhanaReports = async (userId: string, limitCount: number = 30) => {
-  if (!supabase) {
+  if (!activeSupabase) {
     console.error('Supabase is not initialized');
     return [];
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await activeSupabase
       .from('sadhana_reports')
       .select('*')
       .eq('user_id', userId)
@@ -249,20 +320,64 @@ export const getUserSadhanaReports = async (userId: string, limitCount: number =
   }
 };
 
+export const getSadhanaReportsByRange = async (userId: string, fromDate: string, toDate: string) => {
+  if (!activeSupabase) {
+    console.error('Supabase is not initialized');
+    return [];
+  }
+
+  try {
+    const { data, error } = await activeSupabase
+      .from('sadhana_reports')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching sadhana reports by range:', error);
+      return [];
+    }
+
+    return (data || []).map((report: any) => ({
+      id: report.id,
+      userId: report.user_id,
+      date: normalizeDate(report.date),
+      japa: report.japa,
+      hearing: report.hearing,
+      reading: report.reading,
+      bookName: report.book_name,
+      toBed: report.to_bed,
+      wakeUp: report.wake_up,
+      dailyFilling: report.daily_filling,
+      daySleep: report.day_sleep,
+      bodyPercent: report.body_percent,
+      soulPercent: report.soul_percent,
+      submittedAt: new Date(report.submitted_at),
+      updatedAt: report.updated_at ? new Date(report.updated_at) : undefined,
+    })) as SadhanaReport[];
+  } catch (error) {
+    console.error('Error fetching sadhana reports by range:', error);
+    return [];
+  }
+};
+
 export const getSadhanaReportByDate = async (userId: string, date: Date | string) => {
-  if (!supabase) {
+  if (!activeSupabase) {
     console.error('Supabase is not initialized');
     return null;
   }
 
   try {
     const dateStr = normalizeDate(date);
-    const { data, error } = await supabase
+    const { data, error } = await activeSupabase
       .from('sadhana_reports')
       .select('*')
       .eq('user_id', userId)
-      .eq('date', dateStr)
-      .maybeSingle(); // Use maybeSingle() instead of single() - returns null if no result instead of 406 error
+      .eq('date', normalizeDate(date))
+      .maybeSingle();
+    // Use maybeSingle() instead of single() - returns null if no result instead of 406 error
 
     if (error) {
       console.error('Error fetching sadhana report by date:', error);
@@ -293,5 +408,51 @@ export const getSadhanaReportByDate = async (userId: string, date: Date | string
   } catch (error) {
     console.error('Error fetching sadhana report:', error);
     return null;
+  }
+};
+
+export const getBulkSadhanaReportsByRange = async (userIds: string[], fromDate: string, toDate: string) => {
+  if (!activeSupabase) {
+    console.error('Supabase is not initialized');
+    return [];
+  }
+
+  try {
+    // If userIds is empty, we don't need to query.
+    if (!userIds || userIds.length === 0) return [];
+
+    const { data, error } = await activeSupabase
+      .from('sadhana_reports')
+      .select('*')
+      .in('user_id', userIds)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching bulk sadhana reports by range:', error);
+      return [];
+    }
+
+    return (data || []).map((report: any) => ({
+      id: report.id,
+      userId: report.user_id,
+      date: normalizeDate(report.date),
+      japa: report.japa,
+      hearing: report.hearing,
+      reading: report.reading,
+      bookName: report.book_name,
+      toBed: report.to_bed,
+      wakeUp: report.wake_up,
+      dailyFilling: report.daily_filling,
+      daySleep: report.day_sleep,
+      bodyPercent: report.body_percent,
+      soulPercent: report.soul_percent,
+      submittedAt: new Date(report.submitted_at),
+      updatedAt: report.updated_at ? new Date(report.updated_at) : undefined,
+    })) as SadhanaReport[];
+  } catch (error) {
+    console.error('Error fetching bulk sadhana reports by range:', error);
+    return [];
   }
 };

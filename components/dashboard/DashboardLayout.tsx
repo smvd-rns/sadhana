@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
 import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
-import { Menu, X, Home, BookOpen, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield } from 'lucide-react';
+import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield } from 'lucide-react';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import ProfileCreationLoadingModal from '@/components/auth/ProfileCreationLoadingModal';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
@@ -129,6 +129,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const hasStudentOnly = userRoles.length === 1 && userRoles[0] === 'student';
     const isSuperAdmin = userRoles.includes('super_admin') || userRoles.includes(8 as any);
+    const isLeadership = userRoles.includes('president') || userRoles.includes(10 as any) ||
+      userRoles.includes('vice_president') || userRoles.includes(9 as any);
+    const hasOrgViewAccess = isSuperAdmin || isLeadership;
 
     // Check if user has counselor role
     const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2);
@@ -156,16 +159,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const baseNavigation = [
       { name: 'Dashboard', href: '/dashboard', icon: Home },
-      { name: 'Sadhana', href: '/dashboard/sadhana', icon: BookOpen },
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
       { name: 'Progress', href: '/dashboard/progress', icon: BarChart3 },
       { name: 'Profile', href: '/dashboard/profile', icon: Settings },
     ];
 
-    // Only role 8 (super_admin) and role 4 (bc_voice_manager) can see Users link
-    if (isSuperAdmin || hasBCVoiceManagerRole) {
-      baseNavigation.push({ name: 'Users', href: '/dashboard/users', icon: Users });
-    }
+    // Users link moved to Admin Dashboard
+    // if (isSuperAdmin || hasBCVoiceManagerRole) {
+    //   baseNavigation.push({ name: 'Users', href: '/dashboard/users', icon: Users });
+    // }
 
     // Add Voice Manager page if user has voice_manager role (role 3)
     if (hasVoiceManagerRole) {
@@ -173,7 +175,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     // Add counselor page if user has counselor role
-    if (hasCounselorRole) {
+    // For Super Admins, this is accessed via Admin Dashboard, so hide it here
+    if (hasCounselorRole && !isSuperAdmin) {
       baseNavigation.push({ name: 'Counselor', href: '/dashboard/counselor', icon: UserCheck });
     }
 
@@ -182,13 +185,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       baseNavigation.push({ name: 'Counselor', href: '/dashboard/counselor-request', icon: UserCircle });
     }
 
-    // Add BC Voice Manager request page - only visible to role 2 (counselor)
-    if (hasCounselorRole && !hasBCVoiceManagerRole) {
-      baseNavigation.push({ name: 'BC Voice Manager', href: '/dashboard/bc-voice-manager-request', icon: Briefcase });
-    } else if (hasCounselorRole && hasBCVoiceManagerRole) {
-      // Add BC Voice Manager dashboard page if user has the role and is counselor
-      baseNavigation.push({ name: 'BC Voice Manager', href: '/dashboard/bc-voice-manager', icon: Briefcase });
-    }
+
 
     // Add City Manager page if user has city_admin role (role 5)
     if (hasCityAdminRole) {
@@ -202,21 +199,48 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     // Add Zone Manager page if user has zonal_admin role (role 7)
     if (hasZonalAdminRole) {
+      baseNavigation.push({ name: 'Zone Manager', href: '/dashboard/zone-manager', icon: MapPin });
+    }
+
+    // Add Managing Director Dashboard (Role 11, 12, 13, 21)
+    const isManagingDirector = userRoles.some(r =>
+      [11, 12, 13, 21].includes(Number(r)) ||
+      ['managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(String(r))
+    );
+    if (isManagingDirector) {
+      baseNavigation.push({ name: 'Managing Director', href: '/dashboard/managing-director', icon: Briefcase });
+    }
+
+    // Add Project Manager Dashboard (Role 14, 15, 16)
+    const isProjectManager = userRoles.some(r =>
+      [14, 15, 16].includes(Number(r)) ||
+      ['project_advisor', 'project_manager', 'acting_manager'].includes(String(r))
+    );
+    if (isProjectManager) {
+      baseNavigation.push({ name: 'Project Manager', href: '/dashboard/project-manager', icon: Briefcase });
+    }
+
+    // Add Admin Dashboard if user is any admin (except super admin who has it already, handled separately?)
+    // Usually Super Admin uses /dashboard/admin. 
+    // Managing Director is using /dashboard/managing-director.
+
+    // Check for admin dashboard access
+    if (isSuperAdmin || hasBCVoiceManagerRole) {
+      // ... existing logic ...
+    }
+    if (hasZonalAdminRole) {
       baseNavigation.push({ name: 'Zone Manager', href: '/dashboard/zone-manager', icon: Globe });
     }
 
-    // Broadcast access for all admins (Role 4+)
-    if (isAdmin) {
-      baseNavigation.push({ name: 'Broadcast', href: '/dashboard/broadcast', icon: Radio });
-      baseNavigation.push({ name: 'Sent Messages', href: '/dashboard/broadcast/sent', icon: MessageSquare });
+
+
+    // Organization View -> ONLY for Leadership (President/VP), NOT for Super Admin (they access via Admin Dashboard)
+    if (isLeadership) {
+      baseNavigation.push({ name: 'Organization View', href: '/dashboard/president', icon: BarChart3 });
     }
 
     if (isSuperAdmin) {
-      baseNavigation.push({ name: 'Import', href: '/dashboard/import', icon: Upload });
-      baseNavigation.push({ name: 'Request Approval', href: '/dashboard/request-approval', icon: CheckCircle2 });
-      baseNavigation.push({ name: 'Data Approvals', href: '/dashboard/admin/data-approvals', icon: Shield });
-      baseNavigation.push({ name: 'Centers', href: '/dashboard/centers', icon: Building2 });
-      baseNavigation.push({ name: 'Cities', href: '/dashboard/cities', icon: MapPin });
+      baseNavigation.push({ name: 'Admin', href: '/dashboard/admin', icon: Shield });
     }
 
     return baseNavigation;

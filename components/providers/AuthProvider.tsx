@@ -11,6 +11,7 @@ interface AuthContextType {
   userData: User | null;
   loading: boolean;
   refreshUserData: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   userData: null,
   loading: true,
   refreshUserData: async () => { },
+  signOut: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -56,8 +58,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         // Retry mechanism for initial load too
         let retryCount = 0;
-        const maxRetries = 10;
-        const retryInterval = 1000;
+        const maxRetries = 5;
+        const retryInterval = 500;
 
         const fetchUserDataWithRetry = async () => {
           try {
@@ -111,8 +113,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (supabaseUser) {
           // Retry mechanism to fetch userData if it's null (profile being created)
           let retryCount = 0;
-          const maxRetries = 10; // Try for up to 10 seconds
-          const retryInterval = 1000; // 1 second between retries
+          const maxRetries = 5; // Try for up to 2.5 seconds
+          const retryInterval = 500; // 500ms between retries
 
           const fetchUserDataWithRetry = async () => {
             try {
@@ -190,8 +192,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signOut = async () => {
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    setUserData(null);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, userData, loading, refreshUserData }}>
+    <AuthContext.Provider value={{ user, userData, loading, refreshUserData, signOut }}>
       {children}
     </AuthContext.Provider>
   );

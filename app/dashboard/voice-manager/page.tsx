@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByHierarchy } from '@/lib/supabase/users';
-import { getUserSadhanaReports } from '@/lib/supabase/sadhana';
+import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { User, SadhanaReport } from '@/types';
 import { Users, Loader2, Mail, Phone, MapPin, Building2, UserCircle, TrendingUp, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRoleDisplayName, roleToNumber, getUserMaxRoleLevel } from '@/lib/utils/roles';
@@ -113,7 +113,7 @@ export default function VoiceManagerPage() {
         students.map(async (dev) => {
           try {
             // Get last 30 days of reports for quick overview
-            const reports = await getUserSadhanaReports(dev.id, 30);
+            const reports = await fetchSadhanaHistory(30, dev.id);
 
             if (reports.length === 0) {
               return {

@@ -14,15 +14,33 @@ function LoginContent() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
 
   useEffect(() => {
     // Only redirect if auth check is complete and user is authenticated
     // Don't redirect while still loading auth state
     if (!loading && user) {
-      router.push('/dashboard');
+      // Wait for userData to be loaded before checking status
+      if (!userData) {
+        // userData not loaded yet, wait
+        return;
+      }
+
+      // Check verification status and redirect accordingly
+      // Check verification status and redirect accordingly
+      if (userData.verificationStatus === 'incomplete' || userData.verificationStatus === 'unverified') {
+        router.push('/auth/complete-registration');
+      } else if (userData.verificationStatus === 'pending') {
+        router.push('/auth/pending');
+      } else if (userData.verificationStatus === 'rejected') {
+        router.push('/auth/complete-registration');
+      } else {
+        // Only allow approved users or legacy users (with no status) to access dashboard
+        // If status is specifically 'approved' or undefined/null (legacy)
+        router.push('/dashboard');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, userData, loading, router]);
 
   useEffect(() => {
     // Check for error in URL params (from OAuth callback)
