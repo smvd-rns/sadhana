@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
 import { Shield, Check, X, Building2, MapPin, User, Loader2, AlertCircle, Lock } from 'lucide-react';
