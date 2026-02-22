@@ -37,18 +37,6 @@ export default function StateManagerPage() {
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const hasStateAdminRole = userRoles.includes('state_admin') || userRoles.includes(6);
 
-    useEffect(() => {
-        if (!userData) return;
-
-        // Check if user has state_admin role
-        if (!hasStateAdminRole) {
-            router.push('/dashboard');
-            return;
-        }
-
-        loadUsers();
-    }, [userData, hasStateAdminRole, router, loadUsers]);
-
     const loadUsers = useCallback(async () => {
         const assignedState = userData?.hierarchy?.assignedState;
 
@@ -175,6 +163,18 @@ export default function StateManagerPage() {
             setLoading(false);
         }
     }, [userData]);
+
+    useEffect(() => {
+        if (!userData) return;
+
+        // Check if user has state_admin role
+        if (!hasStateAdminRole) {
+            router.push('/dashboard');
+            return;
+        }
+
+        loadUsers();
+    }, [userData, hasStateAdminRole, router, loadUsers]);
 
     // Calculate available centers based on selected city
     const centersInState = useMemo(() => {

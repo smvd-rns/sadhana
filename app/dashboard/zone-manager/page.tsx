@@ -39,18 +39,6 @@ export default function ZoneManagerPage() {
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const hasZonalAdminRole = userRoles.includes('zonal_admin') || userRoles.includes(7);
 
-    useEffect(() => {
-        if (!userData) return;
-
-        // Check if user has zonal_admin role
-        if (!hasZonalAdminRole) {
-            router.push('/dashboard');
-            return;
-        }
-
-        loadUsers();
-    }, [userData, hasZonalAdminRole, router, loadUsers]);
-
     const loadUsers = useCallback(async () => {
         const assignedZone = userData?.hierarchy?.assignedZone;
 
@@ -177,6 +165,18 @@ export default function ZoneManagerPage() {
             setLoading(false);
         }
     }, [userData]);
+
+    useEffect(() => {
+        if (!userData) return;
+
+        // Check if user has zonal_admin role
+        if (!hasZonalAdminRole) {
+            router.push('/dashboard');
+            return;
+        }
+
+        loadUsers();
+    }, [userData, hasZonalAdminRole, router, loadUsers]);
 
     // Update cities when state filter changes
     useEffect(() => {

@@ -36,18 +36,6 @@ export default function CityManagerPage() {
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const hasCityAdminRole = userRoles.includes('city_admin') || userRoles.includes(5);
 
-    useEffect(() => {
-        if (!userData) return;
-
-        // Check if user has city_admin role
-        if (!hasCityAdminRole) {
-            router.push('/dashboard');
-            return;
-        }
-
-        loadUsers();
-    }, [userData, hasCityAdminRole, router, loadUsers]);
-
     const loadUsers = useCallback(async () => {
         const assignedCity = userData?.hierarchy?.assignedCity;
 
@@ -175,6 +163,18 @@ export default function CityManagerPage() {
             setLoading(false);
         }
     }, [userData]);
+
+    useEffect(() => {
+        if (!userData) return;
+
+        // Check if user has city_admin role
+        if (!hasCityAdminRole) {
+            router.push('/dashboard');
+            return;
+        }
+
+        loadUsers();
+    }, [userData, hasCityAdminRole, router, loadUsers]);
 
     const filteredUsers = useMemo(() => {
         return users.filter(user => {
