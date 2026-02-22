@@ -2,19 +2,21 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from './config';
 import { SadhanaReport } from '@/types';
 
-// Helper to get a fresh client for critical calculations using main DB
+// Singleton admin client — created once, reused across all calls to avoid connection/memory leaks
+let _sadhanaAdminClient: ReturnType<typeof createClient> | null = null;
+
 const getSadhanaAdminClient = () => {
+  if (_sadhanaAdminClient) return _sadhanaAdminClient;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) return null;
-  return createClient(url, key, {
+  _sadhanaAdminClient = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false }
   });
+  return _sadhanaAdminClient;
 };
 
-// Switch to the 1st main database for Sadhana storage as requested
-// Automatically use the service role key on the server-side to bypass RLS,
-// replicating the exact previous behavior from `sadhana-config.ts`
+// Use admin client on server side (bypasses RLS), browser client on client side
 const activeSupabase = (typeof window === 'undefined') ? (getSadhanaAdminClient() || supabase) : supabase;
 
 // Helper function to normalize date to ISO string

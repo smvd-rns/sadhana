@@ -6,6 +6,7 @@ import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { getUserMessages } from '@/lib/supabase/messages';
 import { SadhanaReport, Message } from '@/types';
 import { BookOpen, MessageSquare, TrendingUp, Calendar, Zap, ArrowRight, Heart, Sparkles } from 'lucide-react';
+import { parseISO } from 'date-fns';
 import Link from 'next/link';
 
 const QUOTES = [
@@ -55,22 +56,26 @@ export default function DashboardPage() {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayReport = recentReports.find(r => {
-    const reportDate = r.date instanceof Date ? r.date.toISOString().split('T')[0] : r.date;
+    const reportDate = typeof r.date === 'string' ? r.date.split('T')[0] : (r.date as Date).toISOString().split('T')[0];
     return reportDate === todayStr;
   });
 
   // Calculate Streak
   let streak = 0;
   if (recentReports.length > 0) {
-    const sorted = [...recentReports].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const sorted = [...recentReports].sort((a, b) => {
+      const da = typeof a.date === 'string' ? a.date.split('T')[0] : (a.date as Date).toISOString().split('T')[0];
+      const db = typeof b.date === 'string' ? b.date.split('T')[0] : (b.date as Date).toISOString().split('T')[0];
+      return db.localeCompare(da);
+    });
     let currentCheckDate = new Date();
-    const firstDateStr = new Date(sorted[0].date).toISOString().split('T')[0];
+    const firstDateStr = typeof sorted[0].date === 'string' ? sorted[0].date.split('T')[0] : (sorted[0].date as Date).toISOString().split('T')[0];
     if (firstDateStr !== todayStr) {
       currentCheckDate.setDate(currentCheckDate.getDate() - 1);
     }
 
     for (const report of sorted) {
-      const reportDateStr = (report.date instanceof Date ? report.date : new Date(report.date)).toISOString().split('T')[0];
+      const reportDateStr = typeof report.date === 'string' ? report.date.split('T')[0] : (report.date as Date).toISOString().split('T')[0];
       const checkDateStr = currentCheckDate.toISOString().split('T')[0];
 
       if (reportDateStr === checkDateStr) {
@@ -199,8 +204,9 @@ export default function DashboardPage() {
               {recentReports.length > 0 ? (
                 <div className="space-y-3 sm:space-y-4">
                   {recentReports.slice(0, 4).map((report, idx) => {
-                    const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
-                    const isToday = reportDate.toISOString().split('T')[0] === todayStr;
+                    const reportDate = typeof report.date === 'string' ? parseISO(report.date.split('T')[0]) : report.date as Date;
+                    const reportDateStr = reportDate.toISOString().split('T')[0];
+                    const isToday = reportDateStr === todayStr;
                     const soul = report.soulPercent || 0;
                     const body = report.bodyPercent || 0;
 

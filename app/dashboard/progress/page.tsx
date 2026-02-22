@@ -32,10 +32,8 @@ export default function ProgressPage() {
       // Filter by custom date range if selected
       if (timeRange === 'custom') {
         const filtered = allReports.filter(report => {
-          const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
-          const fromDate = new Date(customDateRange.from);
-          const toDate = new Date(customDateRange.to);
-          return reportDate >= fromDate && reportDate <= toDate;
+          const reportDateStr = typeof report.date === 'string' ? report.date.split('T')[0] : (report.date as Date).toISOString().split('T')[0];
+          return reportDateStr >= customDateRange.from && reportDateStr <= customDateRange.to;
         });
         setReports(filtered);
       } else {
@@ -56,13 +54,15 @@ export default function ProgressPage() {
 
     // Get date range
     const sortedReports = [...reports].sort((a, b) => {
-      const dateA = a.date instanceof Date ? a.date : new Date(a.date);
-      const dateB = b.date instanceof Date ? b.date : new Date(b.date);
-      return dateA.getTime() - dateB.getTime();
+      const da = typeof a.date === 'string' ? a.date.split('T')[0] : (a.date as Date).toISOString().split('T')[0];
+      const db = typeof b.date === 'string' ? b.date.split('T')[0] : (b.date as Date).toISOString().split('T')[0];
+      return da.localeCompare(db);
     });
 
-    const firstDate = sortedReports[0].date instanceof Date ? sortedReports[0].date : new Date(sortedReports[0].date);
-    const lastDate = sortedReports[sortedReports.length - 1].date instanceof Date ? sortedReports[sortedReports.length - 1].date : new Date(sortedReports[sortedReports.length - 1].date);
+    const firstDateRaw = sortedReports[0].date;
+    const lastDateRaw = sortedReports[sortedReports.length - 1].date;
+    const firstDate = typeof firstDateRaw === 'string' ? parseISO(firstDateRaw.split('T')[0]) : firstDateRaw as Date;
+    const lastDate = typeof lastDateRaw === 'string' ? parseISO(lastDateRaw.split('T')[0]) : lastDateRaw as Date;
 
     // Calculate totals
     const totalJapa = reports.reduce((sum, r) => sum + (r.japa || 0), 0);
