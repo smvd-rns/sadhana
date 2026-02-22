@@ -520,7 +520,10 @@ export default function ManagingDirectorDashboard() {
             setShowAddCenterModal(false);
             setNewCenter({
                 name: '', address: '', contact: '',
-                projectManagerId: '', projectAdvisorId: '', actingManagerId: ''
+                projectManagerId: '', projectAdvisorId: '', actingManagerId: '',
+                internalManagerId: '', preachingCoordinatorId: '', morningProgramInChargeId: '',
+                mentorId: '', frontlinerId: '', accountantId: '', kitchenHeadId: '',
+                studyInChargeId: '', ocId: ''
             });
             loadCenters();
         } catch (error: any) {
