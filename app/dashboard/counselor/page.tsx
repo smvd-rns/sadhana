@@ -33,19 +33,6 @@ export default function CounselorPage() {
   const hasCounselorRole = userRoles.includes('counselor') || userRoles.includes(2) ||
     userRoles.includes('senior_counselor') || userRoles.includes(3);
 
-  useEffect(() => {
-    if (!userData) return;
-
-    // Check if user has counselor role or if their email is in counselor table
-    if (!hasCounselorRole) {
-      // Check if they can request counselor role
-      router.push('/dashboard/counselor-request');
-      return;
-    }
-
-    loadStudents();
-  }, [userData, hasCounselorRole, router, loadStudents]);
-
   const loadStudents = useCallback(async () => {
     if (!userData?.email) return;
 
@@ -125,6 +112,19 @@ export default function CounselorPage() {
       setLoading(false);
     }
   }, [userData?.email]);
+
+  useEffect(() => {
+    if (!userData) return;
+
+    // Check if user has counselor role or if their email is in counselor table
+    if (!hasCounselorRole) {
+      // Check if they can request counselor role
+      router.push('/dashboard/counselor-request');
+      return;
+    }
+
+    loadStudents();
+  }, [userData, hasCounselorRole, router, loadStudents]);
 
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
