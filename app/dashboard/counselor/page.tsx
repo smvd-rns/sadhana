@@ -270,9 +270,6 @@ export default function CounselorPage() {
     }
   };
 
-  if (!loading && !hasCounselorRole) {
-    return null;
-  }
 
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
@@ -327,6 +324,10 @@ export default function CounselorPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedCampFilter]);
+
+  if (!loading && !hasCounselorRole) {
+    return null;
+  }
 
   if (!hasCounselorRole) {
     return null;

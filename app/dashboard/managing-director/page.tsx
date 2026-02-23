@@ -2584,7 +2584,7 @@ export default function ManagingDirectorDashboard() {
                                     </div>
                                     <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 border-dashed">
                                         <p className="text-[10px] font-bold text-amber-700 leading-relaxed text-center italic">
-                                            "Appointing a devotee as an authority will synchronize their role and identity in the database."
+                                            &quot;Appointing a devotee as an authority will synchronize their role and identity in the database.&quot;
                                         </p>
                                     </div>
                                 </>

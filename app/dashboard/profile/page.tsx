@@ -226,7 +226,7 @@ export default function ProfilePage() {
       if (normalize(formData.currentTemple) !== normalize(userData.hierarchy?.currentTemple)) return true;
       if (normalize(formData.currentCenter) !== normalize(userData.hierarchy?.currentCenter || userData.hierarchy?.center)) return true;
       if (normalize(formData.counselor) !== normalize(userData.hierarchy?.counselor)) return true;
-      if (normalize(formData.counselorId) !== normalize(userData.counselor_id || userData.hierarchy?.counselorId)) return true;
+      if (normalize(formData.counselorId) !== normalize(userData.hierarchy?.counselorId)) return true;
       if (normalize(formData.otherCounselor) !== normalize(userData.otherCounselor || userData.hierarchy?.otherCounselor)) return true;
       if (normalize(formData.otherCenter) !== normalize(userData.otherCenter || userData.hierarchy?.otherCenter)) return true;
 
@@ -420,8 +420,8 @@ export default function ProfilePage() {
         parentCenter: userData.hierarchy?.parentCenter || '',
         currentTemple: userData.hierarchy?.currentTemple || '',
         currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
-        counselor: userData.hierarchy?.counselor || userData.counselor || '',
-        counselorId: userData.counselor_id || userData.hierarchy?.counselorId || '',
+        counselor: userData.hierarchy?.counselor || '',
+        counselorId: userData.hierarchy?.counselorId || '',
         otherCounselor: userData.hierarchy?.otherCounselor || '',
         ashram: userData.hierarchy?.ashram || '',
         otherCenter: userData.hierarchy?.otherCenter || '',
