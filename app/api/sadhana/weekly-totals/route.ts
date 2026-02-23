@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
 
 async function getAuthUser(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -114,11 +116,17 @@ export async function GET(request: Request) {
             }
         }
 
+        const headers = new Headers({
+            'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+
         return NextResponse.json({
             success: true,
             data: { japa, hearing, reading, to_bed, wake_up, daily_filling, day_sleep },
             debug: debugInfo
-        });
+        }, { headers });
 
     } catch (error: any) {
         console.error('Sadhana Weekly Totals API GET Error:', error);
