@@ -462,7 +462,7 @@ export default function BCVoiceManagerPage() {
                 </div>
 
                 <Link
-                  href={`/dashboard/progress/${dev.id}`}
+                  href={`/dashboard/sadhana/progress/${dev.id}`}
                   className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
                 >
                   <TrendingUp className="h-4 w-4" />

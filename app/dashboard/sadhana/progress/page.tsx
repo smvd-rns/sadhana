@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { fetchSadhanaHistory } from '@/lib/api/sadhana-client';
 import { SadhanaReport } from '@/types';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Calendar, TrendingUp, BookOpen, Clock, Share2, Download, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, TrendingUp, BookOpen, Clock, Copy, Check, Download, Filter, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { format, subDays, startOfWeek, endOfWeek, parseISO } from 'date-fns';
 
 export default function ProgressPage() {
+  const router = useRouter();
   const { userData } = useAuth();
   const [reports, setReports] = useState<SadhanaReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,7 @@ export default function ProgressPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const reportsPerPage = 10;
   const maxPages = 10;
+  const [copied, setCopied] = useState(false);
 
   const loadReports = useCallback(async () => {
     if (userData) {
@@ -48,8 +51,8 @@ export default function ProgressPage() {
     loadReports();
   }, [loadReports]);
 
-  // Generate WhatsApp message
-  const generateWhatsAppMessage = () => {
+  // Generate Share message
+  const generateShareMessage = () => {
     if (reports.length === 0) return '';
 
     // Get date range
@@ -65,23 +68,23 @@ export default function ProgressPage() {
     const lastDate = typeof lastDateRaw === 'string' ? parseISO(lastDateRaw.split('T')[0]) : lastDateRaw as Date;
 
     // Calculate totals
-    const totalJapa = reports.reduce((sum, r) => sum + (r.japa || 0), 0);
-    const totalHearing = reports.reduce((sum, r) => sum + (r.hearing || 0), 0);
-    const totalReading = reports.reduce((sum, r) => sum + (r.reading || 0), 0);
-    const totalToBed = reports.reduce((sum, r) => sum + (r.toBed || 0), 0);
-    const totalWakeUp = reports.reduce((sum, r) => sum + (r.wakeUp || 0), 0);
-    const totalDailyFilling = reports.reduce((sum, r) => sum + (r.dailyFilling || 0), 0);
-    const totalDaySleep = reports.reduce((sum, r) => sum + (r.daySleep || 0), 0);
+    const totalJapa = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.japa || 0), 0);
+    const totalHearing = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.hearing || 0), 0);
+    const totalReading = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.reading || 0), 0);
+    const totalToBed = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.toBed || 0), 0);
+    const totalWakeUp = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.wakeUp || 0), 0);
+    const totalDailyFilling = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.dailyFilling || 0), 0);
+    const totalDaySleep = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.daySleep || 0), 0);
 
     // Get book name from most recent report
     const bookName = sortedReports.reverse().find(r => r.bookName)?.bookName || 'N/A';
 
     // Calculate percentages
     const avgSoulPercent = reports.length > 0
-      ? (reports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
+      ? (reports.reduce((sum: number, r: SadhanaReport) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
       : '0.0';
     const avgBodyPercent = reports.length > 0
-      ? (reports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
+      ? (reports.reduce((sum: number, r: SadhanaReport) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
       : '0.0';
 
     const maxMarks = reports.length * 10;
@@ -107,7 +110,20 @@ Day Sleep (${totalDaySleep}/${maxMarks})
 Soul %: ${avgSoulPercent}%
 Body %: ${avgBodyPercent}%`;
 
-    return encodeURIComponent(message);
+    return message;
+  };
+
+  const handleCopyShare = async () => {
+    const text = generateShareMessage();
+    if (text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy', err);
+      }
+    }
   };
 
   // Export to CSV
@@ -116,7 +132,7 @@ Body %: ${avgBodyPercent}%`;
 
     const headers = ['Date', 'Japa', 'Hearing', 'Reading', 'Book Name', 'To Bed', 'Wake Up', 'Daily Filling', 'Day Sleep', 'Body %', 'Soul %'];
 
-    const csvData = reports.map(report => {
+    const csvData = reports.map((report: SadhanaReport) => {
       const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
       return [
         format(reportDate, 'yyyy-MM-dd'),
@@ -145,7 +161,7 @@ Body %: ${avgBodyPercent}%`;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
         <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 max-w-md w-full p-10 text-center transform transition-all">
           <div className="mb-8 relative">
             <div className="absolute inset-0 bg-orange-100 rounded-full blur-xl opacity-50 animate-pulse"></div>
@@ -167,33 +183,25 @@ Body %: ${avgBodyPercent}%`;
   }
 
   // Calculate statistics
-  const totalJapa = reports.reduce((sum, r) => sum + (r.japa || 0), 0);
-  const avgJapa = reports.length > 0 ? (totalJapa / reports.length).toFixed(1) : 0;
-  const avgBodyPercent = reports.length > 0
-    ? (reports.reduce((sum, r) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
+  const totalJapaStat = reports.reduce((sum: number, r: SadhanaReport) => sum + (r.japa || 0), 0);
+  const avgJapa = reports.length > 0 ? (totalJapaStat / reports.length).toFixed(1) : 0;
+  const avgBodyPercentStat = reports.length > 0
+    ? (reports.reduce((sum: number, r: SadhanaReport) => sum + (r.bodyPercent || 0), 0) / reports.length).toFixed(1)
     : 0;
-  const avgSoulPercent = reports.length > 0
-    ? (reports.reduce((sum, r) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
+  const avgSoulPercentStat = reports.length > 0
+    ? (reports.reduce((sum: number, r: SadhanaReport) => sum + (r.soulPercent || 0), 0) / reports.length).toFixed(1)
     : 0;
 
   // Calculate spiritual progress rating based on average Soul %
-  const avgSoulPercentNum = parseFloat(avgSoulPercent.toString());
+  const avgSoulPercentNum = parseFloat(avgSoulPercentStat.toString());
   let spiritualRating = '';
-  let ratingColor = '';
-  let ratingBgColor = '';
 
   if (avgSoulPercentNum >= 80) {
     spiritualRating = 'Excellent';
-    ratingColor = 'text-green-600';
-    ratingBgColor = 'bg-green-100';
   } else if (avgSoulPercentNum >= 50) {
     spiritualRating = 'Good Progress';
-    ratingColor = 'text-blue-600';
-    ratingBgColor = 'bg-blue-100';
   } else {
     spiritualRating = 'Needs Improvement';
-    ratingColor = 'text-red-600';
-    ratingBgColor = 'bg-red-100';
   }
 
   const sortedReports = [...reports].sort((a, b) => {
@@ -209,7 +217,7 @@ Body %: ${avgBodyPercent}%`;
     : reports;
 
   const chartData = spiritualPracticesData
-    .map((report) => {
+    .map((report: SadhanaReport) => {
       const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
       return {
         date: format(reportDate, 'MMM d'),
@@ -225,7 +233,7 @@ Body %: ${avgBodyPercent}%`;
   // For 'all' time range, use all 6 months of data
   const weeklyData: { [key: string]: { reports: SadhanaReport[], weekStart: Date, weekEnd: Date } } = {};
 
-  reports.forEach((report) => {
+  reports.forEach((report: SadhanaReport) => {
     const reportDate = report.date instanceof Date ? report.date : new Date(report.date);
     const weekStart = startOfWeek(reportDate, { weekStartsOn: 1 }); // Monday
     const weekEnd = endOfWeek(reportDate, { weekStartsOn: 1 }); // Sunday
@@ -273,29 +281,25 @@ Body %: ${avgBodyPercent}%`;
       name: 'Spiritual Progress',
       value: spiritualRating,
       icon: TrendingUp,
-      color: ratingColor,
-      bgColor: ratingBgColor,
+      bgColor: 'bg-gradient-to-br from-violet-500 to-fuchsia-500',
     },
     {
       name: 'Avg Japa/Day',
       value: avgJapa.toString(),
       icon: BookOpen,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-100',
+      bgColor: 'bg-gradient-to-br from-emerald-500 to-teal-500',
     },
     {
       name: 'Avg Soul %',
-      value: `${avgSoulPercent}%`,
+      value: `${avgSoulPercentStat}%`,
       icon: Clock,
-      color: 'text-orange-700',
-      bgColor: 'bg-orange-50',
+      bgColor: 'bg-gradient-to-br from-orange-400 to-rose-400',
     },
     {
       name: 'Avg Body %',
-      value: `${avgBodyPercent}%`,
+      value: `${avgBodyPercentStat}%`,
       icon: Calendar,
-      color: 'text-amber-700',
-      bgColor: 'bg-amber-50',
+      bgColor: 'bg-gradient-to-br from-sky-400 to-indigo-500',
     },
   ];
 
@@ -308,14 +312,32 @@ Body %: ${avgBodyPercent}%`;
   const currentReports = paginatedReports.slice(startIndex, endIndex);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100 py-4 sm:py-8 px-2 sm:px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-4 sm:py-8 px-2 sm:px-4">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* ── Tabs Navigation ── */}
+        <div className="flex p-1 bg-white/50 backdrop-blur-md rounded-2xl border border-gray-100 shadow-sm max-w-fit mx-auto lg:mx-0">
+          <button
+            onClick={() => router.push('/dashboard/sadhana')}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-gray-500 hover:text-gray-700 hover:bg-white/50"
+          >
+            <BookOpen className="h-4 w-4" />
+            Daily Record
+          </button>
+          <button
+            onClick={() => router.push('/dashboard/sadhana/progress')}
+            className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-orange-600 shadow-sm border border-orange-100"
+          >
+            <BarChart3 className="h-4 w-4" />
+            My Progress
+          </button>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-4 sm:mb-8">
-          <p className="text-base sm:text-lg md:text-xl font-serif text-orange-700 font-semibold mb-2">
+          <p className="text-base sm:text-lg md:text-xl font-serif text-purple-700 font-semibold mb-2">
             Hare Krishna
           </p>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-display bg-gradient-to-r from-orange-600 via-orange-700 to-amber-600 bg-clip-text text-transparent mb-2 sm:mb-3 py-1">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold font-display bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 bg-clip-text text-transparent mb-2 sm:mb-3 py-1">
             Progress Dashboard
           </h1>
           <p className="text-sm sm:text-base md:text-lg text-gray-700 font-medium">
@@ -370,11 +392,11 @@ Body %: ${avgBodyPercent}%`;
             {/* Share & Export Buttons */}
             <div className="flex gap-2 w-full sm:w-auto">
               <button
-                onClick={() => window.open(`https://wa.me/?text=${generateWhatsAppMessage()}`, '_blank')}
-                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold bg-green-500 text-white hover:bg-green-600 transition-all flex items-center justify-center gap-2 shadow-lg"
+                onClick={handleCopyShare}
+                className="flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg sm:rounded-xl text-sm sm:text-base font-semibold bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-600 hover:to-fuchsia-600 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
-                <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>Share</span>
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span>{copied ? 'Copied!' : 'Copy to Clipboard'}</span>
               </button>
               <button
                 onClick={exportToCSV}
@@ -426,11 +448,16 @@ Body %: ${avgBodyPercent}%`;
           {stats.map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.name} className={`${stat.bgColor} backdrop-blur-md rounded-xl sm:rounded-2xl shadow-xl border-2 border-orange-200 p-3 sm:p-4 md:p-6`}>
-                <div className="flex flex-col items-center text-center">
-                  <Icon className={`h-6 w-6 sm:h-8 sm:w-8 md:h-10 md:w-10 ${stat.color} mb-2`} />
-                  <p className="text-xs sm:text-sm font-medium text-gray-700 mb-1">{stat.name}</p>
-                  <p className={`text-xl sm:text-2xl md:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+              <div key={stat.name} className={`${stat.bgColor} rounded-xl sm:rounded-2xl shadow-xl p-4 sm:p-5 md:p-6 transform transition-all hover:scale-105 hover:shadow-2xl relative overflow-hidden group border-none`}>
+                <div className="absolute -right-4 -top-4 opacity-20 group-hover:opacity-30 transition-opacity whitespace-nowrap overflow-visible">
+                  <Icon className="w-24 h-24 sm:w-32 sm:h-32 text-white overflow-visible -z-10 absolute left-8 top-8" />
+                </div>
+                <div className="relative z-10 flex flex-col h-full justify-between items-start text-left">
+                  <div className="flex items-center space-x-2 text-white/90 mb-3 sm:mb-4">
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
+                    <p className="text-xs sm:text-sm font-semibold tracking-wide uppercase shadow-sm">{stat.name}</p>
+                  </div>
+                  <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white">{stat.value}</p>
                 </div>
               </div>
             );
@@ -574,7 +601,7 @@ Body %: ${avgBodyPercent}%`;
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    onClick={() => setCurrentPage((prev: number) => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
                     className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
@@ -596,7 +623,7 @@ Body %: ${avgBodyPercent}%`;
                     ))}
                   </div>
                   <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    onClick={() => setCurrentPage((prev: number) => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
                     className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm rounded-lg bg-orange-100 text-orange-700 hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >

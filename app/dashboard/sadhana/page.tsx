@@ -8,7 +8,7 @@ import {
     fetchSadhanaWeeklyTotals,
     submitSadhanaReportApi
 } from '@/lib/api/sadhana-client';
-import { Calendar, ChevronLeft, ChevronRight, Save, Loader2, CheckCircle2, AlertCircle, Sparkles, BookOpen, HeartPulse, Flower2, TrendingUp, Clock } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Save, Loader2, CheckCircle2, AlertCircle, Sparkles, BookOpen, HeartPulse, Flower2, TrendingUp, Clock, BarChart3 } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
 
 interface SadhanaFormData {
@@ -136,6 +136,23 @@ export default function SadhanaPage() {
 
     return (
         <div className="max-w-7xl mx-auto space-y-6 px-4 sm:px-6 pb-12 pt-4">
+            {/* ── Tabs Navigation ── */}
+            <div className="flex p-1 bg-white/50 backdrop-blur-md rounded-2xl border border-gray-100 shadow-sm max-w-fit">
+                <button
+                    onClick={() => router.push('/dashboard/sadhana')}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all bg-white text-orange-600 shadow-sm border border-orange-100"
+                >
+                    <BookOpen className="h-4 w-4" />
+                    Daily Record
+                </button>
+                <button
+                    onClick={() => router.push('/dashboard/sadhana/progress')}
+                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all text-gray-500 hover:text-gray-700 hover:bg-white/50"
+                >
+                    <BarChart3 className="h-4 w-4" />
+                    My Progress
+                </button>
+            </div>
 
             {/* ── Header Section ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">

@@ -103,7 +103,7 @@ export default function DashboardPage() {
       icon: Zap,
       gradient: 'from-purple-500 to-pink-600',
       shadow: 'shadow-purple-500/25',
-      href: '/dashboard/progress',
+      href: '/dashboard/sadhana/progress',
       subtext: streak > 0 ? 'Keep it up!' : 'Start today!',
     },
   ];
@@ -195,7 +195,7 @@ export default function DashboardPage() {
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">Recent Sadhana</h2>
               </div>
-              <Link href="/dashboard/progress" className="text-xs sm:text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 sm:gap-1.5 transition-colors px-3 py-1.5 sm:px-4 sm:py-2 hover:bg-orange-50 rounded-full">
+              <Link href="/dashboard/sadhana/progress" className="text-xs sm:text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 sm:gap-1.5 transition-colors px-3 py-1.5 sm:px-4 sm:py-2 hover:bg-orange-50 rounded-full">
                 View All <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
               </Link>
             </div>
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Your Path Starts Here</h3>
                   <p className="text-sm text-slate-500 max-w-sm mx-auto mb-8 font-medium leading-relaxed">View your progress and streak on the Progress page.</p>
-                  <Link href="/dashboard/progress" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all">
+                  <Link href="/dashboard/sadhana/progress" className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 text-white font-bold hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all">
                     <Sparkles className="w-4 h-4" />
                     View Progress
                   </Link>

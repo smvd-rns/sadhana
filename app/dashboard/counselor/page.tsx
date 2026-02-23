@@ -502,7 +502,7 @@ export default function CounselorPage() {
 
                         <div className="pt-3 border-t border-orange-100 mt-auto">
                           <button
-                            onClick={() => router.push(`/dashboard/progress/${student.id}`)}
+                            onClick={() => router.push(`/dashboard/sadhana/progress/${student.id}`)}
                             className="w-full px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-[11px] font-bold flex items-center justify-center gap-2"
                           >
                             <TrendingUp className="h-3 w-3" />

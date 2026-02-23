@@ -472,7 +472,7 @@ export default function VoiceManagerPage() {
                   </div>
 
                   <Link
-                    href={`/dashboard/progress/${dev.id}`}
+                    href={`/dashboard/sadhana/progress/${dev.id}`}
                     className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors font-medium text-sm sm:text-base"
                   >
                     <TrendingUp className="h-4 w-4" />
