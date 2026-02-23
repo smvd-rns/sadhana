@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
     const mainUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const mainKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const sadhanaUrl = process.env.NEXT_PUBLIC_SADHANA_SUPABASE_URL;
-    const sadhanaKey = process.env.SADHANA_SUPABASE_SERVICE_ROLE_KEY;
+    const sadhanaUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL;
+    const sadhanaKey = process.env.NEXT_PUBLIC_SADHANA_DB_ANON_KEY;
 
     const mainClient = mainUrl && mainKey ? createClient(mainUrl, mainKey) : null;
     const sadhanaClient = sadhanaUrl && sadhanaKey ? createClient(sadhanaUrl, sadhanaKey) : null;
