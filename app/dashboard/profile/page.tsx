@@ -256,7 +256,7 @@ export default function ProfilePage() {
       try {
         const { data, error } = await supabase
           .from('counselors')
-          .select('id, name, email, user_id')
+          .select('id, name, email')
           .order('name');
 
         if (error) {
@@ -1663,18 +1663,19 @@ export default function ProfilePage() {
                     </label>
                     <SearchableSelect
                       options={[
-                        ...counselors.map(c => ({ id: c.user_id || c.name, name: c.name })),
+                        ...counselors.map(c => ({ id: c.id, name: c.name })),
                         { id: 'None', name: 'None' },
                         { id: 'Other', name: 'Other' }
                       ]}
                       value={formData.counselorId || formData.counselor}
+                      valueProperty="id"
                       onChange={(value) => {
-                        const selected = counselors.find(c => (c.user_id === value || c.name === value));
+                        const selected = counselors.find(c => (c.id === value || c.name === value));
                         if (selected) {
                           setFormData({
                             ...formData,
                             counselor: selected.name,
-                            counselorId: selected.user_id || ''
+                            counselorId: selected.id
                           });
                         } else {
                           setFormData({ ...formData, counselor: value, counselorId: '' });

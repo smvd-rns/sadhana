@@ -75,7 +75,12 @@ export async function GET(request: Request) {
         // This allows complex matching (fuzzy hierarchy, etc.) that is hard to do in SQL policies alone
         const { data: users, error: fetchError } = await supabase
             .from('users')
-            .select('id, email, name, role, hierarchy, current_temple, current_center, center, center_id, verification_status')
+            .select(`
+                id, email, name, role, hierarchy, 
+                current_temple, current_center, center, center_id, 
+                counselor_id, verification_status,
+                counselor:counselors(name)
+            `)
             .eq('verification_status', 'pending');
 
         if (fetchError) {
@@ -92,14 +97,15 @@ export async function GET(request: Request) {
         // Normalize string for comparison
         const normalize = (str: string) => (str || '').trim().toLowerCase();
 
-        // NEW: Fetch Counselor Name for the current admin
+        // NEW: Fetch Counselor ID and Name for the current admin
         const { data: adminCounselor } = await supabase
             .from('counselors')
-            .select('name')
+            .select('id, name')
             .eq('email', normalize(adminUser.email || ''))
             .maybeSingle();
 
         const counselorName = adminCounselor?.name ? normalize(adminCounselor.name) : null;
+        const adminCounselorId = adminCounselor?.id || null;
 
         // NEW: Fetch all pending profile update requests to check for counselor changes
         const { data: profileRequests } = await supabase
@@ -156,11 +162,14 @@ export async function GET(request: Request) {
                     const bN = normalize(uH.brahmachariCounselor || '');
                     const gN = normalize(uH.grihasthaCounselor || '');
 
-                    // Check Current Counselor (Email or Name)
-                    const matchesCurrent = (bE === adminEmail || gE === adminEmail) ||
+                    // Authority via Stable ID (Preferred)
+                    const matchesId = adminCounselorId && user.counselor_id === adminCounselorId;
+
+                    // Authority via Current Counselor (Email or Name - Legacy)
+                    const matchesLegacy = (bE === adminEmail || gE === adminEmail) ||
                         (counselorName && (bN === counselorName || gN === counselorName));
 
-                    if (matchesCurrent) {
+                    if (matchesId || matchesLegacy) {
                         matches.push(true);
                     } else {
                         // Check if admin is the newly REQUESTED counselor (Email or Name)

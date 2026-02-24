@@ -24,6 +24,7 @@ export default function CompleteRegistrationPage() {
         email: '',
         birthDate: '',
         counselor: '',
+        counselorId: '',
         otherCounselor: '',
         ashram: '',
         temple: '',
@@ -147,7 +148,10 @@ export default function CompleteRegistrationPage() {
             if (formData.center && formData.center !== 'None') hierarchy.currentCenter = formData.center;
             if (formData.center === 'Other') hierarchy.otherCenter = formData.otherCenter;
 
-            if (formData.counselor && formData.counselor !== 'None') hierarchy.counselor = formData.counselor;
+            if (formData.counselor && formData.counselor !== 'None') {
+                hierarchy.counselor = formData.counselor;
+                hierarchy.counselorId = formData.counselorId || undefined;
+            }
             if (formData.counselor === 'Other') hierarchy.otherCounselor = formData.otherCounselor;
 
             if (formData.ashram) hierarchy.ashram = formData.ashram;
@@ -481,8 +485,20 @@ export default function CompleteRegistrationPage() {
                                         { id: 'None', name: 'None' },
                                         { id: 'Other', name: 'Other' }
                                     ]}
-                                    value={formData.counselor}
-                                    onChange={(value) => setFormData({ ...formData, counselor: value })}
+                                    value={formData.counselorId || formData.counselor}
+                                    valueProperty="id"
+                                    onChange={(value) => {
+                                        const selected = counselors.find(c => c.id === value || c.name === value);
+                                        if (selected) {
+                                            setFormData({
+                                                ...formData,
+                                                counselor: selected.name,
+                                                counselorId: selected.id
+                                            });
+                                        } else {
+                                            setFormData({ ...formData, counselor: value, counselorId: '' });
+                                        }
+                                    }}
                                     placeholder="Select Counselor"
                                     disabled={loadingCounselors}
                                 />

@@ -4,13 +4,21 @@ import { createClient } from '@supabase/supabase-js';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { type, id, ids, action } = body; // Support both single 'id' and bulk 'ids'
+        const { type, id, ids, action } = body;
 
         if (!type || (!id && (!ids || ids.length === 0)) || !action) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const targetIds = ids || [id];
+        // Robust ID handling: flatten any arrays and filter out falsy values
+        const targetIds = [
+            ...(Array.isArray(ids) ? ids : (ids ? [ids] : [])),
+            ...(Array.isArray(id) ? id : (id ? [id] : []))
+        ].filter(Boolean);
+
+        if (targetIds.length === 0) {
+            return NextResponse.json({ error: 'No valid IDs provided' }, { status: 400 });
+        }
 
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -84,19 +92,20 @@ export async function POST(request: Request) {
 
                 const normalizedAdminEmail = adminEmail.trim().toLowerCase();
 
-                // Lookup Counselor Name
+                // Lookup Counselor ID and Name
                 const { data: counselorData } = await supabase
                     .from('counselors')
-                    .select('name')
+                    .select('id, name')
                     .eq('email', normalizedAdminEmail)
                     .maybeSingle();
 
                 const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+                const adminCounselorId = counselorData?.id || null;
 
-                // Fetch target users to verify counselor email match
+                // Fetch target users to verify counselor email/ID match
                 const { data: targetUsers, error: targetError } = await supabase
                     .from('users')
-                    .select('id, hierarchy')
+                    .select('id, hierarchy, counselor_id')
                     .in('id', targetIds);
 
                 if (targetError || !targetUsers) {
@@ -131,7 +140,10 @@ export async function POST(request: Request) {
                     const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
                     const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
 
-                    // Authority via Current Counselor
+                    // Authority via Stable ID (Preferred)
+                    if (adminCounselorId && u.counselor_id === adminCounselorId) return true;
+
+                    // Authority via Current Counselor (Email or Name - Legacy)
                     if (bE === normalizedAdminEmail || gE === normalizedAdminEmail) return true;
                     if (counselorName && (bN === counselorName || gN === counselorName)) return true;
 

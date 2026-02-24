@@ -134,14 +134,15 @@ export async function PATCH(
 
                 const normalizedAdminEmail = adminEmail.trim().toLowerCase();
 
-                // Lookup Counselor Name
+                // Lookup Counselor ID and Name
                 const { data: counselorData } = await supabaseAdmin
                     .from('counselors')
-                    .select('name')
+                    .select('id, name')
                     .eq('email', normalizedAdminEmail)
                     .maybeSingle();
 
                 const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+                const adminCounselorId = counselorData?.id || null;
 
                 // Current Counselor Emails/Names
                 const bE = (uH.brahmachariCounselorEmail || '').trim().toLowerCase();
@@ -161,10 +162,10 @@ export async function PATCH(
                 const uId = (uH.counselorId || uH.counselor_id || '').trim();
                 const uTopId = (targetUser?.counselor_id || '').trim();
 
-                log(`Counselor Check: AdminID=${adminUser.id}, AdminEmail=${normalizedAdminEmail}, Name=${counselorName}, rbE=${rbE}, rgE=${rgE}, rbN=${rbN}, rgN=${rgN}, rcId=${rcId}, uId=${uId}, uTopId=${uTopId}`);
+                log(`Counselor Check: AdminID=${adminUser.id}, AdminCounselorID=${adminCounselorId}, AdminEmail=${normalizedAdminEmail}, Name=${counselorName}, rbE=${rbE}, rgE=${rgE}, rbN=${rbN}, rgN=${rgN}, rcId=${rcId}, uId=${uId}, uTopId=${uTopId}`);
 
                 // 1. Matches by Stable ID (Preferred)
-                const matchesId = adminUser.id === rcId || adminUser.id === uId || adminUser.id === uTopId;
+                const matchesId = (adminCounselorId && (rcId === adminCounselorId || uTopId === adminCounselorId)) || adminUser.id === rcId || adminUser.id === uId || adminUser.id === uTopId;
 
                 // 2. Matches by Email (Legacy)
                 const matchesEmail = bE === normalizedAdminEmail || gE === normalizedAdminEmail ||

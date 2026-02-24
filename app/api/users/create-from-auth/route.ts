@@ -74,6 +74,7 @@ export async function POST(request: Request) {
         city: null,
         center: null,
         counselor: null,
+        counselor_id: null,
         hierarchy: {}, // Keep for backward compatibility
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

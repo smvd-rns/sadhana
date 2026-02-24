@@ -35,6 +35,7 @@ export const getUsersByRole = async (role: UserRole) => {
         center: user.center || user.hierarchy?.center,
         centerId: user.center_id || user.hierarchy?.centerId,
         counselor: user.counselor || user.hierarchy?.counselor,
+        counselorId: user.counselor_id || user.hierarchy?.counselorId,
         brahmachariCounselor: user.brahmachari_counselor || user.hierarchy?.brahmachariCounselor,
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
@@ -172,6 +173,7 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         center: user.center || user.hierarchy?.center,
         centerId: user.center_id || user.hierarchy?.centerId,
         counselor: user.counselor || user.hierarchy?.counselor,
+        counselorId: user.counselor_id || user.hierarchy?.counselorId,
         brahmachariCounselor: user.brahmachari_counselor || user.hierarchy?.brahmachariCounselor,
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
@@ -291,6 +293,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     // Handle direct field updates from registration form
     if ((updates as any).ashram !== undefined) dbUpdates.ashram = (updates as any).ashram;
     if ((updates as any).counselor !== undefined) dbUpdates.counselor = (updates as any).counselor;
+    if ((updates as any).counselorId !== undefined) dbUpdates.counselor_id = (updates as any).counselorId;
     if ((updates as any).otherCounselor !== undefined) dbUpdates.other_counselor = (updates as any).otherCounselor;
     if ((updates as any).currentTemple !== undefined) dbUpdates.current_temple = (updates as any).currentTemple;
     if ((updates as any).currentCenter !== undefined) dbUpdates.current_center = (updates as any).currentCenter;
@@ -330,6 +333,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
       // Handle unified counselor field (use other_counselor for all counselors)
       if (enrichedHierarchy.counselor) {
         dbUpdates.counselor = enrichedHierarchy.counselor;
+        dbUpdates.counselor_id = enrichedHierarchy.counselorId || null;
         // Clear the old separate counselor fields
         dbUpdates.brahmachari_counselor = null;
         dbUpdates.grihastha_counselor = null;
@@ -464,6 +468,7 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         center: user.center || user.hierarchy?.center,
         centerId: user.center_id || user.hierarchy?.centerId,
         counselor: user.counselor || user.hierarchy?.counselor,
+        counselorId: user.counselor_id || user.hierarchy?.counselorId,
         brahmachariCounselor: user.brahmachari_counselor || user.hierarchy?.brahmachariCounselor,
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
@@ -580,6 +585,7 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         center: user.center || user.hierarchy?.center,
         centerId: user.center_id || user.hierarchy?.centerId,
         counselor: user.counselor || user.hierarchy?.counselor,
+        counselorId: user.counselor_id || user.hierarchy?.counselorId,
         brahmachariCounselor: user.brahmachari_counselor || user.hierarchy?.brahmachariCounselor,
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,
@@ -700,6 +706,7 @@ export const getUsersByZone = async (zone: string) => {
         center: user.center || user.hierarchy?.center,
         centerId: user.center_id || user.hierarchy?.centerId,
         counselor: user.counselor || user.hierarchy?.counselor,
+        counselorId: user.counselor_id || user.hierarchy?.counselorId,
         brahmachariCounselor: user.brahmachari_counselor || user.hierarchy?.brahmachariCounselor,
         brahmachariCounselorEmail: user.brahmachari_counselor_email || user.hierarchy?.brahmachariCounselorEmail,
         grihasthaCounselor: user.grihastha_counselor || user.hierarchy?.grihasthaCounselor,

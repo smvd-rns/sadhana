@@ -63,9 +63,14 @@ export async function POST(request: NextRequest) {
             ['managing_director', 'project_advisor', 'project_manager', 'acting_manager', 'oc', 'youth_preacher'].includes(String(r))
         );
 
-        log(`Batch Batch Roles check: Super=${isSuperAdmin}, Global=${isGlobalAdmin}, Temple=${isTempleAdmin}`);
+        const isCounselor = roles.some((r: any) =>
+            [2, 20].includes(Number(r)) ||
+            ['counselor', 'care_giver'].includes(String(r))
+        );
 
-        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin) {
+        log(`Batch Batch Roles check: Super=${isSuperAdmin}, Global=${isGlobalAdmin}, Temple=${isTempleAdmin}, Counselor=${isCounselor}`);
+
+        if (!isSuperAdmin && !isGlobalAdmin && !isTempleAdmin && !isCounselor) {
             return NextResponse.json({ error: 'Forbidden: Insufficient permissions', debug: debugLogs }, { status: 403 });
         }
 
@@ -124,21 +129,81 @@ export async function POST(request: NextRequest) {
                     continue;
                 }
 
-                // Temple Scoping check for MD
-                if (isTempleAdmin && !isSuperAdmin && !isGlobalAdmin && adminTemple) {
-                    const { data: userHierarchy } = await supabase
+                // Scoped Security Check
+                if (!isSuperAdmin && !isGlobalAdmin) {
+                    const { data: targetUser } = await supabase
                         .from('users')
-                        .select('hierarchy')
+                        .select('hierarchy, counselor_id')
                         .eq('id', requestData.user_id)
                         .single();
 
-                    const userT = userHierarchy?.hierarchy?.currentTemple?.name || userHierarchy?.hierarchy?.currentTemple;
-                    const userTempleName = (typeof userT === 'string' ? userT : userT?.name || '').trim().toLowerCase();
+                    const uH = targetUser?.hierarchy || {};
 
-                    if (adminTemple !== userTempleName) {
-                        results.push({ id, success: false, error: 'Unauthorized: Temple mismatch' });
-                        failCount++;
-                        continue;
+                    if (isTempleAdmin && adminTemple) {
+                        const userT = uH.currentTemple?.name || uH.currentTemple;
+                        const userTempleName = (typeof userT === 'string' ? userT : userT?.name || '').trim().toLowerCase();
+
+                        if (adminTemple !== userTempleName) {
+                            results.push({ id, success: false, error: 'Unauthorized: Temple mismatch' });
+                            failCount++;
+                            continue;
+                        }
+                    } else if (isCounselor) {
+                        const adminEmail = user.email;
+                        if (!adminEmail) {
+                            results.push({ id, success: false, error: 'Unauthorized: Admin email missing' });
+                            failCount++;
+                            continue;
+                        }
+
+                        const normalizedAdminEmail = adminEmail.trim().toLowerCase();
+
+                        // Lookup Counselor ID and Name
+                        const { data: counselorData } = await supabase
+                            .from('counselors')
+                            .select('id, name')
+                            .eq('email', normalizedAdminEmail)
+                            .maybeSingle();
+
+                        const counselorName = counselorData?.name ? counselorData.name.trim().toLowerCase() : null;
+                        const adminCounselorId = counselorData?.id || null;
+
+                        // Current Counselor Emails/Names
+                        const bE = (uH.brahmachariCounselorEmail || '').trim().toLowerCase();
+                        const gE = (uH.grihasthaCounselorEmail || '').trim().toLowerCase();
+                        const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
+                        const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
+
+                        // Requested Counselor Emails/Names/IDs
+                        const rC = requestData.requested_changes || {};
+                        const rbE = (rC.brahmachariCounselorEmail || '').trim().toLowerCase();
+                        const rgE = (rC.grihasthaCounselorEmail || '').trim().toLowerCase();
+                        const rbN = (rC.brahmachariCounselor || '').trim().toLowerCase();
+                        const rgN = (rC.grihasthaCounselor || '').trim().toLowerCase();
+                        const rcId = (rC.counselorId || rC.counselor_id || '').trim();
+
+                        // Existing Counselor ID
+                        const uId = (uH.counselorId || uH.counselor_id || '').trim();
+                        const uTopId = (targetUser?.counselor_id || '').trim();
+
+                        // 1. Matches by Stable ID (Preferred)
+                        const matchesId = (adminCounselorId && (rcId === adminCounselorId || uTopId === adminCounselorId)) || user.id === rcId || user.id === uId || user.id === uTopId;
+
+                        // 2. Matches by Email (Legacy)
+                        const matchesEmail = bE === normalizedAdminEmail || gE === normalizedAdminEmail ||
+                            rbE === normalizedAdminEmail || rgE === normalizedAdminEmail;
+
+                        // 3. Matches by Name (Fallback)
+                        const matchesName = counselorName && (
+                            bN === counselorName || gN === counselorName ||
+                            rbN === counselorName || rgN === counselorName
+                        );
+
+                        if (!matchesId && !matchesEmail && !matchesName) {
+                            results.push({ id, success: false, error: 'Unauthorized: Counselor mismatch' });
+                            failCount++;
+                            continue;
+                        }
                     }
                 }
 
