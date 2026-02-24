@@ -16,7 +16,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import Link from 'next/link';
-import UserDetailModal from '../UserDetailModal';
+import UserDetailModal from '@/components/dashboard/UserDetailModal';
 
 export default function MDSadhanaReportPage() {
     const { userData } = useAuth();

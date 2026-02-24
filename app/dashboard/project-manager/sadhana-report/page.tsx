@@ -18,7 +18,7 @@ import {
 import Link from 'next/link';
 
 // Import the existing modal from managing-director
-import UserDetailModal from '../../managing-director/UserDetailModal';
+import UserDetailModal from '@/components/dashboard/UserDetailModal';
 
 export default function SadhanaReportPage() {
     const { userData } = useAuth();

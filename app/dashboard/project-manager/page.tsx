@@ -14,7 +14,7 @@ import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { User } from '@/types';
 // Import UserDetailModal from MD dashboard (assuming it's generic enough)
-import UserDetailModal from '../managing-director/UserDetailModal';
+import UserDetailModal from '@/components/dashboard/UserDetailModal';
 
 // --- Types ---
 

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { getRoleDisplayName, getRoleHierarchyNumber, canAdminManageTarget } from '@/lib/utils/roles';
 import { CenterData, addCenterToLocal, deleteCenterFromLocal } from '@/lib/data/local-centers';
-import UserDetailModal from './UserDetailModal';
+import UserDetailModal from '@/components/dashboard/UserDetailModal';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { User } from '@/types';
 
