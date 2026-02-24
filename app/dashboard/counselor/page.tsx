@@ -1396,7 +1396,7 @@ export default function CounselorPage() {
                                   <div className={`h-2 w-2 rounded-full ${request.status === 'approved' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                                   <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest">{request.status}</span>
                                 </div>
-                                {request.admin_feedback && <p className="text-[10px] text-gray-300 italic font-bold">"{request.admin_feedback}"</p>}
+                                {request.admin_feedback && <p className="text-[10px] text-gray-300 italic font-bold">&ldquo;{request.admin_feedback}&rdquo;</p>}
                               </div>
                             )}
                           </div>
