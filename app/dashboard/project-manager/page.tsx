@@ -266,6 +266,28 @@ export default function ProjectManagerDashboard() {
     const [currentTemple, setCurrentTemple] = useState<string>('');
     const [loadingContext, setLoadingContext] = useState(true);
 
+    // Initial load from cache to prevent flicker
+    useEffect(() => {
+        const cachedCenters = localStorage.getItem('pm_managed_centers');
+        const cachedCenter = localStorage.getItem('pm_current_center');
+        const cachedTemple = localStorage.getItem('pm_current_temple');
+
+        if (cachedCenters) {
+            try {
+                const parsed = JSON.parse(cachedCenters);
+                if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                    setManagedCenters(parsed);
+                    if (cachedCenter) setCurrentCenter(cachedCenter);
+                    if (cachedTemple) setCurrentTemple(cachedTemple);
+                    // If we have cached data, we can skip the full-page loader
+                    setLoadingContext(false);
+                }
+            } catch (e) {
+                console.error('Failed to parse cached centers', e);
+            }
+        }
+    }, []);
+
     // Stats
     const [stats, setStats] = useState({
         devotees: 0,
@@ -381,6 +403,34 @@ export default function ProjectManagerDashboard() {
         }
     };
 
+    // Multi-user version for Mentor (25) and Frontliner (26)
+    const handleStructureUpdateMulti = async (roleValue: number, userIds: string[]) => {
+        if (!supabase || !currentCenterData?.id) return;
+        try {
+            setLoadingStructure(true);
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            const response = await fetch('/api/centers/structure', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ centerId: currentCenterData.id, roleValue, userIds })
+            });
+            const result = await response.json();
+            if (result.success) {
+                toast.success('Structure updated successfully');
+                loadStructure();
+                loadUsers();
+            } else {
+                toast.error(result.error || 'Update failed');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error('Failed to update structure');
+        } finally {
+            setLoadingStructure(false);
+        }
+    };
+
 
     // Role Assignment Modal
     // Role Assignment
@@ -481,6 +531,7 @@ export default function ProjectManagerDashboard() {
                     });
 
                     setManagedCenters(centersWithCounts);
+                    localStorage.setItem('pm_managed_centers', JSON.stringify(centersWithCounts));
                 } else {
                     console.warn('PM Dashboard: Failed to fetch pending counts from API', json.error);
                 }
@@ -507,7 +558,8 @@ export default function ProjectManagerDashboard() {
             }
 
             const adminId = session.data.session.user.id;
-            setLoadingContext(true);
+            // Only show full page loader if we don't have cached data
+            setLoadingContext(prev => managedCenters.length === 0);
 
             try {
                 // 1. Fetch managed centers
@@ -571,9 +623,16 @@ export default function ProjectManagerDashboard() {
         const selected = managedCenters.find(c => c.name === centerName);
         if (selected) {
             setCurrentCenter(selected.name);
+            localStorage.setItem('pm_current_center', selected.name);
+            // Clear lists to prevent stale data
+            setUsers([]);
+            setRequests([]);
+            setPendingUsers([]);
+
             // Use temple from the selected center, or fallback to current if missing (unlikely for DB centers)
             const tName = selected.temple_name || currentTemple;
             setCurrentTemple(tName);
+            localStorage.setItem('pm_current_temple', tName);
 
             // Reload data
             loadStats(selected.name, tName);
@@ -767,6 +826,7 @@ export default function ProjectManagerDashboard() {
             loadUsers();
         } else if (activeTab === 'service-team') {
             loadStructure();
+            loadUsers(); // Also load users for role assignment
         }
     }, [activeTab, currentCenter, approvalStatus, loadRequests, loadPendingUsers, loadUsers, loadStructure]);
 
@@ -1834,63 +1894,125 @@ export default function ProjectManagerDashboard() {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {MANAGEABLE_ROLES.filter(r => r.value >= 17).map((role) => { // Filter out Member/Student
-                                        // Find current holder from managedCenters data (which needs to be enriched or fetched separately)
-                                        // For now, we will fetch structure data or rely on what we have.
-                                        // Let's assume we fetch it or pass it. 
-                                        // Actually, we need to fetch the specific center details with all role columns.
+                                    {MANAGEABLE_ROLES.filter(r => r.value >= 17).map((role) => {
+                                        const isMultiUser = [25, 26].includes(role.value);
+                                        const idsCol = roleToColumnMap[role.value]?.replace('_id', '_ids');
 
-                                        // Placeholder for current holder logic - will implement fetching in useEffect
-                                        const currentHolderId = (currentCenterData as any)?.[role.label.toLowerCase().replace(/ /g, '_') + '_id'] ||
-                                            (currentCenterData as any)?.[roleToColumnMap[role.value]];
+                                        // Multi-user: read from _ids array
+                                        const currentIds: string[] = isMultiUser
+                                            ? ((currentCenterData as any)?.[idsCol] || [])
+                                            : [];
 
-                                        const currentHolderName = (currentCenterData as any)?.[role.label.toLowerCase().replace(/ /g, '_') + '_name'] ||
-                                            (currentCenterData as any)?.[roleToColumnMap[role.value]?.replace('_id', '_name')];
+                                        // Single-user: read legacy single ID column
+                                        const currentHolderId = !isMultiUser
+                                            ? ((currentCenterData as any)?.[roleToColumnMap[role.value]] || '')
+                                            : '';
+
+                                        const currentHolderName = !isMultiUser
+                                            ? ((currentCenterData as any)?.[roleToColumnMap[role.value]?.replace('_id', '_name')] || '')
+                                            : '';
+
+                                        const isActive = isMultiUser ? currentIds.length > 0 : !!currentHolderId;
 
                                         return (
                                             <div key={role.value} className="bg-gray-50/50 rounded-2xl border border-gray-100 p-5 hover:bg-white hover:shadow-lg hover:shadow-teal-500/5 transition-all duration-300 group">
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${currentHolderId ? 'bg-teal-100 text-teal-600' : 'bg-gray-200 text-gray-400 group-hover:bg-white group-hover:text-teal-500'}`}>
+                                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${isActive ? 'bg-teal-100 text-teal-600' : 'bg-gray-200 text-gray-400 group-hover:bg-white group-hover:text-teal-500'}`}>
                                                             <Award className="h-5 w-5" />
                                                         </div>
                                                         <div>
                                                             <h4 className="text-sm font-black text-gray-900">{role.label}</h4>
+                                                            {isMultiUser && (
+                                                                <span className="text-[9px] font-bold text-teal-600 uppercase tracking-widest">Multi-user</span>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    {currentHolderId && (
+                                                    {isActive && (
                                                         <div className="px-2 py-1 bg-teal-100 text-teal-700 text-[10px] font-bold uppercase rounded-lg">
-                                                            Active
+                                                            {isMultiUser ? `${currentIds.length} Assigned` : 'Active'}
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 <div className="space-y-3">
-                                                    <div className="relative">
-                                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Assigned To</label>
-                                                        <select
-                                                            className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-3 pl-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer hover:border-teal-200"
-                                                            value={currentHolderId || ''}
-                                                            onChange={(e) => handleStructureUpdate(role.value, e.target.value)}
-                                                            disabled={loadingStructure}
-                                                        >
-                                                            <option value="">-- No Assignment --</option>
-                                                            {users // Filter users relevant to this center? Yes, 'users' state already filtered by currentCenter
-                                                                .map(u => (
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 block">Assigned To</label>
+
+                                                    {isMultiUser ? (
+                                                        // ---- Multi-checkbox list ----
+                                                        <div className="max-h-48 overflow-y-auto space-y-1 pr-1 rounded-xl border border-gray-200 bg-white p-2">
+                                                            {users.length === 0 ? (
+                                                                <p className="text-[10px] text-gray-400 text-center py-3">No users in this center</p>
+                                                            ) : (
+                                                                users.map(u => {
+                                                                    const checked = currentIds.includes(u.id);
+                                                                    return (
+                                                                        <label
+                                                                            key={u.id}
+                                                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${checked ? 'bg-teal-50 hover:bg-teal-100' : 'hover:bg-gray-50'} ${loadingStructure ? 'opacity-50 pointer-events-none' : ''}`}
+                                                                        >
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={checked}
+                                                                                disabled={loadingStructure}
+                                                                                onChange={() => {
+                                                                                    const newIds = checked
+                                                                                        ? currentIds.filter(id => id !== u.id)
+                                                                                        : [...currentIds, u.id];
+                                                                                    handleStructureUpdateMulti(role.value, newIds);
+                                                                                }}
+                                                                                className="w-4 h-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                                                            />
+                                                                            <span className={`text-xs font-bold truncate ${checked ? 'text-teal-700' : 'text-gray-700'}`}>
+                                                                                {u.name}
+                                                                            </span>
+                                                                        </label>
+                                                                    );
+                                                                })
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        // ---- Single select dropdown ----
+                                                        <div className="relative">
+                                                            <select
+                                                                className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-3 pl-4 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all cursor-pointer hover:border-teal-200"
+                                                                value={currentHolderId}
+                                                                onChange={(e) => handleStructureUpdate(role.value, e.target.value)}
+                                                                disabled={loadingStructure}
+                                                            >
+                                                                <option value="">-- No Assignment --</option>
+                                                                {users.map(u => (
                                                                     <option key={u.id} value={u.id}>
                                                                         {u.name} ({getRoleDisplayName(getHighestRole(u.role))})
                                                                     </option>
                                                                 ))}
-                                                        </select>
-                                                        <div className="absolute right-3 top-[26px] pointer-events-none text-gray-400">
-                                                            <ChevronDown className="h-4 w-4" />
+                                                            </select>
+                                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                                <ChevronDown className="h-4 w-4" />
+                                                            </div>
                                                         </div>
-                                                    </div>
+                                                    )}
 
-                                                    {currentHolderId && (
+                                                    {/* Current holder display for single-user */}
+                                                    {!isMultiUser && currentHolderId && (
                                                         <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-100">
                                                             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
                                                             <span className="text-xs font-bold text-gray-600 truncate">{currentHolderName || 'Unknown User'}</span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Assigned pills for multi-user */}
+                                                    {isMultiUser && currentIds.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                                            {currentIds.map(id => {
+                                                                const u = users.find(x => x.id === id);
+                                                                return (
+                                                                    <span key={id} className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-100 text-teal-700 rounded-full text-[10px] font-bold">
+                                                                        <div className="w-1.5 h-1.5 bg-teal-500 rounded-full" />
+                                                                        {u?.name || 'Unknown'}
+                                                                    </span>
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
                                                 </div>

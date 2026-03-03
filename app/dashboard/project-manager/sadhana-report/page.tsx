@@ -30,6 +30,25 @@ export default function SadhanaReportPage() {
     const [users, setUsers] = useState<User[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // Initial load from cache to prevent flicker
+    useEffect(() => {
+        const cachedCenters = localStorage.getItem('pm_sadhana_centers');
+        const cachedCenter = localStorage.getItem('pm_sadhana_selected_center');
+
+        if (cachedCenters) {
+            try {
+                const parsed = JSON.parse(cachedCenters);
+                if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+                    setCenters(parsed);
+                    if (cachedCenter) setSelectedCenter(cachedCenter);
+                    setLoadingContext(false);
+                }
+            } catch (e) {
+                console.error('Failed to parse cached sadhana centers', e);
+            }
+        }
+    }, []);
+
     const [dateRange, setDateRange] = useState({
         from: format(subDays(new Date(), 7), 'yyyy-MM-dd'),
         to: format(new Date(), 'yyyy-MM-dd'),
@@ -72,7 +91,8 @@ export default function SadhanaReportPage() {
             if (!session.data.session) return;
             const adminId = session.data.session.user.id;
 
-            setLoadingContext(true);
+            // Only show full page loader if we don't have cached data
+            setLoadingContext(centers.length === 0);
             try {
                 const { data, error } = await supabase
                     .from('centers')
@@ -83,7 +103,13 @@ export default function SadhanaReportPage() {
 
                 if (data && data.length > 0) {
                     setCenters(data);
-                    setSelectedCenter(data[0].name);
+                    localStorage.setItem('pm_sadhana_centers', JSON.stringify(data));
+                    // Only auto-select if no center is currently selected (e.g. from cache)
+                    setSelectedCenter(prev => {
+                        const next = prev || data[0].name;
+                        localStorage.setItem('pm_sadhana_selected_center', next);
+                        return next;
+                    });
                 } else {
                     // Fallback to hierarchy
                     const h = userData.hierarchy as any;
@@ -271,7 +297,10 @@ export default function SadhanaReportPage() {
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Center</label>
                         <select
                             value={selectedCenter}
-                            onChange={(e) => setSelectedCenter(e.target.value)}
+                            onChange={(e) => {
+                                setSelectedCenter(e.target.value);
+                                localStorage.setItem('pm_sadhana_selected_center', e.target.value);
+                            }}
                             className="w-full sm:w-64 bg-gray-50 border border-gray-200 text-gray-800 text-sm font-bold py-1.5 px-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all appearance-none"
                         >
                             {centers.map(c => (

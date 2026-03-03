@@ -14,7 +14,9 @@ export async function POST(request: Request) {
       preaching_coordinator_id, preaching_coordinator_name,
       morning_program_in_charge_id, morning_program_in_charge_name,
       mentor_id, mentor_name,
+      mentor_ids, mentor_names,
       frontliner_id, frontliner_name,
+      frontliner_ids, frontliner_names,
       accountant_id, accountant_name,
       kitchen_head_id, kitchen_head_name,
       study_in_charge_id, study_in_charge_name
@@ -218,8 +220,12 @@ export async function POST(request: Request) {
         morning_program_in_charge_name: morning_program_in_charge_name || null,
         mentor_id: mentor_id || null,
         mentor_name: mentor_name || null,
+        mentor_ids: Array.isArray(mentor_ids) ? mentor_ids : (mentor_id ? [mentor_id] : []),
+        mentor_names: Array.isArray(mentor_names) ? mentor_names : (mentor_name ? [mentor_name] : []),
         frontliner_id: frontliner_id || null,
         frontliner_name: frontliner_name || null,
+        frontliner_ids: Array.isArray(frontliner_ids) ? frontliner_ids : (frontliner_id ? [frontliner_id] : []),
+        frontliner_names: Array.isArray(frontliner_names) ? frontliner_names : (frontliner_name ? [frontliner_name] : []),
         accountant_id: accountant_id || null,
         accountant_name: accountant_name || null,
         kitchen_head_id: kitchen_head_id || null,
@@ -332,8 +338,10 @@ export async function POST(request: Request) {
         updateUserRoleAndHierarchy(internal_manager_id, 22, 'internal_manager'),
         updateUserRoleAndHierarchy(preaching_coordinator_id, 23, 'preaching_coordinator'),
         updateUserRoleAndHierarchy(morning_program_in_charge_id, 24, 'morning_program_in_charge'),
-        updateUserRoleAndHierarchy(mentor_id, 25, 'mentor'),
-        updateUserRoleAndHierarchy(frontliner_id, 26, 'frontliner'),
+        // Multi-user role sync for Mentor (25)
+        ...(Array.isArray(mentor_ids) ? mentor_ids : (mentor_id ? [mentor_id] : [])).map((uid: string) => updateUserRoleAndHierarchy(uid, 25, 'mentor')),
+        // Multi-user role sync for Frontliner (26)
+        ...(Array.isArray(frontliner_ids) ? frontliner_ids : (frontliner_id ? [frontliner_id] : [])).map((uid: string) => updateUserRoleAndHierarchy(uid, 26, 'frontliner')),
         updateUserRoleAndHierarchy(accountant_id, 27, 'accountant'),
         updateUserRoleAndHierarchy(kitchen_head_id, 28, 'kitchen_head'),
         updateUserRoleAndHierarchy(study_in_charge_id, 29, 'study_in_charge')

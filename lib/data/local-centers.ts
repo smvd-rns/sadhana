@@ -25,8 +25,12 @@ export interface CenterData {
   morning_program_in_charge_name?: string;
   mentor_id?: string;
   mentor_name?: string;
+  mentor_ids?: string[];
+  mentor_names?: string[];
   frontliner_id?: string;
   frontliner_name?: string;
+  frontliner_ids?: string[];
+  frontliner_names?: string[];
   accountant_id?: string;
   accountant_name?: string;
   kitchen_head_id?: string;

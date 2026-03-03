@@ -16,7 +16,9 @@ export async function POST(request: Request) {
             preaching_coordinator_id, preaching_coordinator_name,
             morning_program_in_charge_id, morning_program_in_charge_name,
             mentor_id, mentor_name,
+            mentor_ids, mentor_names,
             frontliner_id, frontliner_name,
+            frontliner_ids, frontliner_names,
             accountant_id, accountant_name,
             kitchen_head_id, kitchen_head_name,
             study_in_charge_id, study_in_charge_name
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
         // 1. Fetch existing center details to check for role changes
         const { data: existingCenter, error: fetchCenterError } = await supabase
             .from('centers')
-            .select('project_manager_id, project_advisor_id, acting_manager_id, internal_manager_id, preaching_coordinator_id, morning_program_in_charge_id, mentor_id, frontliner_id, accountant_id, kitchen_head_id, study_in_charge_id')
+            .select('project_manager_id, project_advisor_id, acting_manager_id, internal_manager_id, preaching_coordinator_id, morning_program_in_charge_id, mentor_id, frontliner_id, mentor_ids, frontliner_ids, accountant_id, kitchen_head_id, study_in_charge_id')
             .eq('id', id)
             .single();
 
@@ -101,8 +103,12 @@ export async function POST(request: Request) {
                 morning_program_in_charge_name,
                 mentor_id,
                 mentor_name,
+                mentor_ids: Array.isArray(mentor_ids) ? mentor_ids : (mentor_id ? [mentor_id] : []),
+                mentor_names: Array.isArray(mentor_names) ? mentor_names : (mentor_name ? [mentor_name] : []),
                 frontliner_id,
                 frontliner_name,
+                frontliner_ids: Array.isArray(frontliner_ids) ? frontliner_ids : (frontliner_id ? [frontliner_id] : []),
+                frontliner_names: Array.isArray(frontliner_names) ? frontliner_names : (frontliner_name ? [frontliner_name] : []),
                 accountant_id,
                 accountant_name,
                 kitchen_head_id,
@@ -252,16 +258,30 @@ export async function POST(request: Request) {
         }
 
         // Mentor (25)
-        if (mentor_id) tasks.push(ensureUserHasRole(mentor_id, 'mentor', 25));
-        if (existingCenter?.mentor_id && existingCenter.mentor_id !== mentor_id) {
-            tasks.push(revokeUserRole(existingCenter.mentor_id, 25));
-        }
+        const finalMentorIds: string[] = Array.isArray(mentor_ids) ? mentor_ids : (mentor_id ? [mentor_id] : []);
+        const existingMentorIds: string[] = Array.isArray(existingCenter?.mentor_ids) ? existingCenter.mentor_ids : (existingCenter?.mentor_id ? [existingCenter.mentor_id] : []);
+
+        // Add roles to new mentors
+        finalMentorIds.filter(id => !existingMentorIds.includes(id)).forEach(uid => {
+            tasks.push(ensureUserHasRole(uid, 'mentor', 25));
+        });
+        // Revoke roles from removed mentors
+        existingMentorIds.filter(id => !finalMentorIds.includes(id)).forEach(uid => {
+            tasks.push(revokeUserRole(uid, 25));
+        });
 
         // Frontliner (26)
-        if (frontliner_id) tasks.push(ensureUserHasRole(frontliner_id, 'frontliner', 26));
-        if (existingCenter?.frontliner_id && existingCenter.frontliner_id !== frontliner_id) {
-            tasks.push(revokeUserRole(existingCenter.frontliner_id, 26));
-        }
+        const finalFrontlinerIds: string[] = Array.isArray(frontliner_ids) ? frontliner_ids : (frontliner_id ? [frontliner_id] : []);
+        const existingFrontlinerIds: string[] = Array.isArray(existingCenter?.frontliner_ids) ? existingCenter.frontliner_ids : (existingCenter?.frontliner_id ? [existingCenter.frontliner_id] : []);
+
+        // Add roles to new frontliners
+        finalFrontlinerIds.filter(id => !existingFrontlinerIds.includes(id)).forEach(uid => {
+            tasks.push(ensureUserHasRole(uid, 'frontliner', 26));
+        });
+        // Revoke roles from removed frontliners
+        existingFrontlinerIds.filter(id => !finalFrontlinerIds.includes(id)).forEach(uid => {
+            tasks.push(revokeUserRole(uid, 26));
+        });
 
         // Accountant (27)
         if (accountant_id) tasks.push(ensureUserHasRole(accountant_id, 'accountant', 27));

@@ -92,8 +92,8 @@ export default function ManagingDirectorDashboard() {
         internalManagerId: '',
         preachingCoordinatorId: '',
         morningProgramInChargeId: '',
-        mentorId: '',
-        frontlinerId: '',
+        mentorIds: [] as string[],
+        frontlinerIds: [] as string[],
         accountantId: '',
         kitchenHeadId: '',
         studyInChargeId: '',
@@ -113,8 +113,8 @@ export default function ManagingDirectorDashboard() {
         internalManagerId: string;
         preachingCoordinatorId: string;
         morningProgramInChargeId: string;
-        mentorId: string;
-        frontlinerId: string;
+        mentorIds: string[];
+        frontlinerIds: string[];
         accountantId: string;
         kitchenHeadId: string;
         studyInChargeId: string;
@@ -505,10 +505,10 @@ export default function ManagingDirectorDashboard() {
                     preaching_coordinator_name: users.find(u => u.id === newCenter.preachingCoordinatorId)?.name,
                     morning_program_in_charge_id: newCenter.morningProgramInChargeId,
                     morning_program_in_charge_name: users.find(u => u.id === newCenter.morningProgramInChargeId)?.name,
-                    mentor_id: newCenter.mentorId,
-                    mentor_name: users.find(u => u.id === newCenter.mentorId)?.name,
-                    frontliner_id: newCenter.frontlinerId,
-                    frontliner_name: users.find(u => u.id === newCenter.frontlinerId)?.name,
+                    mentor_ids: newCenter.mentorIds,
+                    mentor_names: newCenter.mentorIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean),
+                    frontliner_ids: newCenter.frontlinerIds,
+                    frontliner_names: newCenter.frontlinerIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean),
                     accountant_id: newCenter.accountantId,
                     accountant_name: users.find(u => u.id === newCenter.accountantId)?.name,
                     kitchen_head_id: newCenter.kitchenHeadId,
@@ -529,7 +529,7 @@ export default function ManagingDirectorDashboard() {
                 name: '', address: '', contact: '',
                 projectManagerId: '', projectAdvisorId: '', actingManagerId: '',
                 internalManagerId: '', preachingCoordinatorId: '', morningProgramInChargeId: '',
-                mentorId: '', frontlinerId: '', accountantId: '', kitchenHeadId: '',
+                mentorIds: [], frontlinerIds: [], accountantId: '', kitchenHeadId: '',
                 studyInChargeId: '', ocId: ''
             });
             loadCenters();
@@ -578,10 +578,10 @@ export default function ManagingDirectorDashboard() {
                     preaching_coordinator_name: users.find(u => u.id === editingCenter.preachingCoordinatorId)?.name,
                     morning_program_in_charge_id: editingCenter.morningProgramInChargeId,
                     morning_program_in_charge_name: users.find(u => u.id === editingCenter.morningProgramInChargeId)?.name,
-                    mentor_id: editingCenter.mentorId,
-                    mentor_name: users.find(u => u.id === editingCenter.mentorId)?.name,
-                    frontliner_id: editingCenter.frontlinerId,
-                    frontliner_name: users.find(u => u.id === editingCenter.frontlinerId)?.name,
+                    mentor_ids: editingCenter.mentorIds,
+                    mentor_names: editingCenter.mentorIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean),
+                    frontliner_ids: editingCenter.frontlinerIds,
+                    frontliner_names: editingCenter.frontlinerIds.map(id => users.find(u => u.id === id)?.name).filter(Boolean),
                     accountant_id: editingCenter.accountantId,
                     accountant_name: users.find(u => u.id === editingCenter.accountantId)?.name,
                     kitchen_head_id: editingCenter.kitchenHeadId,
@@ -617,8 +617,8 @@ export default function ManagingDirectorDashboard() {
             internalManagerId: center.internal_manager_id || '',
             preachingCoordinatorId: center.preaching_coordinator_id || '',
             morningProgramInChargeId: center.morning_program_in_charge_id || '',
-            mentorId: center.mentor_id || '',
-            frontlinerId: center.frontliner_id || '',
+            mentorIds: center.mentor_ids || (center.mentor_id ? [center.mentor_id] : []),
+            frontlinerIds: center.frontliner_ids || (center.frontliner_id ? [center.frontliner_id] : []),
             accountantId: center.accountant_id || '',
             kitchenHeadId: center.kitchen_head_id || '',
             studyInChargeId: center.study_in_charge_id || '',
@@ -968,6 +968,8 @@ export default function ManagingDirectorDashboard() {
 
         const tName = selectedTemple.name;
         setSelectedCenter(''); // Reset center filter when temple changes
+        setUsers([]); // Clear users to prevent stale data in modals
+        setCenters([]); // Clear centers to show loading state instead of old data
 
         if (tName) {
             // Load Temple Details
@@ -1007,12 +1009,12 @@ export default function ManagingDirectorDashboard() {
         setCurrentPage(1);
     }, [userSearch, selectedCenter, selectedCamp, selectedRole, itemsPerPage]);
 
-    // 4. Load users when Add Center modal opens
+    // 4. Load users when Add/Edit Center modal opens
     useEffect(() => {
-        if (showAddCenterModal && users.length === 0) {
+        if ((showAddCenterModal || showEditCenterModal) && users.length === 0) {
             loadUsers();
         }
-    }, [showAddCenterModal, users.length, loadUsers]);
+    }, [showAddCenterModal, showEditCenterModal, users.length, loadUsers]);
 
     // Final Filtered & Paged users for the management tab
     const filteredUsersList = users.filter(u => {
@@ -1569,6 +1571,26 @@ export default function ManagingDirectorDashboard() {
                                                         <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
                                                             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Manager</span>
                                                             <span className="text-[10px] font-bold text-gray-700 truncate max-w-[120px]">{center.project_manager_name}</span>
+                                                        </div>
+                                                    )}
+                                                    {((center.mentor_names && center.mentor_names.length > 0) || center.mentor_name) && (
+                                                        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
+                                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Mentors</span>
+                                                            <span className="text-[10px] font-bold text-gray-700 truncate max-w-[120px]">
+                                                                {Array.isArray(center.mentor_names) && center.mentor_names.length > 0
+                                                                    ? center.mentor_names.join(', ')
+                                                                    : center.mentor_name}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {((center.frontliner_names && center.frontliner_names.length > 0) || center.frontliner_name) && (
+                                                        <div className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-100">
+                                                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Frontliners</span>
+                                                            <span className="text-[10px] font-bold text-gray-700 truncate max-w-[120px]">
+                                                                {Array.isArray(center.frontliner_names) && center.frontliner_names.length > 0
+                                                                    ? center.frontliner_names.join(', ')
+                                                                    : center.frontliner_name}
+                                                            </span>
                                                         </div>
                                                     )}
                                                     {(center.project_advisor_name || center.acting_manager_name) && (
@@ -2727,8 +2749,6 @@ export default function ManagingDirectorDashboard() {
                                             { label: 'Internal Manager', key: 'internalManagerId', placeholder: 'Select Internal Manager...' },
                                             { label: 'Preaching Coordinator', key: 'preachingCoordinatorId', placeholder: 'Select Coordinator...' },
                                             { label: 'Morning Program In-charge', key: 'morningProgramInChargeId', placeholder: 'Select In-charge...' },
-                                            { label: 'Mentor', key: 'mentorId', placeholder: 'Select Mentor...' },
-                                            { label: 'Frontliner', key: 'frontlinerId', placeholder: 'Select Frontliner...' },
                                             { label: 'Accountant', key: 'accountantId', placeholder: 'Select Accountant...' },
                                             { label: 'Kitchen Head', key: 'kitchenHeadId', placeholder: 'Select Kitchen Head...' },
                                             { label: 'Study In-charge', key: 'studyInChargeId', placeholder: 'Select Study In-charge...' }
@@ -2737,11 +2757,62 @@ export default function ManagingDirectorDashboard() {
                                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{role.label}</label>
                                                 <SearchableSelect
                                                     options={users.map(u => ({ id: u.id, name: u.name, email: u.email }))}
-                                                    value={newCenter[role.key as keyof typeof newCenter]}
+                                                    value={newCenter[role.key as keyof typeof newCenter] as string}
                                                     onChange={(val) => setNewCenter({ ...newCenter, [role.key]: val })}
                                                     placeholder={role.placeholder}
                                                     valueProperty="id"
                                                 />
+                                            </div>
+                                        ))}
+
+                                        {/* Multi-user Roles (Mentor & Frontliner) */}
+                                        {[
+                                            { label: 'Mentors', key: 'mentorIds' as const },
+                                            { label: 'Frontliners', key: 'frontlinerIds' as const }
+                                        ].map((role) => (
+                                            <div key={role.key} className="space-y-1.5 col-span-full">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{role.label}</label>
+                                                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+                                                    {/* Search Input for these specific roles */}
+                                                    <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+                                                        <SearchableSelect
+                                                            options={users.map(u => ({ id: u.id, name: u.name, email: u.email }))}
+                                                            value=""
+                                                            onChange={(val) => {
+                                                                if (val && !newCenter[role.key].includes(val)) {
+                                                                    setNewCenter({ ...newCenter, [role.key]: [...newCenter[role.key], val] });
+                                                                }
+                                                            }}
+                                                            placeholder={`Search to add ${role.label}...`}
+                                                            valueProperty="id"
+                                                        />
+                                                    </div>
+                                                    {/* Selected Users Chips */}
+                                                    <div className="p-3 flex flex-wrap gap-2 min-h-[44px]">
+                                                        {newCenter[role.key].length === 0 ? (
+                                                            <span className="text-xs text-gray-400 italic">No users selected</span>
+                                                        ) : (
+                                                            newCenter[role.key].map(uid => {
+                                                                const user = users.find(u => u.id === uid);
+                                                                return (
+                                                                    <div key={uid} className="flex items-center gap-1.5 bg-teal-100 text-teal-800 px-2 py-1 rounded-md text-[10px] font-bold border border-teal-200">
+                                                                        {user?.name || 'Unknown'}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setNewCenter({
+                                                                                ...newCenter,
+                                                                                [role.key]: newCenter[role.key].filter(id => id !== uid)
+                                                                            })}
+                                                                            className="text-teal-600 hover:text-teal-800"
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -2924,8 +2995,6 @@ export default function ManagingDirectorDashboard() {
                                             { label: 'Internal Manager', key: 'internalManagerId', placeholder: 'Select Internal Manager...' },
                                             { label: 'Preaching Coordinator', key: 'preachingCoordinatorId', placeholder: 'Select Coordinator...' },
                                             { label: 'Morning Program In-charge', key: 'morningProgramInChargeId', placeholder: 'Select In-charge...' },
-                                            { label: 'Mentor', key: 'mentorId', placeholder: 'Select Mentor...' },
-                                            { label: 'Frontliner', key: 'frontlinerId', placeholder: 'Select Frontliner...' },
                                             { label: 'Accountant', key: 'accountantId', placeholder: 'Select Accountant...' },
                                             { label: 'Kitchen Head', key: 'kitchenHeadId', placeholder: 'Select Kitchen Head...' },
                                             { label: 'Study In-charge', key: 'studyInChargeId', placeholder: 'Select Study In-charge...' }
@@ -2939,6 +3008,57 @@ export default function ManagingDirectorDashboard() {
                                                     placeholder={role.placeholder}
                                                     valueProperty="id"
                                                 />
+                                            </div>
+                                        ))}
+
+                                        {/* Multi-user Roles (Mentor & Frontliner) */}
+                                        {[
+                                            { label: 'Mentors', key: 'mentorIds' as const },
+                                            { label: 'Frontliners', key: 'frontlinerIds' as const }
+                                        ].map((role) => (
+                                            <div key={role.key} className="space-y-1.5 col-span-full">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">{role.label}</label>
+                                                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden flex flex-col">
+                                                    {/* Search Input for these specific roles */}
+                                                    <div className="p-2 border-b border-gray-100 bg-gray-50/50">
+                                                        <SearchableSelect
+                                                            options={users.map(u => ({ id: u.id, name: u.name, email: u.email }))}
+                                                            value=""
+                                                            onChange={(val) => {
+                                                                if (val && !editingCenter[role.key].includes(val)) {
+                                                                    setEditingCenter({ ...editingCenter, [role.key]: [...editingCenter[role.key], val] });
+                                                                }
+                                                            }}
+                                                            placeholder={`Search to add ${role.label}...`}
+                                                            valueProperty="id"
+                                                        />
+                                                    </div>
+                                                    {/* Selected Users Chips */}
+                                                    <div className="p-3 flex flex-wrap gap-2 min-h-[44px]">
+                                                        {editingCenter[role.key].length === 0 ? (
+                                                            <span className="text-xs text-gray-400 italic">No users selected</span>
+                                                        ) : (
+                                                            editingCenter[role.key].map(uid => {
+                                                                const user = users.find(u => u.id === uid);
+                                                                return (
+                                                                    <div key={uid} className="flex items-center gap-1.5 bg-violet-100 text-violet-800 px-2 py-1 rounded-md text-[10px] font-bold border border-violet-200">
+                                                                        {user?.name || 'Unknown'}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setEditingCenter({
+                                                                                ...editingCenter,
+                                                                                [role.key]: editingCenter[role.key].filter(id => id !== uid)
+                                                                            })}
+                                                                            className="text-violet-600 hover:text-violet-800"
+                                                                        >
+                                                                            <X className="h-3 w-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

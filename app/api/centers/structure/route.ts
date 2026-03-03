@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+// Roles that support multiple holders
+const MULTI_USER_ROLES = [25, 26]; // 25 = Mentor, 26 = Frontliner
+
 export async function POST(request: Request) {
     try {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -44,17 +47,17 @@ export async function POST(request: Request) {
 
         // 3. Parse Request
         const body = await request.json();
-        const { centerId, roleValue, userId } = body;
+        // userIds: string[] is used for multi-user roles (25, 26)
+        // userId: string is used for single-user roles
+        const { centerId, roleValue, userId, userIds } = body;
 
         if (!centerId || !roleValue) {
             return NextResponse.json({ error: 'Missing required fields: centerId, roleValue' }, { status: 400 });
         }
 
         // 4. Verify Scope
-        // If not super admin, ensure requester manages this center
         const isSuperAdmin = requesterRoles.some((r: any) => Number(r) === 8);
         if (!isSuperAdmin) {
-            // Check fetching by ID directly
             const { data: centerData } = await supabase
                 .from('centers')
                 .select('project_manager_id, project_advisor_id, acting_manager_id')
@@ -91,81 +94,129 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid role for structure assignment' }, { status: 400 });
         }
 
+        const roleNum = Number(roleValue);
+        const isMultiUser = MULTI_USER_ROLES.includes(roleNum);
+
+        // =========================================================
+        // MULTI-USER PATH (Mentor / Frontliner)
+        // =========================================================
+        if (isMultiUser) {
+            // userIds is the complete new list of assigned userIds
+            const newUserIds: string[] = Array.isArray(userIds) ? userIds : [];
+
+            // A. Fetch current center data
+            const { data: centerInfo } = await supabase
+                .from('centers')
+                .select('*')
+                .eq('id', centerId)
+                .single();
+
+            const idsCol = targetCol.replace('_id', '_ids'); // mentor_ids / frontliner_ids
+            const namesCol = targetCol.replace('_id', '_names'); // mentor_names / frontliner_names
+
+            const currentIds: string[] = centerInfo?.[idsCol] || [];
+
+            // B. Users to ADD (in new list but not in current)
+            const toAdd = newUserIds.filter(id => !currentIds.includes(id));
+            // C. Users to REMOVE (in current but not in new list)
+            const toRemove = currentIds.filter(id => !newUserIds.includes(id));
+
+            // D. Remove role from revoked users
+            for (const uid of toRemove) {
+                const { data: oldUser } = await supabase.from('users').select('role').eq('id', uid).single();
+                if (oldUser) {
+                    let oldRoles = Array.isArray(oldUser.role) ? oldUser.role : [oldUser.role];
+                    const filtered = oldRoles.map((r: any) => Number(r)).filter((r: number) => r !== roleNum);
+                    await supabase.from('users').update({ role: filtered, updated_at: new Date().toISOString() }).eq('id', uid);
+                }
+            }
+
+            // E. Add role to new users
+            const newUserNames: string[] = [];
+            for (const uid of newUserIds) {
+                const { data: newUser } = await supabase.from('users').select('role, name').eq('id', uid).single();
+                if (newUser) {
+                    newUserNames.push(newUser.name);
+                    if (toAdd.includes(uid)) {
+                        let newRoles = Array.isArray(newUser.role) ? newUser.role : [newUser.role];
+                        const newRolesNum = newRoles.map((r: any) => Number(r));
+                        if (!newRolesNum.includes(roleNum)) {
+                            newRolesNum.push(roleNum);
+                            await supabase.from('users').update({ role: newRolesNum, updated_at: new Date().toISOString() }).eq('id', uid);
+                        }
+                    }
+                }
+            }
+
+            // F. Update center table with arrays
+            const updates: any = {};
+            updates[idsCol] = newUserIds.length > 0 ? newUserIds : [];
+            updates[namesCol] = newUserNames.length > 0 ? newUserNames : [];
+            // Also keep the legacy single-id column pointing at first user (backwards compat)
+            updates[targetCol] = newUserIds[0] || null;
+            updates[targetCol.replace('_id', '_name')] = newUserNames[0] || null;
+
+            const { error: centerUpdateError } = await supabase.from('centers').update(updates).eq('id', centerId);
+            if (centerUpdateError) throw new Error(`Failed to update center: ${centerUpdateError.message}`);
+
+            return NextResponse.json({
+                success: true,
+                message: 'Multi-user structure updated successfully',
+                updated: { role: roleValue, userIds: newUserIds, userNames: newUserNames }
+            });
+        }
+
+        // =========================================================
+        // SINGLE-USER PATH (all other roles)
+        // =========================================================
         const targetNameCol = targetCol.replace('_id', '_name');
 
-        // 6. Execute Updates Transactionally (pseudo-transaction via sequential steps)
-
-        // A. Helper: Fetch Center Info
         const { data: centerInfo } = await supabase.from('centers').select('*').eq('id', centerId).single();
         const currentHolderId = centerInfo?.[targetCol];
 
         console.log(`API: Structure Update - Role ${roleValue} at Center ${centerId}. Current: ${currentHolderId}, New: ${userId}`);
 
-        // B. If there was an old holder, remove the role from them
+        // B. Remove role from previous holder
         if (currentHolderId && currentHolderId !== userId) {
             const { data: oldUser } = await supabase.from('users').select('role').eq('id', currentHolderId).single();
             if (oldUser) {
                 let oldRoles = oldUser.role || [];
                 if (!Array.isArray(oldRoles)) oldRoles = [oldRoles];
                 const oldRolesNum = oldRoles.map((r: any) => Number(r));
-
-                // Remove the specific role
                 const newOldRoles = oldRolesNum.filter((r: number) => r !== Number(roleValue));
-
-                // If roles changed, update
                 if (newOldRoles.length !== oldRolesNum.length) {
-                    await supabase
-                        .from('users')
-                        .update({ role: newOldRoles, updated_at: new Date().toISOString() })
-                        .eq('id', currentHolderId);
+                    await supabase.from('users').update({ role: newOldRoles, updated_at: new Date().toISOString() }).eq('id', currentHolderId);
                 }
             }
         }
 
-        // C. If Assigning New User
+        // C. Assign new user
         let newUserName = null;
         if (userId) {
-            // 1. Update User's Role Array
             const { data: newUser } = await supabase.from('users').select('role, name').eq('id', userId).single();
             if (!newUser) return NextResponse.json({ error: 'Target user not found' }, { status: 404 });
-
             newUserName = newUser.name;
             let newRoles = newUser.role || [];
             if (!Array.isArray(newRoles)) newRoles = [newRoles];
             const newRolesNum = newRoles.map((r: any) => Number(r));
-
-            // Add role if not present
             if (!newRolesNum.includes(Number(roleValue))) {
                 newRolesNum.push(Number(roleValue));
-                await supabase
-                    .from('users')
-                    .update({ role: newRolesNum, updated_at: new Date().toISOString() })
-                    .eq('id', userId);
+                await supabase.from('users').update({ role: newRolesNum, updated_at: new Date().toISOString() }).eq('id', userId);
             }
         }
 
-        // D. Update Center Table
+        // D. Update center table
         const updates: any = {};
-        updates[targetCol] = userId || null; // Set ID or null
-        updates[targetNameCol] = newUserName || null; // Set Name or null
+        updates[targetCol] = userId || null;
+        updates[targetNameCol] = newUserName || null;
 
-        const { error: centerUpdateError } = await supabase
-            .from('centers')
-            .update(updates)
-            .eq('id', centerId);
-
-        if (centerUpdateError) {
-            throw new Error(`Failed to update center: ${centerUpdateError.message}`);
-        }
+        const { error: centerUpdateError } = await supabase.from('centers').update(updates).eq('id', centerId);
+        if (centerUpdateError) throw new Error(`Failed to update center: ${centerUpdateError.message}`);
 
         return NextResponse.json({
             success: true,
             message: 'Structure updated successfully',
-            updated: {
-                role: roleValue,
-                userId: userId,
-                userName: newUserName
-            }
+            updated: { role: roleValue, userId, userName: newUserName }
         });
 
     } catch (error: any) {
