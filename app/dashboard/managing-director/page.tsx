@@ -76,8 +76,8 @@ export default function ManagingDirectorDashboard() {
         internalManagerId: string;
         preachingCoordinatorId: string;
         morningProgramInChargeId: string;
-        mentorId: string;
-        frontlinerId: string;
+        mentorIds: string[];
+        frontlinerIds: string[];
         accountantId: string;
         kitchenHeadId: string;
         studyInChargeId: string;
