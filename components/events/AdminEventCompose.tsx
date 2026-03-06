@@ -382,19 +382,19 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                             />
                         </div>
 
-                        <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border-2 border-blue-100/50 cursor-pointer transition-all hover:bg-blue-100/50" onClick={() => setIsPinned(!isPinned)}>
-                            <div className={`p-2 rounded-lg transition-all ${isPinned ? 'bg-blue-500 text-white' : 'bg-white text-gray-400'}`}>
+                        <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl border-2 border-rose-100/50 cursor-pointer transition-all hover:bg-rose-100/50" onClick={() => setIsPinned(!isPinned)}>
+                            <div className={`p-2 rounded-lg transition-all ${isPinned ? 'bg-rose-500 text-white' : 'bg-white text-gray-400'}`}>
                                 <Pin className={`h-4 w-4 ${isPinned ? 'fill-current rotate-45' : ''}`} />
                             </div>
                             <div className="flex-1">
-                                <p className="text-[11px] font-black text-blue-900 uppercase tracking-widest">Pin to Top</p>
-                                <p className="text-[10px] text-blue-600 font-bold uppercase tracking-tight">Keep this at the top of the inbox</p>
+                                <p className="text-[11px] font-black text-rose-900 uppercase tracking-widest">Pin to Top</p>
+                                <p className="text-[10px] text-rose-600 font-bold uppercase tracking-tight">Keep this at the top of the inbox</p>
                             </div>
                             <input
                                 type="checkbox"
                                 checked={isPinned}
                                 onChange={(e) => setIsPinned(e.target.checked)}
-                                className="w-5 h-5 rounded-md border-blue-300 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                                className="w-5 h-5 rounded-md border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer"
                                 onClick={(e) => e.stopPropagation()}
                             />
                         </div>

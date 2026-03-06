@@ -98,9 +98,9 @@ export default function EventListItem({ event, isActive, onClick, onPinToggle }:
                     e.stopPropagation();
                     onPinToggle(!event.isPinned);
                 }}
-                className={`absolute right-4 bottom-4 p-1.5 rounded-lg transition-all duration-300 ${event.isPinned
-                    ? 'bg-blue-100 text-blue-600 opacity-100 scale-110 shadow-sm'
-                    : 'bg-white/0 text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-100'
+                className={`absolute right-4 bottom-4 p-1.5 rounded-lg transition-all duration-300 opacity-100 ${event.isPinned
+                    ? 'bg-rose-100 text-rose-600 scale-110 shadow-sm'
+                    : 'bg-rose-50/50 text-rose-300 hover:bg-rose-100 hover:text-rose-600'
                     }`}
                 title={event.isPinned ? "Unpin this message" : "Pin this message"}
             >
