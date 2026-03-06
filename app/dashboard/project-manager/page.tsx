@@ -614,7 +614,7 @@ export default function ProjectManagerDashboard() {
         };
 
         fetchInitialData();
-    }, [userData, isProjectManager, router, refreshCounts]);
+    }, [userData, isProjectManager, router, refreshCounts, managedCenters.length]);
 
 
 

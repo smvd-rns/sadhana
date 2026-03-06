@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { ManagedEvent, ManagedEventResponse } from '@/types';
@@ -45,7 +45,7 @@ export default function EventTrackingPage() {
     const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role].filter(Boolean);
     const isPM = userRoles.some(r => ['project_manager', 15].includes(r as any));
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         if (!id) return;
         setLoading(true);
         try {
@@ -111,11 +111,11 @@ export default function EventTrackingPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [id, router, isPM]); // isPM added to deps as it's used in fetchData if we were to handle PM specifics, but let's keep it clean
 
     useEffect(() => {
         fetchData();
-    }, [id]);
+    }, [fetchData]);
 
     useEffect(() => {
         setFilterCenter('all');
@@ -259,8 +259,8 @@ export default function EventTrackingPage() {
                                             key={s}
                                             onClick={() => setFilterStatus(s)}
                                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all shrink-0 border-2 ${filterStatus === s
-                                                    ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
-                                                    : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
+                                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                 }`}
                                         >
                                             {s.replace('_', ' ')}
@@ -420,8 +420,8 @@ export default function EventTrackingPage() {
                                                 {response ? (
                                                     <div className="flex flex-col gap-1">
                                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border-2 ${response.status === 'coming' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                                                response.status === 'not_coming' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                                                                    'bg-sky-50 border-sky-100 text-sky-700'
+                                                            response.status === 'not_coming' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                                                                'bg-sky-50 border-sky-100 text-sky-700'
                                                             }`}>
                                                             {response.status === 'coming' && <CheckCircle className="h-3 w-3" />}
                                                             {response.status === 'not_coming' && <XCircle className="h-3 w-3" />}
@@ -443,7 +443,7 @@ export default function EventTrackingPage() {
                                                 {response?.reason ? (
                                                     <div className="max-w-[200px]">
                                                         <p className="text-[11px] font-bold text-rose-600 bg-rose-50/50 p-2 rounded-xl border border-rose-100 italic leading-snug">
-                                                            "{response.reason}"
+                                                            &quot;{response.reason}&quot;
                                                         </p>
                                                     </div>
                                                 ) : response?.status === 'not_coming' ? (

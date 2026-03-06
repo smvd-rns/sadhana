@@ -130,7 +130,7 @@ export default function SadhanaReportPage() {
         };
 
         fetchContext();
-    }, [userData, isProjectManager, router]);
+    }, [userData, isProjectManager, router, centers.length]);
 
     // Fetch Users when center changes
     useEffect(() => {

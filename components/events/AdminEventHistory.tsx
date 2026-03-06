@@ -80,7 +80,7 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                         <h3 className="text-base font-black text-gray-900 tracking-tight leading-none mb-1">Announcement History</h3>
                         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-none">
                             {sortedEvents.length} {sortedEvents.length === 1 ? 'broadcast' : 'broadcasts'} found
-                            {searchTerm && <span className="text-purple-600 ml-1">• matching "{searchTerm}"</span>}
+                            {searchTerm && <span className="text-purple-600 ml-1">• matching &quot;{searchTerm}&quot;</span>}
                         </p>
                     </div>
                 </div>
