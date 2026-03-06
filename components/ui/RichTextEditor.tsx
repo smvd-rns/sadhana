@@ -56,6 +56,7 @@ const ImageNodeView = (props: any) => {
 
     return (
         <NodeViewWrapper className={`image-resizer-wrapper image-align-${textAlign || 'center'}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 ref={imgRef}
                 src={src}

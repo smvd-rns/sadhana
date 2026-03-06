@@ -6,6 +6,7 @@ import { Calendar, MapPin, Users, Paperclip, MessageSquare, Check, X, Info, Exte
 import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { toast } from 'react-hot-toast';
 
@@ -102,13 +103,13 @@ export default function EventCard({ event, isAdmin, onResponseUpdate }: EventCar
                                             rel="noopener noreferrer"
                                             className="relative aspect-video rounded-xl overflow-hidden border border-gray-100 group/img active:scale-95 transition-all"
                                         >
-                                            <img
+                                            <NextImage
                                                 src={getThumbnailUrl(item.url, 400, 300) || item.url}
                                                 alt={item.name}
+                                                width={400}
+                                                height={300}
+                                                unoptimized={true}
                                                 className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-500"
-                                                onError={(e) => {
-                                                    (e.target as HTMLImageElement).src = 'https://placehold.co/400x300?text=Image+Not+Found';
-                                                }}
                                             />
                                             <div className="absolute inset-x-0 bottom-0 bg-black/40 backdrop-blur-sm p-1.5 translate-y-full group-hover/img:translate-y-0 transition-transform">
                                                 <p className="text-[8px] text-white font-bold truncate px-1">{item.name}</p>

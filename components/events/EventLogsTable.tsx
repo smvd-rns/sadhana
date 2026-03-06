@@ -113,7 +113,7 @@ export default function EventLogsTable({ responses, loading, showEventTitle = tr
                                                 <MessageSquare className="h-3 w-3 text-rose-500 shrink-0" />
                                             </div>
                                             <span className="text-[11px] text-gray-600 font-semibold italic leading-relaxed">
-                                                "{log.reason}"
+                                                &quot;{log.reason}&quot;
                                             </span>
                                         </div>
                                     ) : (

@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { ManagedEvent, ManagedEventAttachment } from '@/types';
-import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage } from 'lucide-react';
+import NextImage from 'next/image';
 import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -130,9 +131,12 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                                     rel="noopener noreferrer"
                                     className="group relative aspect-video rounded-2xl overflow-hidden border-2 border-gray-50 shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1 block"
                                 >
-                                    <img
+                                    <NextImage
                                         src={getThumbnailUrl(item.url, 800, 450) || item.url}
                                         alt={item.name}
+                                        width={800}
+                                        height={450}
+                                        unoptimized={true}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     />
                                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ManagedEvent, ManagedEventResponse, User } from '@/types';
 import { X, Users, Check, X as CloseIcon, Info, Eye, Search, Filter, CheckCircle2, BarChart3, TrendingUp, CheckCircle, XCircle, Clock, MapPin, Building } from 'lucide-react';
 import { getEventStats, bulkSubmitResponses } from '@/lib/actions/events';
@@ -37,7 +37,7 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
     const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role].filter(Boolean);
     const isPM = userRoles.some(r => ['project_manager', 15].includes(r as any));
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             // 1. Fetch responses from Sadhana DB
@@ -65,10 +65,6 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
             setResponses(mappedResponses);
 
             // 2. Fetch all users from Main DB to calculate reach
-            // In a real large-scale app, we'd do this via a specialized query or server action
-            // but for now, we'll fetch users matching the filters.
-
-            // 2. Fetch all users from Main DB to calculate reach
             // Select all fields to ensure we have camps and hierarchy data
             let query = supabase!.from('users').select('*');
 
@@ -76,19 +72,18 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
             const { data: users } = await query;
 
             if (users) {
-                const reached = users.filter(user => {
+                const reached = users.filter((user: any) => {
                     // Handle both flat and hierarchy object structure
                     const userAshram = user.ashram || user.hierarchy?.ashram;
                     const userTemple = user.current_temple || user.parent_temple || user.hierarchy?.temple || user.hierarchy?.currentTemple;
                     const userCenter = user.center || user.current_center || user.hierarchy?.center || user.hierarchy?.currentCenter;
 
                     const matchesAshram = !event.targetAshrams.length || event.targetAshrams.includes(userAshram);
-                    const userRoles = Array.isArray(user.role) ? user.role.map(String) : [String(user.role)];
-                    const matchesRole = !event.targetRoles.length || event.targetRoles.some(r => userRoles.includes(String(r)));
+                    const userRolesArray = Array.isArray(user.role) ? user.role.map(String) : [String(user.role)];
+                    const matchesRole = !event.targetRoles.length || event.targetRoles.some(r => userRolesArray.includes(String(r)));
                     const matchesTemple = !event.targetTemples.length || event.targetTemples.includes(userTemple);
                     const matchesCenter = !event.targetCenters.length || event.targetCenters.includes(userCenter);
 
-                    // Check individual camp fields
                     const matchesCamps = !event.targetCamps.length || event.targetCamps.some(c => {
                         const campField = `camp${c.charAt(0).toUpperCase()}${c.slice(1)}`;
                         const dbField = `camp_${c.toLowerCase()}`;
@@ -109,11 +104,11 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
         } finally {
             setLoading(false);
         }
-    };
+    }, [event.id, event.targetAshrams, event.targetRoles, event.targetTemples, event.targetCenters, event.targetCamps]);
 
     useEffect(() => {
         if (isOpen) fetchData();
-    }, [isOpen, event.id]);
+    }, [isOpen, fetchData]);
 
     const templeOptions = useMemo(() => {
         const temples = new Set(reachedUsers.map(u => u.current_temple || u.parent_temple || u.hierarchy?.temple || u.hierarchy?.currentTemple).filter(Boolean));
