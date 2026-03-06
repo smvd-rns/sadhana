@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Plus, Calendar, Users, BarChart3, ChevronRight, MessageSquare, Paperclip, Check, X, Info } from 'lucide-react';
 import { getEventsForUser, getEventStats, submitEventResponse, getRecentResponses } from '@/lib/actions/events';
@@ -17,10 +18,10 @@ import { Search, Pin, Clock, ChevronLeft } from 'lucide-react';
 
 import { toggleEventPin } from '@/lib/actions/events';
 
-
-
-export default function EventsPage() {
+function EventsPageContent() {
     const { userData } = useAuth();
+    const searchParams = useSearchParams();
+    const tabParam = searchParams?.get('tab');
     const [events, setEvents] = useState<ManagedEvent[]>([]);
     const [globalLogs, setGlobalLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -30,22 +31,27 @@ export default function EventsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState<'all' | '7days' | '30days'>('all');
 
+    const [activeTab, setActiveTab] = useState<'manage' | 'audience'>(tabParam === 'manage' ? 'manage' : 'audience');
+
+    useEffect(() => {
+        if (tabParam === 'manage' || tabParam === 'audience') {
+            setActiveTab(tabParam);
+        }
+    }, [tabParam]);
+
     const unreadCount = events.filter(e => !e.userResponse).length;
-
-
-
-
-
 
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const isAdmin = userRoles.some(role =>
-        ['super_admin', 'zonal_admin', 'state_admin', 'city_admin', 'center_admin', 'bc_voice_manager', 'project_manager'].includes(String(role)) ||
-        (typeof role === 'number' && role >= 4 && role <= 8) || (typeof role === 'number' && role === 15)
+        ['super_admin', 'zonal_admin', 'state_admin', 'city_admin', 'center_admin', 'bc_voice_manager', 'project_manager', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher', 'project_advisor', 'acting_manager'].includes(String(role)) ||
+        (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21))
     );
+    const isSuperAdmin = userRoles.some(role => role === 'super_admin' || role === 8);
 
     const fetchEvents = async () => {
         if (!userData) return;
         setLoading(true);
+        setEvents([]); // Clear old events to prevent UI flash when switching tabs
         try {
             const roleStr = Array.isArray(userData.role) ? String(userData.role[0]) : String(userData.role);
             const completedCamps = [
@@ -59,16 +65,36 @@ export default function EventsPage() {
                 userData.campAshray && 'campAshray'
             ].filter(Boolean) as string[];
 
+
+            // Prepare all possible location tokens for the backend to check
+            const allLocations = [
+                userData.hierarchy?.center,
+                userData.hierarchy?.currentCenter,
+                userData.hierarchy?.parentCenter,
+                userData.hierarchy?.temple,
+                userData.hierarchy?.currentTemple,
+                userData.hierarchy?.parentTemple,
+                userData.currentCenter,
+                userData.parentCenter,
+                userData.currentTemple,
+                userData.parentTemple
+            ].filter(Boolean) as string[];
+
             const userParams = {
                 userId: userData.id,
-                ashram: userData.hierarchy?.ashram,
-                role: roleStr,
-                temple: userData.hierarchy?.temple,
-                center: userData.hierarchy?.center,
-                completedCamps
+                ashram: (activeTab === 'audience' || !isAdmin) ? userData.hierarchy?.ashram : undefined,
+                role: (activeTab === 'audience' || !isAdmin) ? String(Array.isArray(userData.role) ? userData.role[0] : userData.role) : undefined,
+                temple: (activeTab === 'audience' || !isAdmin) ? (userData.hierarchy?.temple || userData.currentTemple) : undefined,
+                center: (activeTab === 'audience' || !isAdmin) ? (userData.hierarchy?.center || userData.currentCenter) : undefined,
+                completedCamps: (activeTab === 'audience' || !isAdmin) ? Object.entries(userData)
+                    .filter(([key, val]) => key.startsWith('camp') && val === true)
+                    .map(([key]) => key) : [],
+                isSuperAdmin: isSuperAdmin,
+                allLocations: (activeTab === 'audience' || !isAdmin) ? allLocations : [],
+                isManagementView: activeTab === 'manage'
             };
 
-            const data = await getEventsForUser(isAdmin ? { userId: userData.id } : userParams);
+            const data = await getEventsForUser(userParams);
 
             // Sorting logic: Personal Pinned > Important > Date
             const sortedData = [...data].sort((a, b) => {
@@ -86,8 +112,6 @@ export default function EventsPage() {
 
             setEvents(sortedData);
 
-
-
             if (isAdmin) fetchLogs();
         } catch (error) {
             console.error('Error fetching events:', error);
@@ -100,7 +124,7 @@ export default function EventsPage() {
     const fetchLogs = async () => {
         setLoadingLogs(true);
         try {
-            const logs = await getRecentResponses(30);
+            const logs = await getRecentResponses(30, userData?.id, isSuperAdmin);
 
             // Map user names from main Supabase
             const userIds = Array.from(new Set(logs.map(l => l.userId)));
@@ -129,7 +153,7 @@ export default function EventsPage() {
 
     useEffect(() => {
         fetchEvents();
-    }, [userData, isAdmin]);
+    }, [userData, isAdmin, activeTab]);
 
     // Handle marking events as 'seen' only when selected
     useEffect(() => {
@@ -158,11 +182,6 @@ export default function EventsPage() {
                         : e
                 ));
 
-                const { getActiveSadhanaSupabase } = await import('@/lib/supabase/sadhana');
-                const supabase = getActiveSadhanaSupabase();
-                if (!supabase) return;
-
-                console.log('Marking event as seen on selection:', selectedEventId);
                 await submitEventResponse({
                     eventId: selectedEventId,
                     userId: userData.id,
@@ -171,133 +190,98 @@ export default function EventsPage() {
                 });
             } catch (error) {
                 console.error('Error marking event as seen:', error);
-                // Optional: rollback state on error, but usually not needed for 'seen'
             }
         };
 
         markSelectedAsSeen();
-    }, [selectedEventId, userData, events]);
+    }, [selectedEventId, userData]);
 
     const handlePinToggle = async (eventId: string, pinned: boolean) => {
         if (!userData) return;
-
-        // Optimistic update: Update state IMMEDIATELY
-        const previousEvents = [...events];
-        setEvents(prev => {
-            const updated = prev.map(e => e.id === eventId ? { ...e, isPinned: pinned } : e);
-            return [...updated].sort((a, b) => {
+        try {
+            await toggleEventPin(eventId, userData.id, pinned);
+            setEvents(prev => prev.map(e =>
+                e.id === eventId ? { ...e, isPinned: pinned } : e
+            ).sort((a, b) => {
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
                 if (a.isImportant && !b.isImportant) return -1;
                 if (!a.isImportant && b.isImportant) return 1;
                 return new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime();
-            });
-        });
-
-        try {
-            await toggleEventPin(eventId, userData.id, pinned);
-            toast.success(pinned ? "Announcement Pinned" : "Unpinned");
+            }));
+            toast.success(pinned ? 'Pinned to top' : 'Unpinned');
         } catch (error) {
             console.error('Error toggling pin:', error);
-            setEvents(previousEvents); // Rollback on failure
             toast.error('Failed to update pin');
         }
     };
 
+    const [showHistory, setShowHistory] = useState(true);
+    const [showComposer, setShowComposer] = useState(false);
+
     const filteredEvents = events.filter(event => {
         const matchesSearch = event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (event.message && event.message.toLowerCase().includes(searchQuery.toLowerCase()));
+            event.message?.toLowerCase().includes(searchQuery.toLowerCase());
 
-        if (!matchesSearch) return false;
+        if (dateFilter === 'all') return matchesSearch;
 
         const eventDate = new Date(event.eventDate);
         const now = new Date();
-        if (dateFilter === '7days') {
-            const sevenDaysAgo = new Date();
-            sevenDaysAgo.setDate(now.getDate() - 7);
-            return eventDate >= sevenDaysAgo;
-        }
-        if (dateFilter === '30days') {
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(now.getDate() - 30);
-            return eventDate >= thirtyDaysAgo;
-        }
-        return true;
+        const diffDays = Math.ceil((now.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (dateFilter === '7days') return matchesSearch && diffDays <= 7;
+        if (dateFilter === '30days') return matchesSearch && diffDays <= 30;
+
+        return matchesSearch;
     });
 
-
-
-    const [showHistory, setShowHistory] = useState(true);
-    const [showComposer, setShowComposer] = useState(false);
-    const [activeView, setActiveView] = useState<'audience' | 'management'>('audience');
-
-    const selectedEvent = events.find(e => e.id === selectedEventId) || events[0];
-
-    useEffect(() => {
-        if (events.length > 0 && !selectedEventId) {
-            setSelectedEventId(events[0].id);
-        }
-    }, [events, selectedEventId]);
-
-    const handleEventSelect = (id: string) => {
-        setSelectedEventId(id);
-        setIsMobileDetailOpen(true);
-    };
-
+    const selectedEvent = events.find(e => e.id === selectedEventId);
 
     return (
-        <div className="space-y-6 md:space-y-8 max-w-[1600px] mx-auto pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {/* Admin Tab Switcher */}
+        <div className="min-h-screen bg-[#F8FAFC] flex flex-col pt-24 pb-12">
+            {/* Tab Switcher for Admins */}
             {isAdmin && (
-                <div className="flex justify-center md:justify-start px-4 sm:px-6">
-                    <div className="bg-gray-100/80 backdrop-blur-sm p-1.5 rounded-2xl flex gap-1 border border-gray-200 shadow-inner w-full md:w-auto">
+                <div className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 mb-8">
+                    <div className="bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-gray-100 shadow-sm inline-flex items-center gap-1">
                         <button
-                            onClick={() => setActiveView('audience')}
-                            className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${activeView === 'audience'
-                                ? 'bg-white text-orange-600 shadow-lg shadow-orange-100 ring-1 ring-orange-500/10'
-                                : 'text-gray-400 hover:text-gray-600 active:scale-95'
+                            onClick={() => setActiveTab('audience')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'audience'
+                                ? 'bg-orange-600 text-white shadow-md shadow-orange-100'
+                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
-                            <div className="flex items-center justify-center gap-2">
-                                <Users className={`h-3.5 w-3.5 ${activeView === 'audience' ? 'animate-bounce' : ''}`} />
-                                Audience View
-                            </div>
+                            Audience View
                         </button>
                         <button
-                            onClick={() => setActiveView('management')}
-                            className={`flex-1 md:flex-none px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 ${activeView === 'management'
-                                ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20'
-                                : 'text-gray-400 hover:text-gray-600 active:scale-95'
+                            onClick={() => setActiveTab('manage')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'manage'
+                                ? 'bg-orange-600 text-white shadow-md shadow-orange-100'
+                                : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
-                            <div className="flex items-center justify-center gap-2">
-                                <BarChart3 className={`h-3.5 w-3.5 ${activeView === 'management' ? 'animate-pulse' : ''}`} />
-                                Management Hub
-                            </div>
+                            Management Hub
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Dynamic Content Rendering */}
-            {(isAdmin && activeView === 'management') ? (
-                <div className="space-y-8 animate-in slide-in-from-right-4 duration-500 pb-10">
-                    {/* Compose Section */}
+            {(isAdmin && activeTab === 'manage') ? (
+                <div className="px-4 sm:px-6 space-y-12 max-w-[1600px] mx-auto w-full">
+                    {/* Management Controls */}
                     <div className="space-y-4">
-                        <div className="flex flex-wrap justify-between items-center gap-3 px-2 sm:px-6">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-orange-600 rounded-lg shadow-md shadow-orange-100">
-                                    <Plus className={`h-4 w-4 text-white transition-transform duration-500 ${showComposer ? 'rotate-45' : 'rotate-0'}`} />
-                                </div>
-                                <h2 className="text-xl font-black tracking-tight text-gray-900">New Announcement</h2>
+                        <div className="flex flex-wrap justify-between items-center gap-4 px-2 sm:px-6">
+                            <div className="flex flex-col">
+                                <h1 className="text-3xl font-black tracking-tight text-gray-900">Management Hub</h1>
+                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Announcements & Event Tracking</p>
                             </div>
                             <button
                                 onClick={() => setShowComposer(!showComposer)}
-                                className={`px-4 sm:px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all active:scale-95 border ${showComposer
-                                    ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
-                                    : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'
+                                className={`px-6 py-3 rounded-2xl font-black text-[12px] uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-orange-100 flex items-center gap-2 ${showComposer
+                                    ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                    : 'bg-orange-600 text-white hover:bg-orange-700'
                                     }`}
                             >
+                                {showComposer ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
                                 {showComposer ? 'Close Composer' : 'Create New'}
                             </button>
                         </div>
@@ -329,7 +313,12 @@ export default function EventsPage() {
                             </button>
                         </div>
 
-                        {showHistory && (
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center space-y-4 min-h-[300px] bg-white rounded-3xl border border-gray-100 shadow-sm">
+                                <div className="w-10 h-10 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin"></div>
+                                <p className="text-gray-400 font-black text-[10px] uppercase tracking-widest">Loading Records...</p>
+                            </div>
+                        ) : showHistory && (
                             <AdminEventHistory
                                 events={events}
                             />
@@ -338,10 +327,9 @@ export default function EventsPage() {
                 </div>
             ) : (
                 <div className="flex flex-col animate-in slide-in-from-left-4 duration-500">
-                    {/* Premium Header for Audience View - Simplified and hideable */}
+                    {/* Header for Audience View */}
                     <div className={`px-4 sm:px-6 mb-6 ${isMobileDetailOpen ? 'hidden md:block' : 'block'}`}>
                         <div className="relative overflow-hidden bg-white/40 backdrop-blur-xl p-6 sm:p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-white/60 flex flex-col md:flex-row md:items-center justify-between gap-4 group">
-                            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-orange-50/10 rounded-full -mr-48 -mt-48 blur-[80px] transition-all duration-1000"></div>
                             <div className="relative z-10 space-y-1">
                                 <div className="flex items-center gap-2 mb-1 px-3 py-0.5 bg-orange-600 rounded-lg w-fit shadow-md shadow-orange-100">
                                     <Calendar className="h-3.5 w-3.5 text-white" />
@@ -357,12 +345,12 @@ export default function EventsPage() {
                     {/* Split Pane Interface */}
                     <div className="flex bg-white rounded-[2rem] shadow-2xl border border-gray-100 mx-4 sm:mx-6 mb-6 min-h-0 items-start">
                         {loading ? (
-                            <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+                            <div className="flex-1 flex flex-col items-center justify-center space-y-4 min-h-[400px]">
                                 <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
                                 <p className="text-gray-400 font-bold">Retrieving events...</p>
                             </div>
                         ) : events.length === 0 ? (
-                            <div className="flex-1 flex flex-col items-center justify-center p-16 text-center">
+                            <div className="flex-1 flex flex-col items-center justify-center p-16 text-center min-h-[400px]">
                                 <div className="mx-auto w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mb-6">
                                     <Calendar className="h-12 w-12 text-orange-200" />
                                 </div>
@@ -371,7 +359,7 @@ export default function EventsPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Sidebar: sticky items */}
+                                {/* Sidebar */}
                                 <div className={`w-full md:w-[280px] lg:w-[320px] flex flex-col border-r border-gray-100 sticky top-4 self-start max-h-[calc(100vh-2rem)] ${isMobileDetailOpen ? 'hidden md:flex' : 'flex'}`}>
                                     <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex-none">
                                         <div className="flex items-center justify-between">
@@ -387,7 +375,6 @@ export default function EventsPage() {
                                         </div>
                                     </div>
 
-                                    {/* Filters: Search & Date */}
                                     <div className="p-4 border-b border-gray-100 bg-white sticky top-0 z-10 space-y-3">
                                         <div className="relative group">
                                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
@@ -401,58 +388,41 @@ export default function EventsPage() {
                                         </div>
 
                                         <div className="flex gap-2">
-                                            {[
-                                                { id: 'all', label: 'All' },
-                                                { id: '7days', label: 'Recent' },
-                                                { id: '30days', label: 'Month' }
-                                            ].map((btn) => (
+                                            {['all', '7days', '30days'].map((id) => (
                                                 <button
-                                                    key={btn.id}
-                                                    onClick={() => setDateFilter(btn.id as any)}
-                                                    className={`flex-1 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-2 ${dateFilter === btn.id
+                                                    key={id}
+                                                    onClick={() => setDateFilter(id as any)}
+                                                    className={`flex-1 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border-2 ${dateFilter === id
                                                         ? 'bg-gray-900 border-gray-900 text-white shadow-md'
                                                         : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
                                                         }`}
                                                 >
-                                                    {btn.label}
+                                                    {id === 'all' ? 'All' : id === '7days' ? 'Recent' : 'Month'}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                        {filteredEvents.length > 0 ? (
-                                            filteredEvents.map(event => (
-                                                <EventListItem
-                                                    key={event.id}
-                                                    event={event}
-                                                    isActive={selectedEventId === event.id}
-                                                    onClick={() => {
-                                                        setSelectedEventId(event.id);
-                                                        setIsMobileDetailOpen(true);
-                                                    }}
-                                                    onPinToggle={(pinned) => handlePinToggle(event.id, pinned)}
-                                                />
-                                            ))
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center p-12 text-center">
-                                                <div className="p-6 bg-gray-50 rounded-3xl mb-4">
-                                                    <Search className="h-8 w-8 text-gray-200" />
-                                                </div>
-                                                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">No matching announcements</p>
-                                            </div>
-                                        )}
+                                        {filteredEvents.map(event => (
+                                            <EventListItem
+                                                key={event.id}
+                                                event={event}
+                                                isActive={selectedEventId === event.id}
+                                                onClick={() => {
+                                                    setSelectedEventId(event.id);
+                                                    setIsMobileDetailOpen(true);
+                                                }}
+                                                onPinToggle={(pinned) => handlePinToggle(event.id, pinned)}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
 
-                                {/* Content Area: full detail */}
+                                {/* Content Area */}
                                 <div className={`flex-1 flex flex-col min-w-0 bg-white ${!isMobileDetailOpen ? 'hidden md:flex' : 'flex'}`}>
-                                    {/* Mobile Back Button */}
                                     <div className="md:hidden p-4 border-b border-gray-100 bg-white sticky top-0 z-20 flex items-center gap-4">
-                                        <button
-                                            onClick={() => setIsMobileDetailOpen(false)}
-                                            className="p-2 hover:bg-gray-100 rounded-xl transition-all"
-                                        >
+                                        <button onClick={() => setIsMobileDetailOpen(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-all">
                                             <ChevronLeft className="h-5 w-5 text-gray-400" />
                                         </button>
                                         <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Back to Announcements</span>
@@ -460,12 +430,9 @@ export default function EventsPage() {
 
                                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                                         {selectedEvent ? (
-                                            <EventDetailView
-                                                event={selectedEvent}
-                                                onResponseUpdate={fetchEvents}
-                                            />
+                                            <EventDetailView event={selectedEvent} onResponseUpdate={fetchEvents} />
                                         ) : (
-                                            <div className="h-full flex flex-col items-center justify-center p-12 text-center text-gray-300">
+                                            <div className="h-full flex flex-col items-center justify-center p-12 text-center text-gray-300 min-h-[400px]">
                                                 <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
                                                     <MessageSquare className="h-10 w-10" />
                                                 </div>
@@ -479,7 +446,18 @@ export default function EventsPage() {
                     </div>
                 </div>
             )}
-
         </div>
+    );
+}
+
+export default function EventsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex justify-center items-center min-h-screen">
+                <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin"></div>
+            </div>
+        }>
+            <EventsPageContent />
+        </Suspense>
     );
 }

@@ -24,7 +24,8 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
     const filteredEvents = useMemo(() => {
         return events.filter(event =>
             event.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            event.message?.toLowerCase().includes(searchTerm.toLowerCase())
+            event.message?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            event.createdByName?.toLowerCase().includes(searchTerm.toLowerCase())
         );
     }, [events, searchTerm]);
 
@@ -176,10 +177,10 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                                 <td className="px-6 py-4 hidden md:table-cell">
                                     <div className="flex items-center gap-2.5">
                                         <div className="w-7 h-7 bg-gray-900 rounded-lg flex items-center justify-center text-white text-[10px] font-black group-hover:bg-purple-600 transition-colors">
-                                            {event.title.charAt(0).toUpperCase()}
+                                            {(event.createdByName || event.title).charAt(0).toUpperCase()}
                                         </div>
                                         <div>
-                                            <div className="text-[11px] font-black text-gray-900 leading-none mb-0.5">Admin</div>
+                                            <div className="text-[11px] font-black text-gray-900 leading-none mb-0.5">{event.createdByName || 'Admin'}</div>
                                             <div className="text-[9px] font-bold text-gray-400 lowercase leading-none">broadcast</div>
                                         </div>
                                     </div>

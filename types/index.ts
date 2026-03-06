@@ -370,6 +370,7 @@ export interface ManagedEvent {
   id: string;
   createdAt: Date;
   createdBy: string;
+  createdByName?: string;
   title: string;
   eventDate: Date;
   message?: string;

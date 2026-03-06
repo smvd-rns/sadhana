@@ -60,10 +60,44 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
         const fetchFilterData = async () => {
             setLoadingFilters(true);
             try {
-                const { data: templeData } = await supabase!.from('temples').select('id, name').order('name');
-                const { data: centerData } = await supabase!.from('centers').select('id, name, temple_name').order('name');
-                setTemples(templeData?.map(t => ({ id: t.name, name: t.name })) || []);
-                setCenters(centerData?.map(c => ({ id: c.name, name: c.name, temple_name: c.temple_name })) || []);
+                if (!userData || !supabase) return;
+
+                const userRoles = Array.isArray(userData.role) ? userData.role : [userData.role];
+                const normalizedRoles = userRoles.map(r => String(r));
+
+                const isSuperAdmin = normalizedRoles.some(r => r === '8' || r === 'super_admin');
+                const isTempleAdmin = normalizedRoles.some(r => ['11', '12', '13', '21', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r));
+                const isCenterAdmin = normalizedRoles.some(r => ['14', '15', '16', 'project_advisor', 'project_manager', 'acting_manager'].includes(r));
+
+                let templeQuery = supabase.from('temples').select('id, name').order('name');
+                let centerQuery = supabase.from('centers').select('id, name, temple_name').order('name');
+
+                // Filter for Temple-level Admin (MD, Director, etc.)
+                if (isTempleAdmin && !isSuperAdmin) {
+                    templeQuery = templeQuery.or(`managing_director_id.eq.${userData.id},director_id.eq.${userData.id},central_voice_manager_id.eq.${userData.id},yp_id.eq.${userData.id}`);
+                }
+
+                // Filter for Center-level Admin (PM, Advisor, etc.)
+                if (isCenterAdmin && !isSuperAdmin) {
+                    centerQuery = centerQuery.or(`project_manager_id.eq.${userData.id},project_advisor_id.eq.${userData.id},acting_manager_id.eq.${userData.id}`);
+                }
+
+                const [{ data: templeData }, { data: centerData }] = await Promise.all([
+                    templeQuery,
+                    centerQuery
+                ]);
+
+                let filteredTemples = templeData?.map(t => ({ id: t.name, name: t.name })) || [];
+                let filteredCenters = centerData?.map(c => ({ id: c.name, name: c.name, temple_name: c.temple_name })) || [];
+
+                // If MD/Temple Admin, also restrict centers to those belonging to their temples
+                if (isTempleAdmin && !isSuperAdmin && templeData) {
+                    const allowedTempleNames = templeData.map(t => t.name);
+                    filteredCenters = filteredCenters.filter(c => allowedTempleNames.includes(c.temple_name));
+                }
+
+                setTemples(filteredTemples);
+                setCenters(filteredCenters);
             } catch (error) {
                 console.error('Error fetching filters:', error);
             } finally {
@@ -71,7 +105,7 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
             }
         };
         fetchFilterData();
-    }, []);
+    }, [userData, supabase]);
 
     const handleImageUpload = async (file: File): Promise<string> => {
         // Just return a local URL and store the file for later upload
@@ -96,13 +130,47 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
             }
 
             if (targetTemples.length > 0 && targetTemples.length < temples.length) {
-                const values = `(${targetTemples.join(',')})`;
+                const values = `(${targetTemples.map(v => `"${v}"`).join(',')})`;
                 query = query.or(`current_temple.in.${values},hierarchy->>temple.in.${values},hierarchy->>currentTemple.in.${values}`);
             }
 
             if (targetCenters.length > 0 && targetCenters.length < centers.length) {
-                const values = `(${targetCenters.join(',')})`;
+                const values = `(${targetCenters.map(v => `"${v}"`).join(',')})`;
                 query = query.or(`current_center.in.${values},center.in.${values},hierarchy->>center.in.${values},hierarchy->>currentCenter.in.${values}`);
+            }
+
+            // Apply global role-based restrictions to the final query
+            const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+            const normalizedRoles = userRoles.map(r => String(r));
+
+            const isSuperAdmin = normalizedRoles.some(r => r === '8' || r === 'super_admin');
+            const isTempleAdmin = normalizedRoles.some(r => ['11', '12', '13', '21', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r));
+            const isCenterAdmin = normalizedRoles.some(r => ['14', '15', '16', 'project_advisor', 'project_manager', 'acting_manager'].includes(r));
+
+            if (isTempleAdmin && !isSuperAdmin) {
+                // If Temple Admin (MD, Director, etc.), restrict to users in their assigned temples
+                const allowedTempleNames = temples.map(t => t.name);
+                if (allowedTempleNames.length > 0) {
+                    const values = `(${allowedTempleNames.map(v => `"${v}"`).join(',')})`;
+                    query = query.or(`current_temple.in.${values},hierarchy->>temple.in.${values},hierarchy->>currentTemple.in.${values}`);
+                } else {
+                    setRecipientCount(0);
+                    setSelectedUsersList([]);
+                    setIsFetchingUsers(false);
+                    return;
+                }
+            } else if (isCenterAdmin && !isSuperAdmin) {
+                // If Center Admin (PM, Advisor, etc.), restrict to users in their centers
+                const allowedCenterNames = centers.map(c => c.name);
+                if (allowedCenterNames.length > 0) {
+                    const values = `(${allowedCenterNames.map(v => `"${v}"`).join(',')})`;
+                    query = query.or(`current_center.in.${values},center.in.${values},hierarchy->>center.in.${values},hierarchy->>currentCenter.in.${values}`);
+                } else {
+                    setRecipientCount(0);
+                    setSelectedUsersList([]);
+                    setIsFetchingUsers(false);
+                    return;
+                }
             }
 
             const { data, count, error } = await query;
@@ -466,10 +534,12 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                         </div>
 
                         <div className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-[9px] font-black text-gray-900 uppercase tracking-tighter">Temple</label>
-                                <MultiSelect options={temples} selectedValues={targetTemples} onChange={setTargetTemples} placeholder="All Temples" valueProperty="id" disabled={loadingFilters} />
-                            </div>
+                            {(!userData?.role || !Array.isArray(userData.role) ? [userData?.role] : userData.role).some(r => [8, 11, 12, 13, 21, 'super_admin', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r as any)) && (
+                                <div className="space-y-1.5">
+                                    <label className="text-[9px] font-black text-gray-900 uppercase tracking-tighter">Temple</label>
+                                    <MultiSelect options={temples} selectedValues={targetTemples} onChange={setTargetTemples} placeholder="All Temples" valueProperty="id" disabled={loadingFilters} />
+                                </div>
+                            )}
                             <div className="space-y-1.5">
                                 <label className="text-[9px] font-black text-gray-900 uppercase tracking-tighter">Specific Centers</label>
                                 <MultiSelect

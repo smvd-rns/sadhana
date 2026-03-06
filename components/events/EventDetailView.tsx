@@ -8,6 +8,7 @@ import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { toast } from 'react-hot-toast';
+import EventAudienceTracking from './EventAudienceTracking';
 
 interface EventDetailViewProps {
     event: ManagedEvent;
@@ -17,6 +18,12 @@ interface EventDetailViewProps {
 export default function EventDetailView({ event, onResponseUpdate }: EventDetailViewProps) {
     const { userData } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
+    const isAdmin = userRoles.some(role =>
+        ['super_admin', 'zonal_admin', 'state_admin', 'city_admin', 'center_admin', 'bc_voice_manager', 'project_manager', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher', 'project_advisor', 'acting_manager'].includes(String(role)) ||
+        (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21))
+    );
 
     const handleResponse = async (status: 'coming' | 'not_coming', reason?: string) => {
         if (!userData) return;
@@ -179,6 +186,13 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                                 </a>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {/* Administrative Tracking Section */}
+                {isAdmin && (
+                    <div className="pt-8 border-t border-gray-100">
+                        <EventAudienceTracking event={event} />
                     </div>
                 )}
             </div>

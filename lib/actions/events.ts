@@ -77,34 +77,57 @@ async function triggerPushNotificationsForEvent(eventId: string, eventData: Omit
         if (!supabaseAdmin) return;
 
         // Fetch all users with push tokens from the Main database
-        // For efficiency, we only fetch users who have at least one token
         let query = supabaseAdmin
             .from('users')
-            .select('id, ashram, role, state, city, center, push_tokens')
+            .select('id, ashram, role, state, city, center, current_center, parent_center, current_temple, parent_temple, push_tokens, hierarchy')
             .not('push_tokens', 'is', null)
             .neq('push_tokens', '{}');
 
-        // Apply filters if present
+        // Apply ashram filter in SQL if present
         if (eventData.targetAshrams?.length > 0) {
             query = query.in('ashram', eventData.targetAshrams);
         }
-        // Roles and Temples/Centers filtering can be complex in SQl, 
-        // but since push tokens are few, fetching and filtering in JS is often acceptable
 
         const { data: users, error } = await query;
 
         if (error || !users || users.length === 0) return;
 
-        // Filter users in JS for more complex criteria (like roles or temples)
+        // Filter users in JS for more complex criteria
         const targetedUsers = users.filter((user: any) => {
-            // Check roles
+            // 1. Check Roles
             const matchesRole = !eventData.targetRoles?.length ||
-                eventData.targetRoles.some(r => user.role?.includes(r));
+                eventData.targetRoles.some(r => {
+                    const userRole = user.role;
+                    if (Array.isArray(userRole)) {
+                        return userRole.some(ur => String(ur) === String(r));
+                    }
+                    return String(userRole) === String(r);
+                });
 
-            // Check temples/centers (if needed, though SQL filters handles most)
-            // ... add more filtering here if necessary ...
+            if (!matchesRole) return false;
 
-            return matchesRole;
+            // 2. Check Temples
+            const matchesTemple = !eventData.targetTemples?.length ||
+                eventData.targetTemples.some(t =>
+                    [user.current_temple, user.parent_temple, user.hierarchy?.temple, user.hierarchy?.currentTemple]
+                        .some(loc => String(loc).trim().toLowerCase() === String(t).trim().toLowerCase())
+                );
+
+            if (!matchesTemple) return false;
+
+            // 3. Check Centers
+            const matchesCenter = !eventData.targetCenters?.length ||
+                eventData.targetCenters.some(c =>
+                    [user.center, user.current_center, user.parent_center, user.hierarchy?.center, user.hierarchy?.currentCenter]
+                        .some(loc => String(loc).trim().toLowerCase() === String(c).trim().toLowerCase())
+                );
+
+            if (!matchesCenter) return false;
+
+            // 4. Check Excluded
+            if (eventData.excludedUserIds?.includes(user.id)) return false;
+
+            return true;
         });
 
         const allTokens = targetedUsers.flatMap((u: any) => u.push_tokens || []);
@@ -138,25 +161,54 @@ export async function getEventsForUser(userParams: {
     temple?: string;
     center?: string;
     completedCamps?: string[];
+    isSuperAdmin?: boolean; // New parameter to bypass creator restriction
+    allLocations?: string[]; // Multiple possible location tokens (Centers/Temples)
+    isManagementView?: boolean; // Explicit flag for the History/Management tab
 }) {
     const supabase = getActiveSadhanaSupabase();
     if (!supabase) return [];
 
     // 1. Fetch all events
-    // Base events query
-    // 1. Fetch all events targeting this user
     let query = supabase
         .from('events')
         .select('*')
         .order('created_at', { ascending: false });
 
+    // 1b. Isolation: If it's the "Management Hub" view,
+    // we MUST restrict to events the current user created, unless they are a Super Admin.
+    const isTargetingEmpty = !userParams.ashram && !userParams.role && !userParams.temple && !userParams.center && (!userParams.completedCamps || !userParams.completedCamps.length);
+    const shouldIsolate = userParams.isManagementView === true || isTargetingEmpty;
 
+    if (shouldIsolate && userParams.isSuperAdmin !== true && userParams.userId) {
+        query = query.eq('created_by', userParams.userId);
+    }
 
     const { data: eventsData, error: eventsError } = await query;
 
     if (eventsError) {
         console.error('Error fetching events:', eventsError);
         return [];
+    }
+
+    // 1c. Fetch creator names (for Management Hub / Admin view)
+    let creatorNamesMap = new Map<string, string>();
+    if (eventsData && eventsData.length > 0) {
+        const creatorIds = Array.from(new Set(eventsData.map(e => e.created_by)));
+        try {
+            const { getAdminClient } = await import('@/lib/supabase/admin');
+            const supabaseAdmin = getAdminClient();
+            if (supabaseAdmin) {
+                const { data: userData } = await supabaseAdmin
+                    .from('users')
+                    .select('id, name')
+                    .in('id', creatorIds);
+                if (userData) {
+                    userData.forEach(u => creatorNamesMap.set(u.id, u.name));
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching creator names:', err);
+        }
     }
 
     // 2. Fetch user responses if userId is provided
@@ -174,10 +226,8 @@ export async function getEventsForUser(userParams: {
         }
     }
 
-    // 2b. If Admin (isFilterEmpty is true), fetch aggregate 'coming' counts for each event
-    const isFilterEmpty = !userParams.ashram && !userParams.role && !userParams.temple && !userParams.center && (!userParams.completedCamps || !userParams.completedCamps.length);
-
-    if (isFilterEmpty) {
+    // 2b. Admin Stats
+    if (isTargetingEmpty) {
         const { data: comingStats } = await supabase
             .from('event_responses')
             .select('event_id')
@@ -191,15 +241,28 @@ export async function getEventsForUser(userParams: {
     }
 
     const filtered = (eventsData || []).filter(event => {
-        // If filter is explicitly empty (Admin view), show all
-        if (isFilterEmpty) return true;
+        // If we are in Management View, we show what we fetched (already SQL isolated)
+        if (userParams.isManagementView || isTargetingEmpty) return true;
 
-        const matchesAshram = !event.target_ashrams || !event.target_ashrams.length || event.target_ashrams.includes(userParams.ashram);
-        const matchesRole = !event.target_roles || !event.target_roles.length || event.target_roles.includes(userParams.role);
-        const matchesTemple = !event.target_temples || !event.target_temples.length || event.target_temples.includes(userParams.temple);
-        const matchesCenter = !event.target_centers || !event.target_centers.length || event.target_centers.includes(userParams.center);
+        // Otherwise, filter for the regular User Inbox (Audience View)
+        const matchesAshram = !event.target_ashrams?.length || event.target_ashrams.includes(userParams.ashram);
+        const matchesRole = !event.target_roles?.length || event.target_roles.includes(userParams.role);
 
-        const matchesCamps = !event.target_camps || !event.target_camps.length ||
+        // Robust Location Checking (Temples)
+        const userTemples = [userParams.temple, ...(userParams.allLocations || [])].filter(Boolean);
+        const matchesTemple = !event.target_temples?.length ||
+            event.target_temples.some((t: string) =>
+                userTemples.some(ut => String(ut).trim().toLowerCase() === String(t).trim().toLowerCase())
+            );
+
+        // Robust Location Checking (Centers)
+        const userCenters = [userParams.center, ...(userParams.allLocations || [])].filter(Boolean);
+        const matchesCenter = !event.target_centers?.length ||
+            event.target_centers.some((c: string) =>
+                userCenters.some(uc => String(uc).trim().toLowerCase() === String(c).trim().toLowerCase())
+            );
+
+        const matchesCamps = !event.target_camps?.length ||
             event.target_camps.some((camp: string) => userParams.completedCamps?.includes(camp));
 
         const isExcluded = event.excluded_user_ids?.includes(userParams.userId);
@@ -208,7 +271,7 @@ export async function getEventsForUser(userParams: {
     });
 
     return filtered.map(event => {
-        const managed = mapDbEventToManagedEvent(event);
+        const managed = mapDbEventToManagedEvent(event, creatorNamesMap.get(event.created_by));
         const userResp = responsesMap.get(event.id);
 
         if (userResp) {
@@ -231,7 +294,7 @@ export async function getEventsForUser(userParams: {
         }
 
         // Attach aggregate stats for admin
-        if (isFilterEmpty) {
+        if (isTargetingEmpty) {
             managed.comingCount = comingCountsMap.get(event.id) || 0;
         }
         return managed;
@@ -370,20 +433,28 @@ export async function getEventStats(eventId: string) {
 /**
  * Get recent responses across all events (Global Log)
  */
-export async function getRecentResponses(limit: number = 20) {
+export async function getRecentResponses(limit: number = 20, currentUserId?: string, isSuperAdmin?: boolean) {
     const supabase = getActiveSadhanaSupabase();
     if (!supabase) return [];
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('event_responses')
         .select(`
             *,
-            events (
-                title
+            events!inner (
+                title,
+                created_by
             )
         `)
         .order('updated_at', { ascending: false })
         .limit(limit);
+
+    // If not a Super Admin, only show responses to events the current user created
+    if (!isSuperAdmin && currentUserId) {
+        query = query.eq('events.created_by', currentUserId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching global logs:', error);
@@ -403,12 +474,79 @@ export async function getRecentResponses(limit: number = 20) {
     }));
 }
 
+/**
+ * Fetch targeted users for a specific event with optional center/temple filtering
+ * Optimized to only fetch relevant users
+ */
+export async function getEventTargetedUsers(eventId: string, filters?: { temple?: string, center?: string }) {
+    const supabaseClient = getActiveSadhanaSupabase();
+    if (!supabaseClient) return [];
+
+    // 1. Fetch Event Targeting Data
+    const { data: event, error: eventError } = await supabaseClient
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+
+    if (eventError || !event) return [];
+
+    // 2. Build User Query for main database
+    const { supabase: mainSupabase } = await import('@/lib/supabase/config');
+    if (!mainSupabase) return [];
+
+    let userQuery = mainSupabase
+        .from('users')
+        .select('*');
+
+    // Apply strict filters from the event itself to reduce payload
+    if (event.target_ashrams?.length) {
+        userQuery = userQuery.in('ashram', event.target_ashrams);
+    }
+
+    // Apply specific admin filters (Center/Temple)
+    if (filters?.temple && filters.temple !== 'all') {
+        userQuery = userQuery.or(`current_temple.eq."${filters.temple}",parent_temple.eq."${filters.temple}",hierarchy->>temple.eq."${filters.temple}"`);
+    }
+    if (filters?.center && filters.center !== 'all') {
+        userQuery = userQuery.or(`current_center.eq."${filters.center}",center.eq."${filters.center}",hierarchy->>center.eq."${filters.center}"`);
+    }
+
+    const { data: users, error: usersError } = await userQuery;
+    if (usersError || !users) return [];
+
+    // 3. Final JS filtering for complex hierarchy/role logic that SQL can't do easily
+    return users.filter(user => {
+        const userRoles = Array.isArray(user.role) ? user.role.map(String) : [String(user.role)];
+        const matchesRole = !event.target_roles?.length || event.target_roles.some((r: any) => userRoles.includes(String(r)));
+
+        // Detailed Location Checks (already partially done in SQL, but double check for robustness)
+        const userTemple = user.current_temple || user.parent_temple || user.hierarchy?.temple || user.hierarchy?.currentTemple;
+        const userCenter = user.center || user.current_center || user.hierarchy?.center || user.hierarchy?.currentCenter;
+
+        const matchesTemple = !event.target_temples?.length || event.target_temples.includes(userTemple);
+        const matchesCenter = !event.target_centers?.length || event.target_centers.includes(userCenter);
+
+        // Camp checks
+        const matchesCamps = !event.target_camps?.length || event.target_camps.some((c: string) => {
+            const campField = `camp${c.charAt(0).toUpperCase()}${c.slice(1)}`;
+            return user[campField] === true;
+        });
+
+        // Exclusions
+        const isExcluded = event.excluded_user_ids?.includes(user.id);
+
+        return matchesRole && matchesTemple && matchesCenter && matchesCamps && !isExcluded;
+    });
+}
+
 // Utility to map DB format to app ManagedEvent type
-function mapDbEventToManagedEvent(dbEvent: any): ManagedEvent {
+function mapDbEventToManagedEvent(dbEvent: any, creatorName?: string): ManagedEvent {
     return {
         id: dbEvent.id,
         createdAt: new Date(dbEvent.created_at),
         createdBy: dbEvent.created_by,
+        createdByName: creatorName,
         title: dbEvent.title,
         eventDate: new Date(dbEvent.event_date),
         message: dbEvent.message,
