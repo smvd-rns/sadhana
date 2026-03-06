@@ -54,7 +54,7 @@ export async function fetchCenterId(centerName: string, state?: string, city?: s
 
     // If state is provided, filter by state
     if (state) {
-      query = supabase
+      query = s
         .from('centers')
         .select('id')
         .eq('name', centerName.trim())
@@ -64,7 +64,7 @@ export async function fetchCenterId(centerName: string, state?: string, city?: s
 
     // If both state and city are provided, filter by both
     if (state && city) {
-      query = supabase
+      query = s
         .from('centers')
         .select('id')
         .eq('name', centerName.trim())
@@ -134,7 +134,7 @@ export async function enrichHierarchyData(hierarchyData: any): Promise<any> {
   }
 
   // Handle unified counselor field
-  if (enriched.counselor && enriched.counselor !== 'Other' && enriched.counselor !== 'None') {
+  if (enriched.counselor && enriched.counselor !== 'Other' && enriched.counselor !== 'None' && supabase) {
     const counselorName = enriched.counselor.trim();
     console.log('Fetching unified counselor details for:', counselorName);
 
