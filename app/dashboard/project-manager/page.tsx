@@ -799,13 +799,30 @@ export default function ProjectManagerDashboard() {
 
             if (error) throw error;
 
-            const filtered = (data || []).filter((u: any) => {
+            const mappedUsers = (data || []).map((u: any) => {
                 const uH = u.hierarchy as any;
                 const uCenter = u.current_center || uH?.currentCenter?.name || (typeof uH?.currentCenter === 'string' ? uH?.currentCenter : '');
-                return uCenter === currentCenter;
-            });
+                if (uCenter !== currentCenter) return null;
 
-            setUsers(filtered);
+                return {
+                    ...u,
+                    // Relative contact fields
+                    relative1Name: u.relative_1_name,
+                    relative1Relationship: u.relative_1_relationship,
+                    relative1Phone: u.relative_1_phone,
+                    relative2Name: u.relative_2_name,
+                    relative2Relationship: u.relative_2_relationship,
+                    relative2Phone: u.relative_2_phone,
+                    relative3Name: u.relative_3_name,
+                    relative3Relationship: u.relative_3_relationship,
+                    relative3Phone: u.relative_3_phone,
+                    // Health fields
+                    healthChronicDisease: u.health_chronic_disease,
+                    introducedToKcIn: u.introduced_to_kc_in || uH?.introducedToKcIn,
+                };
+            }).filter(Boolean);
+
+            setUsers(mappedUsers);
         } catch (error) {
             console.error('Error loading users:', error);
             toast.error('Failed to load users');

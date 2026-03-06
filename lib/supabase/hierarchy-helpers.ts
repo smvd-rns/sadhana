@@ -10,8 +10,9 @@ export async function fetchCounselorEmail(counselorName: string): Promise<string
   }
 
   try {
+    const s = supabase;
     // Exact match by name only - no ashram filter needed since dropdown already filters
-    const { data, error } = await supabase
+    const { data, error } = await s
       .from('counselors')
       .select('email')
       .eq('name', counselorName.trim())
@@ -44,7 +45,8 @@ export async function fetchCenterId(centerName: string, state?: string, city?: s
   }
 
   try {
-    let query = supabase
+    const s = supabase;
+    let query = s
       .from('centers')
       .select('id')
       .eq('name', centerName.trim())
@@ -118,7 +120,6 @@ export async function enrichHierarchyData(hierarchyData: any): Promise<any> {
   }
 
   // ALWAYS fetch grihastha counselor email from database if counselor name is provided
-  // Exact match by name only - no ashram filter since dropdown already filters
   if (enriched.grihasthaCounselor && enriched.grihasthaCounselor.trim() !== '') {
     const counselorName = enriched.grihasthaCounselor.trim();
     console.log('Fetching grihastha counselor email for exact name match:', counselorName);
@@ -132,9 +133,28 @@ export async function enrichHierarchyData(hierarchyData: any): Promise<any> {
     }
   }
 
+  // Handle unified counselor field
+  if (enriched.counselor && enriched.counselor !== 'Other' && enriched.counselor !== 'None') {
+    const counselorName = enriched.counselor.trim();
+    console.log('Fetching unified counselor details for:', counselorName);
+
+    // Fetch counselor details by name
+    const { data: cData } = await supabase
+      .from('counselors')
+      .select('id, email')
+      .eq('name', counselorName)
+      .maybeSingle();
+
+    if (cData) {
+      if (!enriched.counselorId) enriched.counselorId = cData.id;
+      enriched.counselorEmail = cData.email;
+      console.log('✅ Found and set unified counselor details:', cData);
+    }
+  }
+
   // ALWAYS fetch center_id when center name is provided to ensure it stays in sync
   // This is important when users change their center - we need to update the center_id to match
-  if (enriched.center && enriched.center.trim() !== '') {
+  if (enriched.center && enriched.center.trim() !== '' && supabase) {
     console.log('Fetching center_id for:', enriched.center);
     const centerId = await fetchCenterId(enriched.center.trim(), enriched.state, enriched.city);
     if (centerId) {

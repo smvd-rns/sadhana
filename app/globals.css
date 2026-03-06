@@ -213,3 +213,59 @@ textarea::placeholder {
   animation: slideInRight 0.3s ease-out;
 }
 
+
+/* TipTap Image Resizing & Alignment */
+.prose img {
+  @apply transition-all duration-300;
+  display: inline-block;
+}
+
+.prose img.ProseMirror-selectednode {
+  outline: 3px solid #9333ea; /* purple-600 */
+  outline-offset: 2px;
+}
+
+/* Alignment Classes */
+.image-align-left {
+  display: block !important;
+  margin-right: auto !important;
+  margin-left: 0 !important;
+}
+
+.image-align-center {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.image-align-right {
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+/* Resize Handle Overlay */
+.image-resizer-wrapper {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+
+.image-resizer-handle {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 12px;
+  height: 12px;
+  background-color: #9333ea;
+  border: 2px solid white;
+  border-radius: 4px;
+  cursor: nwse-resize;
+  z-index: 50;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.image-resizer-handle:hover {
+  transform: scale(1.2);
+  background-color: #7e22ce;
+}

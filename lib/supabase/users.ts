@@ -42,6 +42,7 @@ export const getUsersByRole = async (role: UserRole) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         // Assigned geographic areas for manager roles
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
@@ -71,6 +72,7 @@ export const getUsersByRole = async (role: UserRole) => {
         phone: user.phone,
         profileImage: user.profile_image, // Google Drive photo link
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         // Camp completion fields
         campDys: user.camp_dys || false,
@@ -180,6 +182,7 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -205,6 +208,7 @@ export const getUsersByHierarchy = async (hierarchy: any) => {
         phone: user.phone,
         profileImage: user.profile_image, // Google Drive photo link
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         // Camp completion fields
         campDys: user.camp_dys || false,
@@ -289,6 +293,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
     if (updates.profileImage !== undefined) dbUpdates.profile_image = updates.profileImage; // Google Drive photo link
     if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
+    if (updates.pushTokens !== undefined) dbUpdates.push_tokens = updates.pushTokens;
 
     // Handle direct field updates from registration form
     if ((updates as any).ashram !== undefined) dbUpdates.ashram = (updates as any).ashram;
@@ -298,6 +303,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     if ((updates as any).currentTemple !== undefined) dbUpdates.current_temple = (updates as any).currentTemple;
     if ((updates as any).currentCenter !== undefined) dbUpdates.current_center = (updates as any).currentCenter;
     if ((updates as any).otherCenter !== undefined) dbUpdates.other_center = (updates as any).otherCenter;
+    if ((updates as any).otherTemple !== undefined) dbUpdates.other_temple = (updates as any).otherTemple;
     if ((updates as any).rejectionReason !== undefined) dbUpdates.rejection_reason = (updates as any).rejectionReason;
     if ((updates as any).reviewedBy !== undefined) dbUpdates.reviewed_by = (updates as any).reviewedBy;
     if ((updates as any).reviewedAt !== undefined) dbUpdates.reviewed_at = (updates as any).reviewedAt;
@@ -346,18 +352,15 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
         dbUpdates.other_counselor = enrichedHierarchy.otherCounselor || null;
       }
       dbUpdates.other_center = enrichedHierarchy.otherCenter || null;
+      dbUpdates.other_temple = enrichedHierarchy.otherTemple || null;
 
       // Also update JSONB for backward compatibility
       dbUpdates.hierarchy = enrichedHierarchy;
     }
 
-    console.log('updateUser - Final dbUpdates object:', JSON.stringify(dbUpdates, null, 2));
-
     if (updates.role !== undefined) {
-      console.log('updateUser - Role update received:', updates.role);
       // Convert role to number array
       const rolesArray = Array.isArray(updates.role) ? updates.role : [updates.role];
-      console.log('updateUser - Roles array:', rolesArray);
       const roleNumbers = roleToNumber(rolesArray);
       // Ensure unique role numbers
       const uniqueRoleNumbers = Array.isArray(roleNumbers)
@@ -365,13 +368,9 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
         : [roleNumbers];
 
       dbUpdates.role = uniqueRoleNumbers;
-      console.log('updateUser - Converted role to numbers (deduplicated):', dbUpdates.role);
     }
 
     dbUpdates.updated_at = new Date().toISOString();
-
-    console.log('updateUser - Final dbUpdates object (after role):', JSON.stringify(dbUpdates, null, 2));
-    console.log('updateUser - Updating user with ID:', userId);
 
     let result;
 
@@ -394,8 +393,6 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
 
     const { data, error } = result;
 
-    console.log('updateUser - Supabase response:', { data, error });
-
     if (error) {
       console.error('updateUser - Supabase error:', error);
       throw new Error(error.message);
@@ -404,8 +401,6 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     // If no rows were updated (empty data array), it means the user doesn't exist in the public table.
     // We should try to insert the record instead.
     if (!data || data.length === 0) {
-      console.warn('updateUser - No user found with ID:', userId, '. Attempting INSERT (upsert fallback).');
-
       const insertData = {
         id: userId,
         ...dbUpdates,
@@ -414,7 +409,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
         updated_at: new Date().toISOString()
       };
 
-      const { data: insertResult, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('users')
         .insert(insertData)
         .select()
@@ -424,10 +419,6 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
         console.error('updateUser - Fallback INSERT failed:', insertError);
         throw new Error('User record missing and failed to create: ' + insertError.message);
       }
-
-      console.log('updateUser - Fallback INSERT successful:', insertResult);
-    } else {
-      console.log('updateUser - Update successful!');
     }
   } catch (error: any) {
     console.error('Error updating user:', error);
@@ -475,6 +466,7 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -500,6 +492,7 @@ export const getUsersByCenterNames = async (centerNames: string[]) => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         campDys: user.camp_dys || false,
         campSankalpa: user.camp_sankalpa || false,
@@ -592,6 +585,7 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         // Spiritual fields
         initiationStatus: user.initiation_status || user.hierarchy?.initiationStatus,
         initiatedName: user.initiated_name || user.hierarchy?.initiatedName,
@@ -617,6 +611,7 @@ export const getUsersByCenterIds = async (centerIds: string[]) => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         campDys: user.camp_dys || false,
         campSankalpa: user.camp_sankalpa || false,
@@ -713,6 +708,7 @@ export const getUsersByZone = async (zone: string) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
@@ -741,6 +737,7 @@ export const getUsersByZone = async (zone: string) => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         campDys: user.camp_dys || false,
         campSankalpa: user.camp_sankalpa || false,
@@ -836,6 +833,7 @@ export const getUsersByState = async (state: string) => {
         grihasthaCounselorEmail: user.grihastha_counselor_email || user.hierarchy?.grihasthaCounselorEmail,
         otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         assignedZone: user.assigned_zone || user.hierarchy?.assignedZone,
         assignedState: user.assigned_state || user.hierarchy?.assignedState,
         assignedCity: user.assigned_city || user.hierarchy?.assignedCity,
@@ -864,6 +862,7 @@ export const getUsersByState = async (state: string) => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         campDys: user.camp_dys || false,
         campSankalpa: user.camp_sankalpa || false,
@@ -985,6 +984,7 @@ export const getUsersByCity = async (city: string) => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         campDys: user.camp_dys || false,
         campSankalpa: user.camp_sankalpa || false,
@@ -1067,6 +1067,7 @@ export const getPendingUsers = async () => {
         city: user.city || user.hierarchy?.city,
         center: user.current_center || user.center || user.hierarchy?.center, // Prefer current_center
         otherCenter: user.other_center || user.hierarchy?.otherCenter,
+        otherTemple: user.other_temple || user.hierarchy?.otherTemple,
         ashram: user.ashram || user.hierarchy?.ashram,
         currentTemple: user.current_temple || user.hierarchy?.currentTemple,
         counselor: user.counselor || user.hierarchy?.counselor || user.brahmachari_counselor || user.grihastha_counselor || user.other_counselor,
@@ -1082,6 +1083,7 @@ export const getPendingUsers = async () => {
         phone: user.phone,
         profileImage: user.profile_image,
         birthDate: user.birth_date,
+        pushTokens: user.push_tokens || [],
         hierarchy: hierarchy,
         createdAt: new Date(user.created_at),
         updatedAt: new Date(user.updated_at),

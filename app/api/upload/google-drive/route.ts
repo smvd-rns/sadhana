@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // Google Drive API configuration
-const FOLDER_ID = process.env.MAIN_DRIVE_FOLDER_ID || '1yYUuXJsiLr2TbRHIUfEWjUuoukQ6XFEe';
+const FOLDER_ID = process.env.MAIN_DRIVE_FOLDER_ID || '1xcAsRKFb68aV4k__U7RiTFfblpSXQrlo';
 
 // Initialize Google Drive API using OAuth 2.0
 async function getDriveClient() {
@@ -92,11 +92,11 @@ async function uploadToDrive(fileBuffer: Buffer, fileName: string, mimeType: str
     }
 
     // Construct the direct image URL for Google Drive files
-    // Use standard view link as primary, assuming permissions are set correctly
-    const directImageUrl = `https://drive.google.com/uc?export=view&id=${response.data.id}`;
-
-    // Note: We're not using thumbnailLink as primary anymore because lh3 links were failing
-    // But we keep it in the response below in case we need to switch back or use it for other purposes
+    // Using the thumbnailLink and replacing the size is the most reliable way to get a public lh3 link
+    const thumbnailLink = response.data.thumbnailLink;
+    const directImageUrl = thumbnailLink
+      ? thumbnailLink.replace(/=s\d+$/, '=s1600')
+      : `https://lh3.googleusercontent.com/d/${response.data.id}=s1600`;
 
     // Return the file ID, view link, and direct image URL
     return JSON.stringify({
@@ -113,14 +113,90 @@ async function uploadToDrive(fileBuffer: Buffer, fileName: string, mimeType: str
   }
 }
 
+// Find folder by name in a parent folder
+async function findFolder(folderName: string, parentFolderId: string): Promise<string | null> {
+  try {
+    const drive = await getDriveClient();
+    const response = await drive.files.list({
+      q: `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and '${parentFolderId}' in parents and trashed = false`,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+    });
+
+    const files = response.data.files;
+    if (files && files.length > 0) {
+      return files[0].id!;
+    }
+    return null;
+  } catch (error: any) {
+    console.error('Error finding folder in Google Drive:', error);
+    throw new Error(`Failed to find folder: ${error.message}`);
+  }
+}
+
+// Create folder in Google Drive
+async function createFolder(folderName: string, parentFolderId: string): Promise<string> {
+  try {
+    const drive = await getDriveClient();
+    const fileMetadata = {
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      parents: [parentFolderId],
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      fields: 'id, name',
+    });
+
+    if (!response.data.id) {
+      throw new Error('Failed to create folder in Google Drive');
+    }
+
+    // Make folder viewable by anyone with link
+    await drive.permissions.create({
+      fileId: response.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+
+    return response.data.id;
+  } catch (error: any) {
+    console.error('Error creating folder in Google Drive:', error);
+    throw new Error(`Failed to create folder: ${error.message}`);
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
+    const action = formData.get('action') as string || 'upload';
+
+    if (action === 'create-folder') {
+      const folderName = formData.get('folderName') as string;
+      const parentId = formData.get('parentFolderId') as string || FOLDER_ID;
+      if (!folderName) {
+        return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
+      }
+      const folderId = await createFolder(folderName, parentId);
+      return NextResponse.json({ success: true, folderId });
+    }
+
+    if (action === 'find-folder') {
+      const folderName = formData.get('folderName') as string;
+      const parentId = formData.get('parentFolderId') as string || FOLDER_ID;
+      if (!folderName) {
+        return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
+      }
+      const folderId = await findFolder(folderName, parentId);
+      return NextResponse.json({ success: true, folderId });
+    }
+
     const file = formData.get('file') as File;
     const userName = formData.get('userName') as string;
-    const state = formData.get('state') as string;
-    const city = formData.get('city') as string;
-    const center = formData.get('center') as string;
+    const targetFolderId = formData.get('folderId') as string || FOLDER_ID;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -130,51 +206,54 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User name is required' }, { status: 400 });
     }
 
-    // Validate file type (images only)
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Only images (JPEG, PNG, GIF, WebP) are allowed.' }, { status: 400 });
+    // Allowed types expanded for general attachments
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+      'video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/webm'
+    ];
+
+    // We allow most types now since it's used for attachments too
+    // But we still check common potentially harmful types if needed
+    const blockedExtensions = ['exe', 'bat', 'sh', 'js', 'vbs'];
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    if (blockedExtensions.includes(fileExtension)) {
+      return NextResponse.json({ error: 'File type not allowed for security reasons' }, { status: 400 });
     }
 
-    // File size check removed as per requirement (unlimited uploads)
-
-    // Get file extension
-    const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-
-    // Sanitize user name for filename (remove special characters)
+    // Sanitize user name for filename
     const sanitizedName = userName
       .trim()
-      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
-      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, '_')
       .toLowerCase();
 
-    // Create filename: Name_Date.extension
+    // Create filename: OriginalName_Date.extension
     const now = new Date();
-    const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    const fileName = `${sanitizedName}_${dateString}.${fileExtension}`;
+    const dateString = now.toISOString().split('T')[0];
+    const originalName = file.name.split('.')[0].substring(0, 30);
+    const fileName = `${originalName}_${dateString}.${fileExtension}`;
 
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload directly to the main folder
-    // No more subfolders for State/City/Center
-    const targetFolderId = FOLDER_ID;
-    // Upload to Google Drive
+    // Upload to Google Drive (directly or into subfolder)
     const driveResponse = await uploadToDrive(buffer, fileName, file.type, targetFolderId);
 
     return NextResponse.json({
       success: true,
       data: {
         ...JSON.parse(driveResponse),
-        uploadedToFolderId: targetFolderId, // Return folder ID for debugging
+        uploadedToFolderId: targetFolderId,
       }
     });
   } catch (error: any) {
-    console.error('Error in Google Drive upload:', error);
+    console.error('Error in Google Drive upload route:', error);
     return NextResponse.json(
       {
-        error: error.message || 'Failed to upload file to Google Drive',
+        error: error.message || 'Failed to process request',
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       },
       { status: 500 }

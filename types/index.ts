@@ -70,6 +70,7 @@ export interface User {
   phone?: string;
   profileImage?: string;
   birthDate?: string;
+  pushTokens?: string[];
   hierarchy: HierarchyLocation;
   // Camp completion fields
   campDys?: boolean;
@@ -132,10 +133,23 @@ export interface User {
   parentCenter?: string;
   currentTemple?: string;
   currentCenter?: string;
+  otherTemple?: string;
   otherCounselor?: string;
   otherCenter?: string;
   otherParentCenter?: string;
   introducedToKcIn?: string;
+  // Relative contact fields
+  relative1Name?: string;
+  relative1Relationship?: string;
+  relative1Phone?: string;
+  relative2Name?: string;
+  relative2Relationship?: string;
+  relative2Phone?: string;
+  relative3Name?: string;
+  relative3Relationship?: string;
+  relative3Phone?: string;
+  // Health fields
+  healthChronicDisease?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -190,6 +204,7 @@ export interface HierarchyLocation {
   // New fields for extended location info
   currentTemple?: string;
   currentCenter?: string;
+  otherTemple?: string;
   // Spiritual fields
   initiationStatus?: string;
   initiatedName?: string;
@@ -340,4 +355,49 @@ export interface TempleData {
   central_voice_manager_name?: string;
   yp_id?: string;
   yp_name?: string;
+}
+
+export interface ManagedEventAttachment {
+  type: 'image' | 'audio' | 'video' | 'link' | 'file';
+  url: string;
+  name: string;
+  file?: File; // For internal use during deferred uploads
+  fileId?: string; // Google Drive ID
+  mimeType?: string;
+}
+
+export interface ManagedEvent {
+  id: string;
+  createdAt: Date;
+  createdBy: string;
+  title: string;
+  eventDate: Date;
+  message?: string;
+  attachments: ManagedEventAttachment[];
+  targetAshrams: string[];
+  targetRoles: string[];
+  targetTemples: string[];
+  targetCenters: string[];
+  targetCamps: string[];
+  excludedUserIds: string[];
+  reachedUsers?: number;
+  reachedCount?: number;
+  comingCount?: number;
+  isImportant?: boolean;
+  isPinned?: boolean;
+  userResponse?: ManagedEventResponse;
+
+  updatedAt: Date;
+}
+
+export interface ManagedEventResponse {
+  id: string;
+  eventId: string;
+  userId: string;
+  status: 'seen' | 'coming' | 'not_coming';
+  reason?: string;
+  isBulk: boolean;
+  bulkAddedBy?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }

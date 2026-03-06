@@ -161,7 +161,24 @@ export default function MDSadhanaReportPage() {
                         center: user.center || user.hierarchy?.center,
                         counselor: user.counselor || user.hierarchy?.counselor,
                     };
-                    return { ...user, role: normalizedRole, hierarchy } as User;
+                    return {
+                        ...user,
+                        role: normalizedRole,
+                        hierarchy,
+                        // Relative contact fields
+                        relative1Name: user.relative_1_name,
+                        relative1Relationship: user.relative_1_relationship,
+                        relative1Phone: user.relative_1_phone,
+                        relative2Name: user.relative_2_name,
+                        relative2Relationship: user.relative_2_relationship,
+                        relative2Phone: user.relative_2_phone,
+                        relative3Name: user.relative_3_name,
+                        relative3Relationship: user.relative_3_relationship,
+                        relative3Phone: user.relative_3_phone,
+                        // Health fields
+                        healthChronicDisease: user.health_chronic_disease,
+                        introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+                    } as User;
                 });
 
                 setUsers(mappedUsers);

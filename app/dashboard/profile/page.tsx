@@ -61,6 +61,18 @@ export default function ProfilePage() {
     ashram: '',
     otherCenter: '',
     otherParentCenter: '',
+    // Relative contact info
+    relative1Name: '',
+    relative1Relationship: '',
+    relative1Phone: '',
+    relative2Name: '',
+    relative2Relationship: '',
+    relative2Phone: '',
+    relative3Name: '',
+    relative3Relationship: '',
+    relative3Phone: '',
+    // Health info
+    healthChronicDisease: '',
 
     // Camp completion fields
     campDys: false,
@@ -230,7 +242,39 @@ export default function ProfilePage() {
       if (normalize(formData.otherCounselor) !== normalize(userData.otherCounselor || userData.hierarchy?.otherCounselor)) return true;
       if (normalize(formData.otherCenter) !== normalize(userData.otherCenter || userData.hierarchy?.otherCenter)) return true;
 
-      // 4. Compare Camps
+      // 4. Compare Relative Contact & Health Info
+      if (normalize(formData.relative1Name) !== normalize(userData.relative1Name)) return true;
+      if (normalize(formData.relative1Relationship) !== normalize(userData.relative1Relationship)) return true;
+      if (normalize(formData.relative1Phone) !== normalize(userData.relative1Phone)) return true;
+      if (normalize(formData.relative2Name) !== normalize(userData.relative2Name)) return true;
+      if (normalize(formData.relative2Relationship) !== normalize(userData.relative2Relationship)) return true;
+      if (normalize(formData.relative2Phone) !== normalize(userData.relative2Phone)) return true;
+      if (normalize(formData.relative3Name) !== normalize(userData.relative3Name)) return true;
+      if (normalize(formData.relative3Relationship) !== normalize(userData.relative3Relationship)) return true;
+      if (normalize(formData.relative3Phone) !== normalize(userData.relative3Phone)) return true;
+      if (normalize(formData.healthChronicDisease) !== normalize(userData.healthChronicDisease)) return true;
+
+      // 5. Compare Array Fields
+      const compareArrays = (arr1: any[], arr2: any[]) => {
+        const filtered1 = arr1.filter(item => Object.values(item).some(v => v !== null && v !== '' && v !== false));
+        const filtered2 = arr2?.filter(item => Object.values(item).some(v => v !== null && v !== '' && v !== false)) || [];
+        if (filtered1.length !== filtered2.length) return true;
+        for (let i = 0; i < filtered1.length; i++) {
+          const keys = Object.keys(filtered1[i]);
+          for (const key of keys) {
+            if (normalize(filtered1[i][key]) !== normalize(filtered2[i][key])) return true;
+          }
+        }
+        return false;
+      };
+
+      if (compareArrays(education, userData.education)) return true;
+      if (compareArrays(workExperience, userData.workExperience)) return true;
+      if (compareArrays(languages, userData.languages)) return true;
+      if (compareArrays(skills, userData.skills)) return true;
+      if (compareArrays(services, userData.services)) return true;
+
+      // 6. Compare Camps
       if (formData.campDys !== (userData.campDys || userData.hierarchy?.campDys || false)) return true;
       if (formData.campSankalpa !== (userData.campSankalpa || false)) return true;
       if (formData.campSphurti !== (userData.campSphurti || false)) return true;
@@ -240,7 +284,50 @@ export default function ProfilePage() {
       if (formData.campNistha !== (userData.campNistha || false)) return true;
       if (formData.campAshray !== (userData.campAshray || false)) return true;
 
-      // 5. Check if photo is selected
+      // 7. Compare SP Books Course
+      if (formData.spbookThirdSsr15 !== (userData.spbookThirdSsr15 || false)) return true;
+      if (formData.spbookThirdComingBack !== (userData.spbookThirdComingBack || false)) return true;
+      if (formData.spbookThirdPqpa !== (userData.spbookThirdPqpa || false)) return true;
+      if (formData.spbookThirdMatchlessGift !== (userData.spbookThirdMatchlessGift || false)) return true;
+      if (formData.spbookThirdRajaVidya !== (userData.spbookThirdRajaVidya || false)) return true;
+      if (formData.spbookThirdElevationKc !== (userData.spbookThirdElevationKc || false)) return true;
+      if (formData.spbookThirdBeyondBirthDeath !== (userData.spbookThirdBeyondBirthDeath || false)) return true;
+      if (formData.spbookThirdKrishnaReservoir !== (userData.spbookThirdKrishnaReservoir || false)) return true;
+
+      if (formData.spbookFourthSsr68 !== (userData.spbookFourthSsr68 || false)) return true;
+      if (formData.spbookFourthLawsOfNature !== (userData.spbookFourthLawsOfNature || false)) return true;
+      if (formData.spbookFourthDharma !== (userData.spbookFourthDharma || false)) return true;
+      if (formData.spbookFourthSecondChance !== (userData.spbookFourthSecondChance || false)) return true;
+      if (formData.spbookFourthIsopanishad110 !== (userData.spbookFourthIsopanishad110 || false)) return true;
+      if (formData.spbookFourthQueenKuntiVideo !== (userData.spbookFourthQueenKuntiVideo || false)) return true;
+      if (formData.spbookFourthEnlightenmentNatural !== (userData.spbookFourthEnlightenmentNatural || false)) return true;
+      if (formData.spbookFourthKrishnaBook121 !== (userData.spbookFourthKrishnaBook121 || false)) return true;
+
+      if (formData.spbookFifthLifeFromLife !== (userData.spbookFifthLifeFromLife || false)) return true;
+      if (formData.spbookFifthPrahladTeachings !== (userData.spbookFifthPrahladTeachings || false)) return true;
+      if (formData.spbookFifthJourneySelfDiscovery !== (userData.spbookFifthJourneySelfDiscovery || false)) return true;
+      if (formData.spbookFifthQueenKuntiHearing !== (userData.spbookFifthQueenKuntiHearing || false)) return true;
+      if (formData.spbookFifthLordKapila !== (userData.spbookFifthLordKapila || false)) return true;
+      if (formData.spbookFifthNectar16 !== (userData.spbookFifthNectar16 || false)) return true;
+      if (formData.spbookFifthGita16 !== (userData.spbookFifthGita16 || false)) return true;
+      if (formData.spbookFifthKrishnaBook2428 !== (userData.spbookFifthKrishnaBook2428 || false)) return true;
+
+      if (formData.spbookSixthNectar711 !== (userData.spbookSixthNectar711 || false)) return true;
+      if (formData.spbookSixthPathPerfection !== (userData.spbookSixthPathPerfection || false)) return true;
+      if (formData.spbookSixthCivilisationTranscendence !== (userData.spbookSixthCivilisationTranscendence || false)) return true;
+      if (formData.spbookSixthHareKrishnaChallenge !== (userData.spbookSixthHareKrishnaChallenge || false)) return true;
+      if (formData.spbookSixthGita712 !== (userData.spbookSixthGita712 || false)) return true;
+      if (formData.spbookSixthSb1stCanto16 !== (userData.spbookSixthSb1stCanto16 || false)) return true;
+      if (formData.spbookSixthKrishnaBook3559 !== (userData.spbookSixthKrishnaBook3559 || false)) return true;
+
+      if (formData.spbookSeventhGita1318 !== (userData.spbookSeventhGita1318 || false)) return true;
+      if (formData.spbookSeventhSb1stCanto713 !== (userData.spbookSeventhSb1stCanto713 || false)) return true;
+      if (formData.spbookSeventhKrishnaBook6378 !== (userData.spbookSeventhKrishnaBook6378 || false)) return true;
+
+      if (formData.spbookEighthSb1stCanto1419 !== (userData.spbookEighthSb1stCanto1419 || false)) return true;
+      if (formData.spbookEighthKrishnaBook7889 !== (userData.spbookEighthKrishnaBook7889 || false)) return true;
+
+      // 8. Check if photo is selected
       if (selectedPhoto) return true;
 
       return false;
@@ -272,6 +359,19 @@ export default function ProfilePage() {
     };
     fetchCounselors();
   }, []);
+
+  // Auto-resolve counselorId if missing but counselor name exists
+  useEffect(() => {
+    if (!formData.counselorId && formData.counselor && counselors.length > 0) {
+      const match = counselors.find(c => c.name === formData.counselor);
+      if (match) {
+        setFormData(prev => ({
+          ...prev,
+          counselorId: match.id
+        }));
+      }
+    }
+  }, [counselors, formData.counselor, formData.counselorId]);
 
   // Load temples from Supabase
   useEffect(() => {
@@ -420,12 +520,25 @@ export default function ProfilePage() {
         parentCenter: userData.hierarchy?.parentCenter || '',
         currentTemple: userData.hierarchy?.currentTemple || '',
         currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
-        counselor: userData.hierarchy?.counselor || '',
+        counselor: userData.hierarchy?.counselor || userData.hierarchy?.brahmachariCounselor || userData.hierarchy?.grihasthaCounselor || '',
         counselorId: userData.hierarchy?.counselorId || '',
         otherCounselor: userData.hierarchy?.otherCounselor || '',
         ashram: userData.hierarchy?.ashram || '',
         otherCenter: userData.hierarchy?.otherCenter || '',
         otherParentCenter: userData.hierarchy?.otherParentCenter || '',
+
+        // Relative contact info
+        relative1Name: userData.relative1Name || '',
+        relative1Relationship: userData.relative1Relationship || '',
+        relative1Phone: userData.relative1Phone || '',
+        relative2Name: userData.relative2Name || '',
+        relative2Relationship: userData.relative2Relationship || '',
+        relative2Phone: userData.relative2Phone || '',
+        relative3Name: userData.relative3Name || '',
+        relative3Relationship: userData.relative3Relationship || '',
+        relative3Phone: userData.relative3Phone || '',
+        // Health info
+        healthChronicDisease: userData.healthChronicDisease || '',
 
         // Camp completion fields
         campDys: userData.campDys || userData.hierarchy?.campDys || false,
@@ -834,6 +947,18 @@ export default function ProfilePage() {
         counselor_id: formData.counselorId || null,
         other_counselor: formData.counselor === 'Other' ? (formData.otherCounselor ? sanitizeTextInput(formData.otherCounselor.trim()) : null) : null,
         other_center: formData.currentCenter === 'Other' || formData.center === 'Other' ? (formData.otherCenter ? sanitizeTextInput(formData.otherCenter.trim()) : null) : null,
+        // Relative contact info
+        relative_1_name: formData.relative1Name ? sanitizeTextInput(formData.relative1Name.trim()) : null,
+        relative_1_relationship: formData.relative1Relationship || null,
+        relative_1_phone: formData.relative1Phone ? sanitizeTextInput(formData.relative1Phone.trim()) : null,
+        relative_2_name: formData.relative2Name ? sanitizeTextInput(formData.relative2Name.trim()) : null,
+        relative_2_relationship: formData.relative2Relationship || null,
+        relative_2_phone: formData.relative2Phone ? sanitizeTextInput(formData.relative2Phone.trim()) : null,
+        relative_3_name: formData.relative3Name ? sanitizeTextInput(formData.relative3Name.trim()) : null,
+        relative_3_relationship: formData.relative3Relationship || null,
+        relative_3_phone: formData.relative3Phone ? sanitizeTextInput(formData.relative3Phone.trim()) : null,
+        // Health info
+        health_chronic_disease: formData.healthChronicDisease ? sanitizeTextInput(formData.healthChronicDisease.trim()) : null,
         // Camp fields
         camp_dys: formData.campDys || false,
         camp_sankalpa: formData.campSankalpa || false,
@@ -1400,6 +1525,85 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+
+              {/* Relative Contact Details Section */}
+              <div className="mt-8 pt-8 border-t border-sky-100 space-y-6 animate-on-scroll">
+                <h3 className="text-sm sm:text-base font-bold text-sky-800 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-sky-600" />
+                  Relative Contact Details
+                </h3>
+
+                <div className="space-y-6">
+                  {[1, 2, 3].map((num) => (
+                    <div key={num} className="bg-sky-50/30 p-4 rounded-xl border border-sky-100/50 space-y-4">
+                      <p className="text-xs font-bold text-sky-600 uppercase tracking-wider">Contact {num}</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="group">
+                          <label htmlFor={`relativeName${num}`} className="block text-xs font-semibold text-gray-600 mb-1.5">Name</label>
+                          <input
+                            id={`relativeName${num}`}
+                            type="text"
+                            value={(formData as any)[`relative${num}Name`]}
+                            onChange={(e) => setFormData({ ...formData, [`relative${num}Name`]: e.target.value })}
+                            placeholder="Full Name"
+                            className="w-full px-3 py-2 text-sm border-2 border-sky-100 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-white transition-all text-gray-900"
+                          />
+                        </div>
+                        <div className="group">
+                          <label htmlFor={`relativeRel${num}`} className="block text-xs font-semibold text-gray-600 mb-1.5">Relationship</label>
+                          <select
+                            id={`relativeRel${num}`}
+                            value={(formData as any)[`relative${num}Relationship`]}
+                            onChange={(e) => setFormData({ ...formData, [`relative${num}Relationship`]: e.target.value })}
+                            className="w-full px-3 py-2 text-sm border-2 border-sky-100 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-white transition-all appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] bg-[right_0.5rem_center] bg-no-repeat text-gray-900"
+                          >
+                            <option value="">Select...</option>
+                            <option value="Mother">Mother</option>
+                            <option value="Father">Father</option>
+                            <option value="Brother">Brother</option>
+                            <option value="Sister">Sister</option>
+                            <option value="Spouse">Spouse</option>
+                            <option value="Son">Son</option>
+                            <option value="Daughter">Daughter</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div className="group">
+                          <label htmlFor={`relativePhone${num}`} className="block text-xs font-semibold text-gray-600 mb-1.5">Phone Number</label>
+                          <input
+                            id={`relativePhone${num}`}
+                            type="tel"
+                            value={(formData as any)[`relative${num}Phone`]}
+                            onChange={(e) => setFormData({ ...formData, [`relative${num}Phone`]: e.target.value.replace(/[^0-9+\-\s()]/g, '') })}
+                            placeholder="Phone Number"
+                            className="w-full px-3 py-2 text-sm border-2 border-sky-100 rounded-lg focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-white transition-all text-gray-900"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Health Information Section */}
+              <div className="mt-8 pt-8 border-t border-sky-100 space-y-4 animate-on-scroll">
+                <h3 className="text-sm sm:text-base font-bold text-sky-800 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Health Information
+                </h3>
+                <div className="group">
+                  <label htmlFor="healthChronicDisease" className="block text-xs font-semibold text-gray-600 mb-2">
+                    Any chronic diseases (Free text)
+                  </label>
+                  <textarea
+                    id="healthChronicDisease"
+                    value={formData.healthChronicDisease}
+                    onChange={(e) => setFormData({ ...formData, healthChronicDisease: e.target.value })}
+                    placeholder="List any chronic diseases or health conditions here..."
+                    className="w-full px-4 py-3 text-sm border-2 border-sky-100 rounded-xl focus:ring-2 focus:ring-sky-400 focus:border-sky-400 bg-sky-50/30 hover:bg-sky-50 transition-all min-h-[100px] resize-y text-gray-900"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1619,16 +1823,40 @@ export default function ProfilePage() {
                   {/* Introduced to KC */}
                   <div>
                     <label htmlFor="introducedToKcIn" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                      Introduced to KC in (Year)
+                      Introduced to KC on (Date)
                     </label>
                     <input
                       id="introducedToKcIn"
-                      type="text"
+                      type="date"
                       value={formData.introducedToKcIn}
-                      onChange={(e) => setFormData({ ...formData, introducedToKcIn: e.target.value })}
-                      placeholder="e.g., 2015"
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                      onChange={(e) => {
+                        const selectedDate = e.target.value;
+                        const today = new Date().toISOString().split('T')[0];
+                        if (selectedDate > today) {
+                          setFieldErrors(prev => ({ ...prev, introducedToKcIn: 'Future dates are not allowed' }));
+                          return;
+                        }
+                        setFormData({ ...formData, introducedToKcIn: selectedDate });
+                        if (fieldErrors.introducedToKcIn) {
+                          setFieldErrors(prev => {
+                            const newErrors = { ...prev };
+                            delete newErrors.introducedToKcIn;
+                            return newErrors;
+                          });
+                        }
+                      }}
+                      max={new Date().toISOString().split('T')[0]}
+                      className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors.introducedToKcIn
+                        ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
+                        : 'border-amber-100 focus:ring-amber-500 focus:border-amber-500'
+                        }`}
                     />
+                    {fieldErrors.introducedToKcIn && (
+                      <p className="mt-1 text-xs text-red-600 flex items-center gap-1 animate-fadeIn">
+                        <X className="h-3 w-3" />
+                        {fieldErrors.introducedToKcIn}
+                      </p>
+                    )}
                   </div>
 
                   {/* Rounds */}
@@ -2130,10 +2358,16 @@ export default function ProfilePage() {
                         type="date"
                         value={work.startDate || ''}
                         onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate > today) {
+                            return; // Or show error, but max attribute usually handles this UI-wise
+                          }
                           const updated = [...workExperience];
-                          updated[index] = { ...updated[index], startDate: e.target.value || null };
+                          updated[index] = { ...updated[index], startDate: selectedDate || null };
                           setWorkExperience(updated);
                         }}
+                        max={new Date().toISOString().split('T')[0]}
                         className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-indigo-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white hover:bg-indigo-50/50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
                       />
                     </div>
@@ -2146,11 +2380,17 @@ export default function ProfilePage() {
                         type="date"
                         value={work.endDate || ''}
                         onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate > today) {
+                            return;
+                          }
                           const updated = [...workExperience];
-                          updated[index] = { ...updated[index], endDate: e.target.value || null, current: false };
+                          updated[index] = { ...updated[index], endDate: selectedDate || null, current: false };
                           setWorkExperience(updated);
                         }}
                         disabled={work.current}
+                        max={new Date().toISOString().split('T')[0]}
                         className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-indigo-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900 bg-white hover:bg-indigo-50/50 transition-all duration-300 disabled:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60 focus:scale-[1.02] focus:shadow-md"
                       />
                     </div>

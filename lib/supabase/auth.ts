@@ -217,6 +217,7 @@ export const transformUserProfile = (data: any): User => {
     rounds: data.rounds?.toString() || data.hierarchy?.rounds,
     ashram: data.ashram || data.hierarchy?.ashram,
     counselor: data.counselor || data.hierarchy?.counselor,
+    counselorId: data.counselor_id || data.hierarchy?.counselorId,
     royalMember: data.royal_member || data.hierarchy?.royalMember,
     introducedToKcIn: data.introduced_to_kc_in || data.hierarchy?.introducedToKcIn,
     parentTemple: data.parent_temple || data.hierarchy?.parentTemple,
@@ -249,6 +250,19 @@ export const transformUserProfile = (data: any): User => {
     profileImage: data.profile_image, // Google Drive photo link
     birthDate: data.birth_date,
     hierarchy: hierarchy,
+    // Relative contact fields
+    relative1Name: data.relative_1_name,
+    relative1Relationship: data.relative_1_relationship,
+    relative1Phone: data.relative_1_phone,
+    relative2Name: data.relative_2_name,
+    relative2Relationship: data.relative_2_relationship,
+    relative2Phone: data.relative_2_phone,
+    relative3Name: data.relative_3_name,
+    relative3Relationship: data.relative_3_relationship,
+    relative3Phone: data.relative_3_phone,
+    // Health fields
+    healthChronicDisease: data.health_chronic_disease,
+    introducedToKcIn: data.introduced_to_kc_in || data.hierarchy?.introducedToKcIn,
     // Camp completion fields
     campDys: data.camp_dys || false,
     campSankalpa: data.camp_sankalpa || false,

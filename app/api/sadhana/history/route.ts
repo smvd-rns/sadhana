@@ -31,14 +31,14 @@ export async function GET(request: Request) {
             // Fetch requester profile
             const { data: requesterProfile } = await supabaseAdmin
                 .from('users')
-                .select('role, id')
+                .select('role, id, email')
                 .eq('id', requester.id)
                 .single();
 
             // Fetch target user profile
             const { data: targetProfile } = await supabaseAdmin
                 .from('users')
-                .select('role, id')
+                .select('role, id, counselor_id, hierarchy')
                 .eq('id', targetUserId)
                 .single();
 
@@ -47,7 +47,31 @@ export async function GET(request: Request) {
             }
 
             // check permissions using role logic
-            const isAuthorized = canAdminManageTarget(requesterProfile.role, targetProfile.role, requester.id, targetUserId);
+            let isAuthorized = canAdminManageTarget(requesterProfile.role, targetProfile.role, requester.id, targetUserId);
+
+            // If not strictly role-authorized, check if requester is the user's counselor
+            if (!isAuthorized && targetProfile && requesterProfile) {
+                const requesterEmail = requesterProfile.email?.trim().toLowerCase();
+                const h = (targetProfile.hierarchy as any) || {};
+
+                const bE = (h.brahmachariCounselorEmail || '').trim().toLowerCase();
+                const gE = (h.grihasthaCounselorEmail || '').trim().toLowerCase();
+
+                if (requesterEmail && (bE === requesterEmail || gE === requesterEmail)) {
+                    isAuthorized = true;
+                } else if (targetProfile.counselor_id && requesterEmail) {
+                    // Check if requester's counselor profile matches target's counselor_id
+                    const { data: reqCounselor } = await supabaseAdmin
+                        .from('counselors')
+                        .select('id')
+                        .eq('email', requesterEmail)
+                        .maybeSingle();
+
+                    if (reqCounselor && reqCounselor.id === targetProfile.counselor_id) {
+                        isAuthorized = true;
+                    }
+                }
+            }
 
             if (!isAuthorized) {
                 return NextResponse.json({ error: 'Forbidden: Insufficient permissions' }, { status: 403 });

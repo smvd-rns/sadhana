@@ -16,10 +16,10 @@ interface SearchableSelectProps {
     disabled?: boolean;
     className?: string;
     /**
-     * Which property of the option to use as the value.
      * Defaults to 'name' for backward compatibility.
      */
     valueProperty?: 'id' | 'name';
+    triggerClassName?: string;
 }
 
 export default function SearchableSelect({
@@ -30,6 +30,7 @@ export default function SearchableSelect({
     disabled = false,
     className = '',
     valueProperty = 'name',
+    triggerClassName = '',
 }: SearchableSelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -108,7 +109,13 @@ export default function SearchableSelect({
         (option.email && option.email.toLowerCase().includes(search.toLowerCase()))
     );
 
-    const selectedOption = options.find((opt) => opt[valueProperty] === value);
+    let selectedOption = options.find((opt) => opt[valueProperty] === value);
+
+    // Fallback: if valueProperty is 'id' but no match found, try matching by name
+    // This handles cases where we have a name stored but need to resolve to an ID
+    if (!selectedOption && valueProperty === 'id' && value) {
+        selectedOption = options.find((opt) => opt.name === value);
+    }
 
     const dropdownList = (
         <div
@@ -191,7 +198,8 @@ export default function SearchableSelect({
         <div className={`relative ${className}`} ref={containerRef}>
             <div
                 className={`
-          relative w-full cursor-default rounded-lg bg-white py-3 pl-3 pr-10 text-left shadow-sm ring-1 ring-inset ring-gray-300 sm:text-sm sm:leading-6
+          relative w-full cursor-default rounded-lg bg-white text-left sm:text-sm sm:leading-6
+          ${triggerClassName || 'py-3 pl-3 pr-10 shadow-sm ring-1 ring-inset ring-gray-300'}
           ${disabled ? 'cursor-not-allowed bg-gray-50 text-gray-400' : 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-600'}
         `}
                 onClick={() => !disabled && setIsOpen(!isOpen)}

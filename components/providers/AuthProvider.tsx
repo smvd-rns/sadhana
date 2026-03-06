@@ -1,5 +1,6 @@
 'use client';
 
+import { registerPushNotifications, setupForegroundMessageListener } from '@/lib/utils/push-notifications';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase/config';
 import { getUserData, onAuthStateChange } from '@/lib/supabase/auth';
@@ -28,6 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userData, setUserData] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Setup foreground push notification listener
+  useEffect(() => {
+    const unsubscribe = setupForegroundMessageListener();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
 
   useEffect(() => {
     // Only run on client side
@@ -69,6 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (data) {
               setUserData(data);
               setLoading(false);
+
+              // Register for push notifications once logged in
+              registerPushNotifications(data.id, data.pushTokens || []);
             } else if (retryCount < maxRetries) {
               retryCount++;
               setTimeout(() => {
@@ -124,6 +137,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (userData) {
                 setUserData(userData);
                 setLoading(false);
+
+                // Register for push notifications once logged in
+                registerPushNotifications(userData.id, userData.pushTokens || []);
               } else if (retryCount < maxRetries) {
                 // User data not yet created, retry after a delay
                 retryCount++;

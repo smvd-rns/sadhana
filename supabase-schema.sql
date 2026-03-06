@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS users (
   service_5 TEXT,
   -- Keep hierarchy JSONB for backward compatibility (can be removed later)
   hierarchy JSONB DEFAULT '{}'::jsonb,
+  push_tokens TEXT[] DEFAULT ARRAY[]::TEXT[], -- FCM device tokens
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

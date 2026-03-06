@@ -1,0 +1,111 @@
+'use client';
+
+import { ManagedEvent } from '@/types';
+import { Calendar, Star, Pin } from 'lucide-react';
+
+
+interface EventListItemProps {
+    event: ManagedEvent;
+    isActive: boolean;
+    onClick: () => void;
+    onPinToggle: (pinned: boolean) => void;
+}
+
+
+export default function EventListItem({ event, isActive, onClick, onPinToggle }: EventListItemProps) {
+    const formattedEventDate = new Date(event.eventDate).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+    });
+
+    const formattedSentDate = new Date(event.createdAt).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+    });
+
+    // Strip HTML for the snippet
+    const stripHtml = (html: string) => {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    };
+
+    const snippet = event.message ? stripHtml(event.message).substring(0, 80) + '...' : 'No description available';
+
+    // If userResponse exists, it means seen, coming, or not_coming.
+    const hasBeenSeen = !!event.userResponse;
+
+    return (
+        <div className="relative border-b border-gray-100 group">
+            <button
+                onClick={onClick}
+                className={`w-full text-left p-4 transition-all duration-300 flex gap-3 relative ${isActive
+                    ? 'bg-orange-50/80 border-l-4 border-l-orange-600'
+                    : hasBeenSeen
+                        ? 'bg-gray-100/60 hover:bg-gray-200/50 border-l-4 border-l-transparent'
+                        : 'bg-white hover:bg-gray-50 border-l-4 border-l-blue-600 shadow-[inset_4px_0_0_0_#2563eb]'
+                    }`}
+            >
+                <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                            {event.isImportant && (
+                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                            )}
+                            <h4 className={`text-sm tracking-tight transition-colors ${isActive
+                                ? 'text-orange-600 font-black'
+                                : hasBeenSeen
+                                    ? 'text-gray-600 font-medium'
+                                    : 'text-gray-900 font-black'
+                                } truncate`}>
+                                {event.title}
+                            </h4>
+                        </div>
+                        <div className="flex flex-col items-end gap-0.5 shrink-0 ml-2">
+                            <span className={`text-[9px] font-bold uppercase tracking-widest ${isActive ? 'text-orange-400' : 'text-gray-400'}`}>
+                                Sent: {formattedSentDate}
+                            </span>
+                            <span className={`text-[10px] items-center gap-1 transition-colors flex ${isActive ? 'text-orange-600 font-black' : hasBeenSeen ? 'text-gray-500 font-bold' : 'text-blue-600 font-black'
+                                }`}>
+                                <Calendar className="h-2.5 w-2.5" />
+                                {formattedEventDate}
+                            </span>
+                        </div>
+                    </div>
+
+                    <p className={`text-[11px] line-clamp-2 leading-relaxed transition-colors ${isActive ? 'text-orange-800/80 font-bold' : hasBeenSeen ? 'text-gray-600 font-medium' : 'text-gray-800 font-bold'
+                        }`}>
+                        {snippet}
+                    </p>
+
+                    <div className="flex gap-1.5 mt-2">
+                        {event.attachments?.length > 0 && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 rounded text-[8px] font-black text-gray-500 uppercase tracking-widest">
+                                {event.attachments.length} Files
+                            </div>
+                        )}
+                        {event.userResponse?.status === 'coming' && (
+                            <div className="flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 rounded text-[8px] font-black text-emerald-600 uppercase tracking-widest">
+                                Going
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </button>
+
+            {/* Personal Pin Toggle */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onPinToggle(!event.isPinned);
+                }}
+                className={`absolute right-4 bottom-4 p-1.5 rounded-lg transition-all duration-300 ${event.isPinned
+                    ? 'bg-blue-100 text-blue-600 opacity-100 scale-110 shadow-sm'
+                    : 'bg-white/0 text-gray-300 opacity-0 group-hover:opacity-100 hover:bg-gray-100'
+                    }`}
+                title={event.isPinned ? "Unpin this message" : "Pin this message"}
+            >
+                <Pin className={`h-3.5 w-3.5 transition-transform ${event.isPinned ? 'fill-current rotate-45' : 'rotate-0'}`} />
+            </button>
+        </div>
+    );
+}

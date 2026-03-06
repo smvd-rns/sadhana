@@ -36,6 +36,12 @@ export function extractFileId(url: string): string | null {
     return openMatch[1];
   }
 
+  // Extract from lh3.googleusercontent.com/d/FILE_ID= format
+  const lh3Match = url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/);
+  if (lh3Match) {
+    return lh3Match[1];
+  }
+
   // If it looks like a direct file ID (alphanumeric with dashes/underscores)
   const directIdMatch = url.match(/^([a-zA-Z0-9_-]{20,})$/);
   if (directIdMatch) {
@@ -66,12 +72,14 @@ export function getThumbnailUrl(url: string | null | undefined, width: number = 
     return url;
   }
 
-  // Use Google Drive thumbnail API
-  // Use Google Drive thumbnail API
-  // Format: https://drive.google.com/thumbnail?id=FILE_ID&sz=s{size}
-  // valid sizes: s200, s400, s800, s1000, etc.
-  // We use width as the primary size driver
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=s${width}`;
+  // Try to extract session info if already an lh3 link to preserve it
+  if (url.includes('lh3.googleusercontent.com')) {
+    return url.replace(/=s\d+$/, `=s${width}`);
+  }
+
+  // Use Google Drive thumbnail API (lh3 format is more reliable for direct embedding)
+  // Format: https://lh3.googleusercontent.com/d/FILE_ID=s{size}
+  return `https://lh3.googleusercontent.com/d/${fileId}=s${width}`;
 }
 
 /**

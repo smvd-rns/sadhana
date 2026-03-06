@@ -62,6 +62,7 @@ export default function CounselorPage() {
       center: user.center || user.hierarchy?.center,
       counselor: user.counselor || user.hierarchy?.counselor,
       otherCenter: user.other_center || user.hierarchy?.otherCenter,
+      otherTemple: user.other_temple || user.hierarchy?.otherTemple,
       otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
       ashram: user.ashram || user.hierarchy?.ashram,
     };
@@ -73,6 +74,19 @@ export default function CounselorPage() {
       hierarchy: hierarchy,
       createdAt: user.created_at ? new Date(user.created_at) : undefined,
       updatedAt: user.updated_at ? new Date(user.updated_at) : undefined,
+      // Relative contact fields
+      relative1Name: user.relative_1_name,
+      relative1Relationship: user.relative_1_relationship,
+      relative1Phone: user.relative_1_phone,
+      relative2Name: user.relative_2_name,
+      relative2Relationship: user.relative_2_relationship,
+      relative2Phone: user.relative_2_phone,
+      relative3Name: user.relative_3_name,
+      relative3Relationship: user.relative_3_relationship,
+      relative3Phone: user.relative_3_phone,
+      // Health fields
+      healthChronicDisease: user.health_chronic_disease,
+      introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
     } as User;
   };
 
@@ -339,11 +353,18 @@ export default function CounselorPage() {
         const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
 
         // Authority via Stable ID
-        const matchesId = adminCounselorId && u.counselor_id === adminCounselorId;
+        const matchesId = adminCounselorId && (u.counselor_id === adminCounselorId || uH.counselorId === adminCounselorId);
 
-        // Authority via Legacy Match
+        // Authority via Legacy Match or Unified Name Match
         const matchesEmail = bE === adminEmail || gE === adminEmail;
-        const matchesName = adminCounselorName && (bN === adminCounselorName || gN === adminCounselorName);
+        const matchesName = adminCounselorName && (
+          bN === adminCounselorName ||
+          gN === adminCounselorName ||
+          (u.counselor || '').trim().toLowerCase() === adminCounselorName ||
+          (uH.counselor || '').trim().toLowerCase() === adminCounselorName ||
+          (u.other_counselor || '').trim().toLowerCase() === adminCounselorName ||
+          (uH.otherCounselor || '').trim().toLowerCase() === adminCounselorName
+        );
 
         return matchesId || matchesEmail || matchesName;
       });
@@ -386,9 +407,16 @@ export default function CounselorPage() {
         const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
         const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
 
-        const matchesId = adminCounselorId && u.counselor_id === adminCounselorId;
+        const matchesId = adminCounselorId && (u.counselor_id === adminCounselorId || uH.counselorId === adminCounselorId);
         const matchesLegacy = bE === adminEmail || gE === adminEmail ||
-          (adminCounselorName && (bN === adminCounselorName || gN === adminCounselorName));
+          (adminCounselorName && (
+            bN === adminCounselorName ||
+            gN === adminCounselorName ||
+            (u.counselor || '').trim().toLowerCase() === adminCounselorName ||
+            (uH.counselor || '').trim().toLowerCase() === adminCounselorName ||
+            (u.other_counselor || '').trim().toLowerCase() === adminCounselorName ||
+            (uH.otherCounselor || '').trim().toLowerCase() === adminCounselorName
+          ));
 
         return matchesId || matchesLegacy;
       }).length;
@@ -504,24 +532,34 @@ export default function CounselorPage() {
     if (!supabase) return;
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          verification_status: action === 'approve' ? 'approved' : 'rejected',
-          rejection_reason: reason || null,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: userData?.id
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/admin/verify-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'user',
+          id: userId,
+          action: action,
+          reason: reason
         })
-        .eq('id', userId);
+      });
 
-      if (error) throw error;
-
-      toast.success(`User ${action === 'approve' ? 'verified' : 'rejected'} successfully`);
-      loadPendingUsers();
-      loadStats();
+      const json = await response.json();
+      if (json.success) {
+        toast.success(`User ${action === 'approve' ? 'verified' : 'rejected'} successfully`);
+        loadPendingUsers();
+        loadStats();
+      } else {
+        toast.error(json.error || 'Failed to update user status');
+      }
     } catch (error) {
       console.error('Error processing devotee verification:', error);
-      toast.error('Failed to update user status');
+      toast.error('Internal server error');
     } finally {
       setIsProcessing(false);
     }
@@ -568,25 +606,35 @@ export default function CounselorPage() {
     if (selectedPendingUserIds.length === 0 || !supabase) return;
     setIsProcessing(true);
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({
-          verification_status: action === 'approve' ? 'approved' : 'rejected',
-          rejection_reason: reason || null,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: userData?.id
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+
+      const response = await fetch('/api/admin/verify-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          type: 'user',
+          ids: selectedPendingUserIds,
+          action: action,
+          reason: reason
         })
-        .in('id', selectedPendingUserIds);
+      });
 
-      if (error) throw error;
-
-      toast.success(`${selectedPendingUserIds.length} users ${action === 'approve' ? 'verified' : 'rejected'} successfully`);
-      setSelectedPendingUserIds([]);
-      loadPendingUsers();
-      loadStats();
+      const json = await response.json();
+      if (json.success) {
+        toast.success(`${selectedPendingUserIds.length} users ${action === 'approve' ? 'verified' : 'rejected'} successfully`);
+        setSelectedPendingUserIds([]);
+        loadPendingUsers();
+        loadStats();
+      } else {
+        toast.error(json.error || 'Failed to update users status');
+      }
     } catch (error) {
       console.error('Error in bulk devotee verification:', error);
-      toast.error('Failed to process bulk registrations');
+      toast.error('Internal server error');
     } finally {
       setIsProcessing(false);
     }
@@ -1477,8 +1525,12 @@ export default function CounselorPage() {
                         <div className="grid grid-cols-2 gap-2 pb-2 border-b border-gray-50">
                           <div className="p-2 bg-gray-50/50 rounded-lg">
                             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Temple/Center</p>
-                            <p className="text-[10px] font-black text-gray-700 truncate">{pUser.current_temple || pUser.hierarchy?.currentTemple || 'N/A'}</p>
-                            <p className="text-[9px] font-bold text-emerald-600 truncate italic">{pUser.current_center || pUser.hierarchy?.currentCenter || 'N/A'}</p>
+                            <p className="text-[10px] font-black text-gray-700 truncate">
+                              {pUser.other_temple || pUser.hierarchy?.otherTemple || pUser.current_temple || pUser.hierarchy?.currentTemple || 'N/A'}
+                            </p>
+                            <p className="text-[9px] font-bold text-emerald-600 truncate italic">
+                              {pUser.other_center || pUser.hierarchy?.otherCenter || pUser.current_center || pUser.hierarchy?.currentCenter || 'N/A'}
+                            </p>
                           </div>
                           <div className="p-2 bg-gray-50/50 rounded-lg">
                             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Counselor/Ashram</p>
@@ -1546,8 +1598,12 @@ export default function CounselorPage() {
                             </td>
                             <td className="px-6 py-3">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-tight">{pUser.current_temple || pUser.hierarchy?.currentTemple || 'N/A'}</span>
-                                <span className="text-[9px] font-bold text-emerald-600 tracking-tight italic">{pUser.current_center || pUser.hierarchy?.currentCenter || 'N/A'}</span>
+                                <span className="text-[10px] font-black text-gray-500 uppercase tracking-tight">
+                                  {pUser.other_temple || pUser.hierarchy?.otherTemple || pUser.current_temple || pUser.hierarchy?.currentTemple || 'N/A'}
+                                </span>
+                                <span className="text-[9px] font-bold text-emerald-600 tracking-tight italic">
+                                  {pUser.other_center || pUser.hierarchy?.otherCenter || pUser.current_center || pUser.hierarchy?.currentCenter || 'N/A'}
+                                </span>
                               </div>
                             </td>
                             <td className="px-6 py-3">

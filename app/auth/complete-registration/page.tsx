@@ -31,6 +31,7 @@ export default function CompleteRegistrationPage() {
         templeId: '',
         center: '',
         otherCenter: '',
+        otherTemple: '',
     });
 
     const [centers, setCenters] = useState<Array<{ id: string; name: string }>>([]);
@@ -96,6 +97,19 @@ export default function CompleteRegistrationPage() {
         loadCounselors();
     }, []);
 
+    // Auto-resolve counselorId if missing but counselor name exists
+    useEffect(() => {
+        if (!formData.counselorId && formData.counselor && counselors.length > 0) {
+            const match = counselors.find(c => c.name === formData.counselor);
+            if (match) {
+                setFormData(prev => ({
+                    ...prev,
+                    counselorId: match.id
+                }));
+            }
+        }
+    }, [counselors, formData.counselor, formData.counselorId]);
+
     // Load centers when temple changes
     useEffect(() => {
         if (formData.templeId) {
@@ -147,6 +161,7 @@ export default function CompleteRegistrationPage() {
             const hierarchy: any = {};
             if (formData.center && formData.center !== 'None') hierarchy.currentCenter = formData.center;
             if (formData.center === 'Other') hierarchy.otherCenter = formData.otherCenter;
+            if (formData.temple === 'Other') hierarchy.otherTemple = formData.otherTemple;
 
             if (formData.counselor && formData.counselor !== 'None') {
                 hierarchy.counselor = formData.counselor;
@@ -165,6 +180,7 @@ export default function CompleteRegistrationPage() {
                 birthDate: formData.birthDate,
                 otherCounselor: formData.counselor === 'Other' ? formData.otherCounselor : undefined,
                 currentTemple: formData.temple || undefined,
+                otherTemple: formData.temple === 'Other' ? formData.otherTemple : undefined,
                 currentCenter: formData.center !== 'None' ? formData.center : undefined,
                 otherCenter: formData.center === 'Other' ? formData.otherCenter : undefined,
                 verificationStatus: 'pending', // Set to pending for admin approval
@@ -381,6 +397,32 @@ export default function CompleteRegistrationPage() {
 
                         {/* Step 2: Spiritual Information */}
                         <div className={`space-y-6 ${activeStep === 2 ? 'block' : 'hidden'}`}>
+                            {/* Ashram Selection */}
+                            <div className="group">
+                                <label htmlFor="ashram" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
+                                    Ashram Status
+                                </label>
+                                <select
+                                    id="ashram"
+                                    value={formData.ashram}
+                                    onChange={(e) => {
+                                        const newAshram = e.target.value;
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            ashram: newAshram,
+                                            // Reset center if Brahmachari or Grihastha
+                                            ...((newAshram === 'Brahmachari' || newAshram === 'Grihastha') ? { center: 'None', otherCenter: '' } : {})
+                                        }));
+                                    }}
+                                    className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
+                                >
+                                    <option value="">Select Ashram</option>
+                                    {ashramOptions.map((option) => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             {/* Temple Selection */}
                             <div className="group">
                                 <label htmlFor="temple" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
@@ -399,7 +441,8 @@ export default function CompleteRegistrationPage() {
                                                 ...formData,
                                                 temple: e.target.value,
                                                 templeId: selectedTemple?.id || '',
-                                                center: ''
+                                                center: '',
+                                                otherTemple: e.target.value === 'Other' ? formData.otherTemple : ''
                                             });
                                         }}
                                         className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
@@ -409,38 +452,58 @@ export default function CompleteRegistrationPage() {
                                         {temples.map((t) => (
                                             <option key={t.id} value={t.name}>{t.name}</option>
                                         ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Center Selection */}
-                            <div className="group">
-                                <label htmlFor="center" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
-                                    Connected Center
-                                </label>
-                                <div className="relative">
-                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <Home className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
-                                    </div>
-                                    <select
-                                        id="center"
-                                        value={formData.center}
-                                        onChange={(e) => setFormData({ ...formData, center: e.target.value })}
-                                        className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
-                                        disabled={loadingCenters || !formData.temple}
-                                    >
-                                        <option value="">Select Center</option>
-                                        {centers.map((c) => (
-                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                        ))}
-                                        <option value="None">None</option>
                                         <option value="Other">Other</option>
                                     </select>
                                 </div>
                             </div>
 
+                            {/* Other Temple Input */}
+                            {formData.temple === 'Other' && (
+                                <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                    <label htmlFor="otherTemple" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
+                                        Other Temple Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="otherTemple"
+                                        value={formData.otherTemple}
+                                        onChange={(e) => setFormData({ ...formData, otherTemple: e.target.value })}
+                                        className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6"
+                                        placeholder="Enter temple name"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Center Selection */}
+                            {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && (
+                                <div className="group animate-in slide-in-from-top-2 fade-in duration-200">
+                                    <label htmlFor="center" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
+                                        Connected Center
+                                    </label>
+                                    <div className="relative">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                            <Home className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                                        </div>
+                                        <select
+                                            id="center"
+                                            value={formData.center}
+                                            onChange={(e) => setFormData({ ...formData, center: e.target.value })}
+                                            className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
+                                            disabled={loadingCenters}
+                                        >
+                                            <option value="">Select Center</option>
+                                            {centers.map((c) => (
+                                                <option key={c.id} value={c.name}>{c.name}</option>
+                                            ))}
+                                            <option value="None">None</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Other Center Input */}
-                            {formData.center === 'Other' && (
+                            {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && formData.center === 'Other' && (
                                 <div className="animate-in slide-in-from-top-2 fade-in duration-200">
                                     <label htmlFor="otherCenter" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
                                         Other Center Name
@@ -455,24 +518,6 @@ export default function CompleteRegistrationPage() {
                                     />
                                 </div>
                             )}
-
-                            {/* Ashram Selection */}
-                            <div className="group">
-                                <label htmlFor="ashram" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
-                                    Ashram Status
-                                </label>
-                                <select
-                                    id="ashram"
-                                    value={formData.ashram}
-                                    onChange={(e) => setFormData({ ...formData, ashram: e.target.value })}
-                                    className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
-                                >
-                                    <option value="">Select Ashram</option>
-                                    {ashramOptions.map((option) => (
-                                        <option key={option} value={option}>{option}</option>
-                                    ))}
-                                </select>
-                            </div>
 
                             {/* Counselor Selection */}
                             <div className="group">

@@ -208,6 +208,7 @@ export default function ManagingDirectorDashboard() {
             center: user.center || user.hierarchy?.center,
             counselor: user.counselor || user.hierarchy?.counselor,
             otherCenter: user.other_center || user.hierarchy?.otherCenter,
+            otherTemple: user.other_temple || user.hierarchy?.otherTemple,
             otherCounselor: user.other_counselor || user.hierarchy?.otherCounselor,
             ashram: user.ashram || user.hierarchy?.ashram,
         };
@@ -307,6 +308,21 @@ export default function ManagingDirectorDashboard() {
 
             spbookEighthSb1stCanto1419: user.spbook_eighth_sb_1st_canto_14_19 ?? user.spbookEighthSb1stCanto1419,
             spbookEighthKrishnaBook7889: user.spbook_eighth_krishna_book_78_89 ?? user.spbookEighthKrishnaBook7889,
+
+            // Relative contact fields
+            relative1Name: user.relative_1_name,
+            relative1Relationship: user.relative_1_relationship,
+            relative1Phone: user.relative_1_phone,
+            relative2Name: user.relative_2_name,
+            relative2Relationship: user.relative_2_relationship,
+            relative2Phone: user.relative_2_phone,
+            relative3Name: user.relative_3_name,
+            relative3Relationship: user.relative_3_relationship,
+            relative3Phone: user.relative_3_phone,
+            introducedToKcIn: user.introduced_to_kc_in || user.hierarchy?.introducedToKcIn,
+            createdAt: user.created_at ? new Date(user.created_at) : new Date(),
+            // Health fields
+            healthChronicDisease: user.health_chronic_disease,
         };
 
         return mapped;
@@ -854,50 +870,70 @@ export default function ManagingDirectorDashboard() {
     const handleUserVerification = async (userId: string, status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase) return;
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
-                    verification_status: status,
-                    rejection_reason: reason || null,
-                    reviewed_at: new Date().toISOString(),
-                    reviewed_by: userData?.id
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+
+            const response = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    id: userId,
+                    action: status === 'approved' ? 'approve' : 'reject',
+                    reason: reason
                 })
-                .eq('id', userId);
+            });
 
-            if (error) throw error;
-
-            toast.success(`User ${status} successfully ${reason ? `(Reason: ${reason})` : ''}`);
-            loadPendingUsers();
-            loadStats(currentTemple);
-            setSelectedPendingUserIds(prev => prev.filter(id => id !== userId));
+            const json = await response.json();
+            if (json.success) {
+                toast.success(`User ${status} successfully ${reason ? `(Reason: ${reason})` : ''}`);
+                loadPendingUsers();
+                loadStats(currentTemple);
+                setSelectedPendingUserIds(prev => prev.filter(id => id !== userId));
+            } else {
+                toast.error(json.error || 'Failed to update user status');
+            }
         } catch (error) {
             console.error('Error verifying user:', error);
-            toast.error('Failed to update user status');
+            toast.error('Internal server error');
         }
     };
 
     const handleBulkVerification = async (status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase || selectedPendingUserIds.length === 0) return;
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
-                    verification_status: status,
-                    rejection_reason: reason || null,
-                    reviewed_at: new Date().toISOString(),
-                    reviewed_by: userData?.id
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+
+            const response = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    ids: selectedPendingUserIds,
+                    action: status === 'approved' ? 'approve' : 'reject',
+                    reason: reason
                 })
-                .in('id', selectedPendingUserIds);
+            });
 
-            if (error) throw error;
-
-            toast.success(`${selectedPendingUserIds.length} users ${status} successfully`);
-            loadPendingUsers();
-            loadStats(currentTemple);
-            setSelectedPendingUserIds([]);
+            const json = await response.json();
+            if (json.success) {
+                toast.success(`${selectedPendingUserIds.length} users ${status} successfully`);
+                loadPendingUsers();
+                loadStats(currentTemple);
+                setSelectedPendingUserIds([]);
+            } else {
+                toast.error(json.error || 'Failed to update users status');
+            }
         } catch (error) {
             console.error('Error bulk verifying users:', error);
-            toast.error('Failed to update users status');
+            toast.error('Internal server error');
         }
     };
 
@@ -2425,7 +2461,9 @@ export default function ManagingDirectorDashboard() {
                                                             <div className="flex flex-col gap-1">
                                                                 <div className="flex items-center gap-1.5">
                                                                     <div className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                                                                    <span className="text-[10px] font-black text-gray-500 tracking-tight">{uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || 'N/A'}</span>
+                                                                    <span className="text-[10px] font-black text-gray-500 tracking-tight">
+                                                                        {user.other_temple || uH?.otherTemple || uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || 'N/A'}
+                                                                    </span>
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5">
                                                                     <div className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -2511,7 +2549,7 @@ export default function ManagingDirectorDashboard() {
                                                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Temple</span>
                                                         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-tight truncate text-gray-700">
                                                             <MapPin className="h-3 w-3 flex-shrink-0" />
-                                                            {uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || 'None'}
+                                                            {user.other_temple || uH?.otherTemple || uH?.currentTemple?.name || (typeof uH?.currentTemple === 'string' ? uH?.currentTemple : '') || 'None'}
                                                         </div>
                                                     </div>
                                                     <div className={`flex flex-col gap-1 p-2.5 rounded-xl border ${isHighlighted && (isCenterOther || isCenterNone) ? 'bg-rose-50 border-rose-100' : 'bg-gray-50 border-gray-100'}`}>

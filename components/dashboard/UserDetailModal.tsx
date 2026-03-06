@@ -6,11 +6,12 @@ import { fetchSadhanaReportsByRange } from '@/lib/api/sadhana-client';
 import {
     X, Calendar, User as UserIcon, Activity, BookOpen,
     Moon, Sun, Coffee, Bed, ChevronRight, Check, AlertCircle,
-    MapPin, Phone, Mail, Shield, Award, Briefcase, GraduationCap, Tent, Book, CheckCircle2, XCircle, Clock, Filter
+    MapPin, Phone, Mail, Shield, Award, Briefcase, GraduationCap, Tent, Book, CheckCircle2, XCircle, Clock, Filter, Users
 } from 'lucide-react';
 import { getRoleDisplayName } from '@/lib/utils/roles';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfWeek, endOfWeek, parseISO, differenceInCalendarDays } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 const CAMP_MAPPINGS = [
     { key: 'campDys', label: 'Discover Your Self (DYS)' },
@@ -111,8 +112,9 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
         try {
             const fetchedReports = await fetchSadhanaReportsByRange(dateRange.from, dateRange.to, user.id);
             setReports(fetchedReports);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error loading sadhana details:', error);
+            toast.error(error.message || 'Failed to load sadhana details');
         } finally {
             setLoadingSadhana(false);
         }
@@ -300,6 +302,52 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
                                     </div>
                                 </div>
 
+                                {/* Relative Contact Info */}
+                                {(user.relative1Name || user.relative2Name || user.relative3Name) && (
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
+                                            <Users className="h-4 w-4 text-sky-500" /> Relative Contacts
+                                        </h3>
+                                        <div className="space-y-6">
+                                            {[1, 2, 3].map((num) => {
+                                                const name = (user as any)[`relative${num}Name`];
+                                                const rel = (user as any)[`relative${num}Relationship`];
+                                                const phone = (user as any)[`relative${num}Phone`];
+                                                if (!name && !rel && !phone) return null;
+                                                return (
+                                                    <div key={num} className="space-y-2 last:border-0 border-b border-gray-50 pb-4 last:pb-0">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-sm font-bold text-gray-800 truncate">{name || 'Unnamed'}</p>
+                                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{rel || 'Relationship not set'}</p>
+                                                            </div>
+                                                            {phone && (
+                                                                <a href={`tel:${phone}`} className="flex items-center gap-1.5 px-2 py-1 bg-sky-50 text-sky-600 rounded-lg text-[10px] font-bold hover:bg-sky-100 transition-colors whitespace-nowrap ml-2">
+                                                                    <Phone className="h-3 w-3" /> {phone}
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Health Info */}
+                                {user.healthChronicDisease && (
+                                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm md:col-span-2">
+                                        <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                            <Activity className="h-4 w-4 text-rose-500" /> Health Information
+                                        </h3>
+                                        <div className="p-4 bg-rose-50/30 rounded-2xl border border-rose-100/50">
+                                            <p className="text-sm text-gray-700 font-medium leading-relaxed whitespace-pre-wrap">
+                                                {user.healthChronicDisease}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Hierarchy Info */}
                                 <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                                     <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -344,6 +392,24 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
                                             <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Initiation</span>
                                             <span className="text-sm font-bold text-gray-700 sm:text-right">{user.hierarchy?.initiationStatus || 'Not set'}</span>
                                         </div>
+                                        {user.introducedToKcIn && (
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 last:border-0 gap-1 sm:gap-4">
+                                                <span className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-tight sm:tracking-normal">Introduced to KC</span>
+                                                <span className="text-sm font-bold text-gray-700 sm:text-right">
+                                                    {(() => {
+                                                        try {
+                                                            const date = new Date(user.introducedToKcIn);
+                                                            if (isNaN(date.getTime())) return user.introducedToKcIn;
+                                                            // If it's just a year (4 digits), return as is
+                                                            if (/^\d{4}$/.test(user.introducedToKcIn)) return user.introducedToKcIn;
+                                                            return format(date, 'MMM d, yyyy');
+                                                        } catch (e) {
+                                                            return user.introducedToKcIn;
+                                                        }
+                                                    })()}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>

@@ -105,7 +105,7 @@ export async function POST(request: Request) {
                 // Fetch target users to verify counselor email/ID match
                 const { data: targetUsers, error: targetError } = await supabase
                     .from('users')
-                    .select('id, hierarchy, counselor_id')
+                    .select('id, hierarchy, counselor_id, other_counselor')
                     .in('id', targetIds);
 
                 if (targetError || !targetUsers) {
@@ -139,13 +139,21 @@ export async function POST(request: Request) {
                     const gE = (uH.grihasthaCounselorEmail || '').trim().toLowerCase();
                     const bN = (uH.brahmachariCounselor || '').trim().toLowerCase();
                     const gN = (uH.grihasthaCounselor || '').trim().toLowerCase();
+                    const uE = (uH.counselorEmail || '').trim().toLowerCase();
+                    const uN = (uH.counselor || '').trim().toLowerCase();
 
                     // Authority via Stable ID (Preferred)
                     if (adminCounselorId && u.counselor_id === adminCounselorId) return true;
 
-                    // Authority via Current Counselor (Email or Name - Legacy)
-                    if (bE === normalizedAdminEmail || gE === normalizedAdminEmail) return true;
-                    if (counselorName && (bN === counselorName || gN === counselorName)) return true;
+                    // Authority via Current Counselor (Email or Name - Legacy & Unified)
+                    if (bE === normalizedAdminEmail || gE === normalizedAdminEmail || uE === normalizedAdminEmail) return true;
+                    if (counselorName && (bN === counselorName || gN === counselorName || uN === counselorName)) return true;
+
+                    // Authority via "Other" Counselor Name match
+                    if (uN === 'other' && (u.other_counselor || uH.otherCounselor)) {
+                        const otherN = (u.other_counselor || uH.otherCounselor || '').trim().toLowerCase();
+                        if (counselorName && otherN === counselorName) return true;
+                    }
 
                     // Authority via Requested Counselor
                     const reqObj = userToRequested.get(u.id);
