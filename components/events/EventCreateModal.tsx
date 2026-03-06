@@ -87,7 +87,8 @@ export default function EventCreateModal({ isOpen, onClose, onSuccess }: EventCr
                 targetRoles,
                 targetTemples,
                 targetCenters,
-                targetCamps
+                targetCamps,
+                excludedUserIds: []
             });
             toast.success('Event posted successfully! 🚀');
             onSuccess();
