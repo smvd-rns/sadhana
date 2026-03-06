@@ -255,7 +255,7 @@ export default function ProfilePage() {
       if (normalize(formData.healthChronicDisease) !== normalize(userData.healthChronicDisease)) return true;
 
       // 5. Compare Array Fields
-      const compareArrays = (arr1: any[], arr2: any[]) => {
+      const compareArrays = (arr1: any[], arr2?: any[]) => {
         const filtered1 = arr1.filter(item => Object.values(item).some(v => v !== null && v !== '' && v !== false));
         const filtered2 = arr2?.filter(item => Object.values(item).some(v => v !== null && v !== '' && v !== false)) || [];
         if (filtered1.length !== filtered2.length) return true;
