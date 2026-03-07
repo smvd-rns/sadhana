@@ -1,0 +1,571 @@
+'use client';
+
+import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { supabase } from '@/lib/supabase/config';
+import {
+    BookOpen, Plus, FileText, Trash2, Edit, Calendar,
+    Link as LinkIcon, AlertCircle, Upload, Search,
+    ArrowUpDown, Share2, Check, Copy, X, Clock, Filter
+} from 'lucide-react';
+import { getHighestRole, getRoleDisplayName } from '@/lib/utils/roles';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+
+// List of all applicable roles 1 to 30 based on the db
+const ROLE_OPTIONS = Array.from({ length: 30 }, (_, i) => i + 1).map(roleId => ({
+    id: roleId,
+    name: getRoleDisplayName(roleId as any)
+}));
+
+export default function PoliciesPage() {
+    const { userData, loading } = useAuth();
+    const searchParams = useSearchParams();
+    const router = useRouter();
+    const [policies, setPolicies] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Search and Sort states
+    const [searchQuery, setSearchQuery] = useState('');
+    const [sortBy, setSortBy] = useState<'date_desc' | 'date_asc' | 'title_asc' | 'title_desc'>('date_desc');
+    const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+
+    // Modal states
+    const [showUploadModal, setShowUploadModal] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadError, setUploadError] = useState('');
+
+    // Form states
+    const [title, setTitle] = useState('');
+    const [applicableDate, setApplicableDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
+
+    useEffect(() => {
+        if (!loading && userData) {
+            fetchPolicies();
+        }
+    }, [userData, loading]);
+
+    const fetchPolicies = async () => {
+        setIsLoading(true);
+        try {
+            const { data: { session } } = await supabase!.auth.getSession();
+            const token = session?.access_token;
+
+            const response = await fetch('/api/policies', {
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
+            });
+            const result = await response.json();
+            if (result.success) {
+                setPolicies(result.data);
+            }
+        } catch (error) {
+            console.error('Error fetching policies', error);
+            toast.error('Failed to load policies');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
+    const numericRoles = userRoles.map((r: any) => typeof r === 'number' ? r : parseInt(r)).filter((r: number) => !isNaN(r));
+    const isSuperAdmin = numericRoles.includes(8) || userRoles.includes('super_admin');
+    const canSeeAllPolicies = numericRoles.some(r => [8, 9, 10].includes(r)) || userRoles.includes('super_admin');
+
+    // Filter and Sort Logic
+    const filteredPolicies = useMemo(() => {
+        let result = [...policies];
+
+        // Search
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(p => p.title.toLowerCase().includes(query));
+        }
+
+        // Role Filter (Superadmin only)
+        if (canSeeAllPolicies && selectedRoleFilter !== 'all') {
+            const roleId = parseInt(selectedRoleFilter);
+            result = result.filter(p => p.target_roles?.includes(roleId));
+        }
+
+        // Sort
+        result.sort((a, b) => {
+            if (sortBy === 'date_desc') return new Date(b.applicable_date).getTime() - new Date(a.applicable_date).getTime();
+            if (sortBy === 'date_asc') return new Date(a.applicable_date).getTime() - new Date(b.applicable_date).getTime();
+            if (sortBy === 'title_asc') return a.title.localeCompare(b.title);
+            if (sortBy === 'title_desc') return b.title.localeCompare(a.title);
+            return 0;
+        });
+
+        return result;
+    }, [policies, searchQuery, sortBy, selectedRoleFilter, canSeeAllPolicies]);
+
+    // Handle initial shared policy ID
+    useEffect(() => {
+        const sharedId = searchParams.get('id');
+        if (sharedId && !isLoading && policies.length > 0) {
+            const element = document.getElementById(`policy-${sharedId}`);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                element.classList.add('ring-4', 'ring-amber-400', 'ring-offset-4');
+                setTimeout(() => {
+                    element.classList.remove('ring-4', 'ring-amber-400', 'ring-offset-4');
+                }, 3000);
+            }
+        }
+    }, [searchParams, isLoading, policies]);
+
+    const handleCopyLink = (policyId: string) => {
+        const url = `${window.location.origin}${window.location.pathname}?id=${policyId}`;
+        navigator.clipboard.writeText(url);
+        toast.success('Link copied to clipboard!');
+    };
+
+    const handleRoleSelection = (roleId: number) => {
+        if (selectedRoles.includes(roleId)) {
+            setSelectedRoles(selectedRoles.filter(id => id !== roleId));
+        } else {
+            setSelectedRoles([...selectedRoles, roleId]);
+        }
+    };
+
+    const handleSelectAllRoles = () => {
+        if (selectedRoles.length === ROLE_OPTIONS.length) {
+            setSelectedRoles([]);
+        } else {
+            setSelectedRoles(ROLE_OPTIONS.map(r => r.id));
+        }
+    };
+
+    const handleFileUpload = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!title || !applicableDate || !selectedFile || selectedRoles.length === 0) {
+            setUploadError('Please fill in all fields and select at least one role.');
+            return;
+        }
+
+        setIsUploading(true);
+        setUploadError('');
+
+        try {
+            // 1. Upload file to Google Drive
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('userName', userData?.name || 'Admin');
+            formData.append('folderId', '1b94q4-8wVGVU_pv4AUVpTFMrnfY9v2ng'); // The requested Drive Folder
+
+            const uploadRes = await fetch('/api/upload/google-drive', {
+                method: 'POST',
+                body: formData
+            });
+
+            const uploadResult = await uploadRes.json();
+
+            if (!uploadResult.success) {
+                throw new Error(uploadResult.error || 'Failed to upload to Google Drive');
+            }
+
+            const { fileId, fileName, webViewLink, directImageUrl } = uploadResult.data;
+
+            const { data: { session } } = await supabase!.auth.getSession();
+            const token = session?.access_token;
+
+            // 2. Save Policy to Database
+            const policyRes = await fetch('/api/policies', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : ''
+                },
+                body: JSON.stringify({
+                    title,
+                    applicable_date: applicableDate,
+                    file_name: fileName,
+                    file_url: webViewLink || directImageUrl,
+                    file_id: fileId,
+                    file_type: selectedFile.type,
+                    target_roles: selectedRoles
+                })
+            });
+
+            const policyResult = await policyRes.json();
+
+            if (!policyResult.success) {
+                throw new Error(policyResult.error || 'Failed to save policy record');
+            }
+
+            // Reset and close
+            setShowUploadModal(false);
+            setTitle('');
+            setApplicableDate(new Date().toISOString().split('T')[0]);
+            setSelectedFile(null);
+            setSelectedRoles([]);
+            fetchPolicies();
+            toast.success('Policy uploaded successfully');
+
+        } catch (error: any) {
+            setUploadError(error.message || 'An unexpected error occurred during upload.');
+            toast.error(error.message || 'Upload failed');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this policy?')) return;
+
+        try {
+            const { data: { session } } = await supabase!.auth.getSession();
+            const token = session?.access_token;
+
+            const res = await fetch(`/api/policies/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': token ? `Bearer ${token}` : ''
+                }
+            });
+            const result = await res.json();
+            if (result.success) {
+                fetchPolicies();
+                toast.success('Policy deleted');
+            } else {
+                toast.error(result.error || 'Failed to delete policy');
+            }
+        } catch (error) {
+            console.error('Error deleting policy:', error);
+            toast.error('Error deleting policy');
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin h-10 w-10 border-4 border-amber-500 border-t-transparent rounded-full"></div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
+            {/* Header Section */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6">
+                <div className="w-full sm:w-auto">
+                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+                        <BookOpen className="h-7 w-7 sm:h-8 sm:w-8 text-amber-500" />
+                        Official Policies
+                    </h1>
+                    <p className="text-[10px] sm:text-sm font-bold text-gray-400 uppercase tracking-widest mt-2 ml-1">
+                        View active documents and guidelines
+                    </p>
+                </div>
+
+                {isSuperAdmin && (
+                    <button
+                        onClick={() => setShowUploadModal(true)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-6 py-3.5 sm:py-3 rounded-2xl font-black shadow-lg shadow-orange-500/30 hover:shadow-orange-500/50 hover:scale-[1.02] active:scale-95 transition-all uppercase tracking-widest text-[10px] sm:text-xs"
+                    >
+                        <Plus className="h-4 w-4 stroke-[3px]" /> Upload Policy
+                    </button>
+                )}
+            </div>
+
+            {/* Controls Bar: Search & Sort */}
+            <div className="flex flex-col md:flex-row gap-4 bg-white/60 backdrop-blur-md p-4 sm:p-5 rounded-[2rem] border border-white shadow-sm">
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-amber-500 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Search policies by title..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-12 pr-4 py-3 sm:py-3.5 bg-white border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-bold text-gray-700 transition-all placeholder:text-gray-300 shadow-inner text-sm"
+                    />
+                </div>
+
+                <div className="flex gap-2 sm:gap-4 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+                    <div className="relative min-w-[160px] sm:min-w-[180px]">
+                        <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <select
+                            value={sortBy}
+                            onChange={(e: any) => setSortBy(e.target.value)}
+                            className="w-full pl-10 pr-10 py-3 sm:py-3.5 bg-white border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-[10px] sm:text-xs uppercase tracking-widest text-gray-700 appearance-none shadow-inner cursor-pointer"
+                        >
+                            <option value="date_desc">Newest First</option>
+                            <option value="date_asc">Oldest First</option>
+                            <option value="title_asc">Title (A-Z)</option>
+                            <option value="title_desc">Title (Z-A)</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                            <ChevronDown className="h-4 w-4" />
+                        </div>
+                    </div>
+
+                    {canSeeAllPolicies && (
+                        <div className="relative min-w-[160px] sm:min-w-[180px]">
+                            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                            <select
+                                value={selectedRoleFilter}
+                                onChange={(e: any) => setSelectedRoleFilter(e.target.value)}
+                                className="w-full pl-10 pr-10 py-3 sm:py-3.5 bg-white border-2 border-transparent focus:border-amber-400 rounded-2xl outline-none font-black text-[10px] sm:text-xs uppercase tracking-widest text-gray-700 appearance-none shadow-inner cursor-pointer"
+                            >
+                                <option value="all">All Roles</option>
+                                {ROLE_OPTIONS.filter(r => r.name !== 'Unknown Role').map(role => (
+                                    <option key={role.id} value={role.id.toString()}>
+                                        {role.id}. {role.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                <ChevronDown className="h-4 w-4" />
+                            </div>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => { setSearchQuery(''); setSortBy('date_desc'); setSelectedRoleFilter('all'); }}
+                        className="flex items-center gap-2 px-4 py-3 sm:py-3.5 bg-gray-100/50 hover:bg-gray-100 text-gray-500 rounded-2xl transition-colors font-black text-[10px] sm:text-xs uppercase tracking-widest whitespace-nowrap"
+                    >
+                        <X className="h-4 w-4" /> Clear
+                    </button>
+                </div>
+            </div>
+
+            {/* List Section */}
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white">
+                    <div className="animate-spin h-10 w-10 border-4 border-amber-200 border-t-amber-600 rounded-full mb-4"></div>
+                </div>
+            ) : filteredPolicies.length === 0 ? (
+                <div className="text-center py-20 bg-white/40 backdrop-blur-md rounded-[2.5rem] border border-white border-dashed">
+                    <div className="bg-amber-100/50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                        <FileText className="h-10 w-10 text-amber-500" />
+                    </div>
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight">No Policies Found</h3>
+                    <p className="text-gray-500 font-medium mt-2 max-w-sm mx-auto px-4">
+                        We couldn't find any policies matching your current search or role access.
+                    </p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+                    {filteredPolicies.map(policy => (
+                        <div
+                            key={policy.id}
+                            id={`policy-${policy.id}`}
+                            className="bg-white rounded-[2rem] sm:rounded-3xl p-5 sm:p-6 shadow-xl shadow-orange-100/40 border border-amber-100/50 group relative overflow-hidden transition-all hover:scale-[1.02] flex flex-col justify-between"
+                        >
+                            {/* Decorative Accent */}
+                            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-amber-400 to-orange-500" />
+
+                            <div>
+                                <div className="flex justify-between items-start mb-4">
+                                    <div className="p-3 bg-amber-50 rounded-2xl group-hover:bg-amber-100 transition-colors">
+                                        <FileText className="h-6 w-6 text-amber-600" />
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => handleCopyLink(policy.id)}
+                                            className="p-2 text-gray-300 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-all"
+                                            title="Copy Shareable Link"
+                                        >
+                                            <Share2 className="h-4 w-4" />
+                                        </button>
+                                        {isSuperAdmin && (
+                                            <button
+                                                onClick={() => handleDelete(policy.id)}
+                                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                                                title="Delete Policy"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-2 leading-tight group-hover:text-amber-600 transition-colors">
+                                    {policy.title}
+                                </h3>
+
+                                <div className="flex items-center gap-2.5 text-[10px] sm:text-xs font-bold text-gray-500 bg-gray-50/80 px-3 py-2 rounded-xl mt-4 w-fit">
+                                    <Calendar className="h-4 w-4 text-orange-500" />
+                                    <span>Applicable: <span className="text-gray-900">{new Date(policy.applicable_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span></span>
+                                </div>
+
+                                {/* Visibility Section */}
+                                <div className="mt-4 flex flex-col gap-1.5">
+                                    <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-0.5">Visible To</label>
+                                    <div className="flex flex-wrap gap-1">
+                                        {policy.target_roles?.length === ROLE_OPTIONS.length ? (
+                                            <span className="px-2 py-1 bg-green-50 text-green-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-green-100/50">
+                                                All Roles (1-30)
+                                            </span>
+                                        ) : (
+                                            policy.target_roles
+                                                ?.sort((a: number, b: number) => a - b)
+                                                .map((roleId: number) => {
+                                                    const name = getRoleDisplayName(roleId as any);
+                                                    if (name === 'Unknown Role') return null;
+                                                    return (
+                                                        <span key={roleId} className="px-2 py-1 bg-blue-50 text-blue-700 rounded-lg text-[9px] font-black uppercase tracking-tight border border-blue-100/50">
+                                                            {name}
+                                                        </span>
+                                                    );
+                                                })
+                                        )}
+                                        {(!policy.target_roles || policy.target_roles.length === 0) && (
+                                            <span className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg text-[9px] font-black uppercase tracking-widest border border-gray-100">
+                                                No Roles Selected
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-6 flex flex-col gap-2">
+                                <a
+                                    href={policy.file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 justify-center w-full bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-700 hover:from-amber-500 hover:to-orange-600 hover:text-white px-4 py-3.5 sm:py-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-sm hover:shadow-orange-200"
+                                >
+                                    <LinkIcon className="h-3.5 w-3.5" /> View Policy Document
+                                </a>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Upload Modal (Superadmin Only) */}
+            {isSuperAdmin && showUploadModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-gray-900/60 backdrop-blur-md animate-in fade-in duration-200">
+                    <div className="bg-white rounded-none sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl h-full sm:h-auto sm:max-h-[90vh] overflow-y-auto hidden-scrollbar flex flex-col">
+                        <div className="p-6 sm:p-8 border-b border-gray-100 sticky top-0 bg-white/95 backdrop-blur-md z-10 flex justify-between items-center shadow-sm">
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black text-gray-900">Upload New Policy</h2>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Add a document and set visibility</p>
+                            </div>
+                            <button onClick={() => !isUploading && setShowUploadModal(false)} className="text-gray-400 hover:bg-gray-100 p-2.5 rounded-full transition-colors">
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleFileUpload} className="p-6 sm:p-8 space-y-6">
+                            {uploadError && (
+                                <div className="p-4 bg-red-50 text-red-600 border border-red-100 rounded-2xl text-[11px] font-black uppercase tracking-wider flex items-center gap-3 animate-shake">
+                                    <AlertCircle className="h-5 w-5 shrink-0" /> {uploadError}
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Policy Title</label>
+                                <input
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder="e.g. 2026 Code of Conduct"
+                                    className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-amber-400 focus:bg-white rounded-2xl outline-none font-bold text-gray-700 transition-all placeholder:text-gray-300 text-sm"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Applicable From</label>
+                                    <input
+                                        type="date"
+                                        value={applicableDate}
+                                        onChange={(e) => setApplicableDate(e.target.value)}
+                                        className="w-full px-5 py-4 bg-gray-50 border-2 border-transparent focus:border-amber-400 focus:bg-white rounded-2xl outline-none font-bold text-gray-700 transition-all uppercase tracking-widest text-[11px]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Document File</label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            onChange={(e) => setSelectedFile(e.target.files ? e.target.files[0] : null)}
+                                            className="w-full px-5 py-3.5 bg-gray-50 border-2 border-dashed border-gray-200 hover:border-amber-400 hover:bg-white rounded-2xl outline-none font-bold text-gray-500 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200 cursor-pointer text-xs"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-end px-1">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Roles (Visibility)</label>
+                                    <button
+                                        type="button"
+                                        onClick={handleSelectAllRoles}
+                                        className="text-[9px] font-black uppercase tracking-widest text-amber-600 hover:text-amber-700 bg-amber-50 px-3 py-1.5 rounded-lg transition-colors border border-amber-100"
+                                    >
+                                        {selectedRoles.length === ROLE_OPTIONS.length ? 'Deselect All' : 'Select All 1-30'}
+                                    </button>
+                                </div>
+                                <div className="bg-gray-50/80 p-4 sm:p-5 rounded-[2rem] border border-gray-100 max-h-56 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 scrollbar-thin scrollbar-thumb-gray-200">
+                                    {ROLE_OPTIONS.filter(r => r.name !== 'Unknown Role').map(role => (
+                                        <label key={role.id} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all ${selectedRoles.includes(role.id) ? 'bg-amber-50 border-amber-300 text-amber-900 shadow-sm' : 'bg-white border-transparent text-gray-600 hover:border-gray-200'}`}>
+                                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${selectedRoles.includes(role.id) ? 'bg-amber-500 border-amber-500' : 'bg-white border-gray-300'}`}>
+                                                {selectedRoles.includes(role.id) && <Check className="h-3.5 w-3.5 text-white stroke-[4px]" />}
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="hidden"
+                                                checked={selectedRoles.includes(role.id)}
+                                                onChange={() => handleRoleSelection(role.id)}
+                                            />
+                                            <span className="text-[9px] font-black uppercase tracking-widest truncate">{role.id}. {role.name}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-6 border-t border-gray-100 flex flex-col-reverse sm:flex-row justify-end gap-3 sticky bottom-0 sm:static bg-white sm:bg-transparent pb-4 sm:pb-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowUploadModal(false)}
+                                    disabled={isUploading}
+                                    className="px-6 py-4 sm:py-3.5 rounded-2xl text-gray-500 font-black text-[10px] uppercase tracking-widest hover:bg-gray-100 transition-colors disabled:opacity-50"
+                                >
+                                    Go Back
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUploading || !title || !applicableDate || !selectedFile || selectedRoles.length === 0}
+                                    className="flex items-center gap-2 justify-center px-8 py-4 sm:py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:shadow-lg hover:shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {isUploading ? (
+                                        <><div className="animate-spin h-4 w-4 border-2 border-white/40 border-t-white rounded-full"></div> Processing...</>
+                                    ) : (
+                                        <><Upload className="h-4 w-4 stroke-[3px]" /> Save & Publish Policy</>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Styles for hiding scrollbars if needed */}
+            <style jsx global>{`
+                .scrollbar-none::-webkit-scrollbar { display: none; }
+                .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+                
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-4px); }
+                    75% { transform: translateX(4px); }
+                }
+                .animate-shake { animation: shake 0.2s ease-in-out 0s 2; }
+            `}</style>
+        </div>
+    );
+}
+
+// Icon fallbacks
+function ChevronDown(props: any) {
+    return (
+        <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+    )
+}

@@ -148,6 +148,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
       { name: 'Sadhana', href: '/dashboard/sadhana', icon: BookOpen },
       { name: 'Events', href: '/dashboard/events', icon: Calendar },
+      { name: 'Policies', href: '/dashboard/policies', icon: BookOpen },
       { name: 'Profile', href: '/dashboard/profile', icon: Settings },
     ];
 
