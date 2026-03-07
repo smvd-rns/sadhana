@@ -128,7 +128,7 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
             }
         };
         fetchFilterData();
-    }, [userData, supabase]);
+    }, [userData]);
 
     const handleImageUpload = async (file: File): Promise<string> => {
         // Just return a local URL and store the file for later upload

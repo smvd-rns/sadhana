@@ -116,7 +116,7 @@ export default function EventTrackingPage() {
         } finally {
             setLoading(false);
         }
-    }, [id, router, isPM, isSuperAdmin, userData?.id]);
+    }, [id, router, isSuperAdmin, userData?.id]);
 
     useEffect(() => {
         fetchData();

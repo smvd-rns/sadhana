@@ -345,7 +345,7 @@ export default function PoliciesPage() {
                     </div>
                     <h3 className="text-xl font-black text-gray-900 tracking-tight">No Policies Found</h3>
                     <p className="text-gray-500 font-medium mt-2 max-w-sm mx-auto px-4">
-                        We couldn't find any policies matching your current search or role access.
+                        We couldn&apos;t find any policies matching your current search or role access.
                     </p>
                 </div>
             ) : (

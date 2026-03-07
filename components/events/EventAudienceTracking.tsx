@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { ManagedEvent, ManagedEventResponse } from '@/types';
 import {
@@ -40,7 +40,7 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
     const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
     const [isBulkSubmitting, setIsBulkSubmitting] = useState(false);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         setTargetedUsers([]); // Clear previous data to prevent flashing
         setResponses([]);
@@ -88,11 +88,11 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
         } finally {
             setLoading(false);
         }
-    };
+    }, [event.id, filterTemple, filterCenter, isSuperAdmin, userData]);
 
     useEffect(() => {
         fetchData();
-    }, [event.id, filterTemple, filterCenter]);
+    }, [fetchData]);
 
     const filteredUsers = useMemo(() => {
         return targetedUsers.filter(user => {

@@ -48,24 +48,41 @@ function EventsPageContent() {
     );
     const isSuperAdmin = userRoles.some(role => role === 'super_admin' || role === 8);
 
-    const fetchEvents = async () => {
+    const fetchLogs = useCallback(async () => {
+        setLoadingLogs(true);
+        try {
+            const logs = await getRecentResponses(30, userData?.id, isSuperAdmin);
+
+            // Map user names from main Supabase
+            const userIds = Array.from(new Set(logs.map(l => l.userId)));
+            if (userIds.length > 0) {
+                const { data: users } = await supabase!
+                    .from('users')
+                    .select('id, name, email')
+                    .in('id', userIds);
+
+                const userMap = new Map(users?.map(u => [u.id, u]) || []);
+                const detailedLogs = logs.map(log => ({
+                    ...log,
+                    userName: userMap.get(log.userId)?.name,
+                    userEmail: userMap.get(log.userId)?.email
+                }));
+                setGlobalLogs(detailedLogs);
+            } else {
+                setGlobalLogs([]);
+            }
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        } finally {
+            setLoadingLogs(false);
+        }
+    }, [userData?.id, isSuperAdmin]);
+
+    const fetchEvents = useCallback(async () => {
         if (!userData) return;
         setLoading(true);
         setEvents([]); // Clear old events to prevent UI flash when switching tabs
         try {
-            const roleStr = Array.isArray(userData.role) ? String(userData.role[0]) : String(userData.role);
-            const completedCamps = [
-                userData.campDys && 'campDys',
-                userData.campSankalpa && 'campSankalpa',
-                userData.campSphurti && 'campSphurti',
-                userData.campUtkarsh && 'campUtkarsh',
-                userData.campFaithAndDoubt && 'campFaithAndDoubt',
-                userData.campSrcgdWorkshop && 'campSrcgdWorkshop',
-                userData.campNistha && 'campNistha',
-                userData.campAshray && 'campAshray'
-            ].filter(Boolean) as string[];
-
-
             // Prepare all possible location tokens for the backend to check
             const allLocations = [
                 userData.hierarchy?.center,
@@ -119,41 +136,11 @@ function EventsPageContent() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const fetchLogs = async () => {
-        setLoadingLogs(true);
-        try {
-            const logs = await getRecentResponses(30, userData?.id, isSuperAdmin);
-
-            // Map user names from main Supabase
-            const userIds = Array.from(new Set(logs.map(l => l.userId)));
-            if (userIds.length > 0) {
-                const { data: users } = await supabase!
-                    .from('users')
-                    .select('id, name, email')
-                    .in('id', userIds);
-
-                const userMap = new Map(users?.map(u => [u.id, u]) || []);
-                const detailedLogs = logs.map(log => ({
-                    ...log,
-                    userName: userMap.get(log.userId)?.name,
-                    userEmail: userMap.get(log.userId)?.email
-                }));
-                setGlobalLogs(detailedLogs);
-            } else {
-                setGlobalLogs([]);
-            }
-        } catch (error) {
-            console.error('Error fetching logs:', error);
-        } finally {
-            setLoadingLogs(false);
-        }
-    };
+    }, [userData, isAdmin, activeTab, isSuperAdmin, fetchLogs]);
 
     useEffect(() => {
         fetchEvents();
-    }, [userData, isAdmin, activeTab]);
+    }, [userData, isAdmin, activeTab, fetchEvents]);
 
     // Handle marking events as 'seen' only when selected
     useEffect(() => {
@@ -194,7 +181,7 @@ function EventsPageContent() {
         };
 
         markSelectedAsSeen();
-    }, [selectedEventId, userData]);
+    }, [selectedEventId, userData, events]);
 
     const handlePinToggle = async (eventId: string, pinned: boolean) => {
         if (!userData) return;
