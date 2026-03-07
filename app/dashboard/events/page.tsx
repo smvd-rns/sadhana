@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Plus, Calendar, Users, BarChart3, ChevronRight, MessageSquare, Paperclip, Check, X, Info } from 'lucide-react';
