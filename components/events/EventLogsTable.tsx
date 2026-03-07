@@ -63,8 +63,8 @@ export default function EventLogsTable({ responses, loading, showEventTitle = tr
     }
 
     return (
-        <div className="overflow-hidden rounded-[2.5rem] border border-gray-100 shadow-2xl shadow-gray-200/40 bg-white">
-            <div className="overflow-x-auto">
+        <div className="overflow-x-auto rounded-[2.5rem] border border-gray-100 shadow-2xl shadow-gray-200/40 bg-white custom-scrollbar-horizontal">
+            <div className="min-w-[800px]">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-gray-50/50 backdrop-blur-md border-b border-gray-100">
                         <tr>

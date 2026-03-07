@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ManagedEvent, ManagedEventAttachment } from '@/types';
-import { Calendar, MapPin, Users, Paperclip, MessageSquare, Check, X, Info, ExternalLink, Play, Music, Image as ImageIcon, BarChart3 } from 'lucide-react';
+import { Calendar, MapPin, Users, Paperclip, MessageSquare, Check, X, Info, ExternalLink, Play, Music, Image as ImageIcon, BarChart3, Clock } from 'lucide-react';
 import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
 import { useRouter } from 'next/navigation';
@@ -34,9 +34,10 @@ export default function EventCard({ event, isAdmin, onResponseUpdate }: EventCar
             });
             toast.success(status === 'coming' ? "See you there! 🙏" : "Got it, thanks for letting us know.");
             onResponseUpdate();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error submitting response:', error);
-            toast.error('Failed to submit response');
+            const message = error.message || 'Failed to submit response';
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
@@ -164,6 +165,20 @@ export default function EventCard({ event, isAdmin, onResponseUpdate }: EventCar
                                 </p>
                                 <p className="text-[8px] opacity-60 font-bold uppercase tracking-wider">
                                     {event.userResponse.isBulk ? 'Marked by Admin' : 'Response recorded'}
+                                </p>
+                            </div>
+                        </div>
+                    ) : (event.rsvpDeadline && new Date() > new Date(event.rsvpDeadline)) ? (
+                        <div className="flex items-center gap-3 p-3 bg-gray-50/80 border border-gray-200 rounded-xl text-gray-400 grayscale">
+                            <div className="p-1.5 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                                <Clock className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest leading-none mb-1 text-gray-500">
+                                    Time is over
+                                </p>
+                                <p className="text-[8px] font-bold uppercase tracking-wider text-gray-400 text-nowrap">
+                                    No more responses
                                 </p>
                             </div>
                         </div>

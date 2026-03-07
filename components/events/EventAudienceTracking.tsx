@@ -42,6 +42,8 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
 
     const fetchData = async () => {
         setLoading(true);
+        setTargetedUsers([]); // Clear previous data to prevent flashing
+        setResponses([]);
         try {
             // Fetch users with geographic filters applied at server if posssible
             const users = await getEventTargetedUsers(event.id, {
@@ -215,8 +217,8 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
             )}
 
             {/* List */}
-            <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/30">
-                <table className="w-full text-left bg-white">
+            <div className="border border-gray-100 rounded-2xl overflow-x-auto bg-gray-50/30 custom-scrollbar-horizontal">
+                <table className="w-full text-left bg-white min-w-[600px]">
                     <thead className="bg-gray-50/50 border-b border-gray-100">
                         <tr>
                             <th className="p-4 w-10">

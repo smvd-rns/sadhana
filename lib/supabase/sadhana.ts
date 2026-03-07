@@ -58,8 +58,34 @@ const getSadhanaClient = () => {
   return _sadhanaClient;
 };
 
+// Singleton service-role client for Sadhana DB (bypasses RLS for writes)
+let _sadhanaAdminClient: ReturnType<typeof createClient> | null = null;
+
+const getSadhanaAdminClient = () => {
+  const specializedUrl = cleanEnvVar(process.env.NEXT_PUBLIC_SADHANA_DB_URL);
+  const url = specializedUrl || cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  const serviceKey = cleanEnvVar(process.env.SADHANA_DB_SERVICE_ROLE_KEY);
+
+  const isServer = typeof window === 'undefined';
+
+  if (!url || !serviceKey) {
+    if (isServer) console.warn('[SadhanaAdminClient] Missing URL or Service Role Key, falling back to anon client');
+    return getSadhanaClient();
+  }
+
+  if (_sadhanaAdminClient) return _sadhanaAdminClient;
+
+  _sadhanaAdminClient = createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  return _sadhanaAdminClient;
+};
+
 // Use a getter to ensure we always have the correctly initialized client
 export const getActiveSadhanaSupabase = () => getSadhanaClient();
+// Use this for server-side write operations that need to bypass RLS
+export const getAdminSadhanaSupabase = () => getSadhanaAdminClient();
 
 // Helper function to normalize date to ISO string
 const normalizeDate = (date: Date | string | any): string => {

@@ -43,8 +43,8 @@ function EventsPageContent() {
 
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const isAdmin = userRoles.some(role =>
-        ['super_admin', 'zonal_admin', 'state_admin', 'city_admin', 'center_admin', 'bc_voice_manager', 'project_manager', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher', 'project_advisor', 'acting_manager'].includes(String(role)) ||
-        (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21))
+        ['super_admin', 'zonal_admin', 'state_admin', 'city_admin', 'center_admin', 'bc_voice_manager', 'project_manager', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher', 'project_advisor', 'acting_manager', 'event_admin'].includes(String(role)) ||
+        (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21 || role === 30))
     );
     const isSuperAdmin = userRoles.some(role => role === 'super_admin' || role === 8);
 
@@ -321,6 +321,7 @@ function EventsPageContent() {
                         ) : showHistory && (
                             <AdminEventHistory
                                 events={events}
+                                onRefresh={fetchEvents}
                             />
                         )}
                     </div>

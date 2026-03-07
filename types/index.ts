@@ -27,6 +27,7 @@ export type UserRole =
   | 'accountant'
   | 'kitchen_head'
   | 'study_in_charge'
+  | 'event_admin'
   | 'student'
   | 1 // student
   | 2 // counselor
@@ -54,7 +55,8 @@ export type UserRole =
   | 26 // frontliner
   | 27 // accountant
   | 28 // kitchen_head
-  | 29; // study_in_charge
+  | 29 // study_in_charge
+  | 30; // event_admin
 
 export type SpiritualLevel = 'beginner' | 'intermediate' | 'advanced';
 
@@ -386,6 +388,7 @@ export interface ManagedEvent {
   comingCount?: number;
   isImportant?: boolean;
   isPinned?: boolean;
+  rsvpDeadline?: Date;
   userResponse?: ManagedEventResponse;
 
   updatedAt: Date;

@@ -1,8 +1,9 @@
 'use server';
 
-import { getActiveSadhanaSupabase } from '@/lib/supabase/sadhana';
+import { getActiveSadhanaSupabase, getAdminSadhanaSupabase } from '@/lib/supabase/sadhana';
 import { ManagedEvent, ManagedEventResponse, ManagedEventAttachment } from '@/types';
 import { sendPushNotification } from '@/lib/firebase/admin';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Create a new event in the second Supabase
@@ -28,7 +29,8 @@ export async function createEvent(eventData: Omit<ManagedEvent, 'id' | 'createdA
             excluded_user_ids: eventData.excludedUserIds,
             reached_count: eventData.reachedCount || 0,
             is_important: eventData.isImportant || false,
-            is_pinned: eventData.isPinned || false
+            is_pinned: eventData.isPinned || false,
+            rsvp_deadline: eventData.rsvpDeadline
         })
         .select()
         .single();
@@ -315,6 +317,21 @@ export async function submitEventResponse(response: {
     const supabase = getActiveSadhanaSupabase();
     if (!supabase) throw new Error('Sadhana Supabase not initialized');
 
+    if (response.status === 'coming' || response.status === 'not_coming') {
+        const { data: eventData } = await supabase
+            .from('events')
+            .select('rsvp_deadline')
+            .eq('id', response.eventId)
+            .single();
+
+        if (eventData?.rsvp_deadline) {
+            const deadline = new Date(eventData.rsvp_deadline);
+            if (new Date() > deadline) {
+                throw new Error('Time to respond to this event is over.');
+            }
+        }
+    }
+
     const { error } = await supabase
         .from('event_responses')
         .upsert({
@@ -540,6 +557,89 @@ export async function getEventTargetedUsers(eventId: string, filters?: { temple?
     });
 }
 
+export async function updateEventDeadline(eventId: string, rsvpDeadline: Date | null, userId: string) {
+    console.log(`[updateEventDeadline] Starting update for event ${eventId} by user ${userId}`);
+    try {
+        const sadhanaSupabase = getActiveSadhanaSupabase(); // anon (for reading)
+        if (!sadhanaSupabase) throw new Error('Sadhana Supabase not initialized');
+
+        // 1. Fetch the event to check ownership
+        console.log('[updateEventDeadline] Fetching event ownership...');
+        const { data: event, error: fetchError } = await sadhanaSupabase
+            .from('events')
+            .select('created_by, id')
+            .eq('id', eventId)
+            .single();
+
+        if (fetchError) {
+            console.error('[updateEventDeadline] Error fetching event:', fetchError);
+            throw new Error(`Event not found: ${fetchError.message}`);
+        }
+        if (!event) throw new Error('Event not found');
+        console.log('[updateEventDeadline] Found event creator:', event.created_by);
+
+        // 2. Check permissions — use the MAIN DB admin client (users are NOT in sadhana DB)
+        const isCreator = event.created_by === userId;
+        let isSuperAdmin = false;
+
+        if (!isCreator) {
+            console.log('[updateEventDeadline] User is not creator, checking super_admin role in main DB...');
+            try {
+                const { getAdminClient } = await import('@/lib/supabase/admin');
+                const mainAdmin = getAdminClient();
+                const { data: userData, error: userError } = await mainAdmin
+                    .from('users')
+                    .select('role')
+                    .eq('id', userId)
+                    .single();
+
+                if (userError) {
+                    console.error('[updateEventDeadline] Error fetching user role from main DB:', userError);
+                }
+
+                const userRole = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+                isSuperAdmin = userRole.some((r: any) => String(r) === '8' || String(r) === 'super_admin');
+                console.log('[updateEventDeadline] User isSuperAdmin:', isSuperAdmin);
+            } catch (err) {
+                console.error('[updateEventDeadline] Failed to check admin role:', err);
+            }
+        } else {
+            console.log('[updateEventDeadline] User is the event creator.');
+        }
+
+        if (!isCreator && !isSuperAdmin) {
+            console.warn('[updateEventDeadline] Unauthorized update attempt by user:', userId);
+            throw new Error('Not authorized to update this event deadline');
+        }
+
+        // 3. Perform the update — use service role to bypass RLS
+        console.log('[updateEventDeadline] Getting admin Sadhana client...');
+        const adminSadhana = getAdminSadhanaSupabase();
+        if (!adminSadhana) throw new Error('Sadhana admin client not available');
+
+        const deadline = rsvpDeadline ? rsvpDeadline.toISOString() : null;
+
+        console.log(`[updateEventDeadline] Updating event ${eventId} with deadline: ${deadline}`);
+
+        const { data: updateData, error: updateError } = await adminSadhana
+            .from('events')
+            .update({ rsvp_deadline: deadline })
+            .eq('id', eventId)
+            .select();
+
+        if (updateError) {
+            console.error('[updateEventDeadline] Supabase UPDATE error:', updateError);
+            throw updateError;
+        }
+
+        revalidatePath('/dashboard/events');
+        return { success: true };
+    } catch (error: any) {
+        console.error('[updateEventDeadline] FATAL ERROR:', error);
+        throw new Error(error.message || 'An internal error occurred while updating the deadline');
+    }
+}
+
 // Utility to map DB format to app ManagedEvent type
 function mapDbEventToManagedEvent(dbEvent: any, creatorName?: string): ManagedEvent {
     return {
@@ -560,6 +660,7 @@ function mapDbEventToManagedEvent(dbEvent: any, creatorName?: string): ManagedEv
         reachedCount: dbEvent.reached_count || 0,
         isImportant: dbEvent.is_important || false,
         isPinned: dbEvent.is_pinned || false, // Base state, overridden in getEventsForUser loop
+        rsvpDeadline: dbEvent.rsvp_deadline ? new Date(dbEvent.rsvp_deadline) : undefined,
         updatedAt: new Date(dbEvent.updated_at)
     };
 }

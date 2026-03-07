@@ -10,7 +10,7 @@ export const ashramOptions = [
     { id: 'Staying Single (Not planing to Marry)', name: 'Staying Single (Not planning to Marry)' }
 ];
 
-export const roleOptions = Array.from({ length: 29 }, (_, i) => i + 1).map(num => ({
+export const roleOptions = Array.from({ length: 30 }, (_, i) => i + 1).map(num => ({
     id: String(num),
     name: getRoleDisplayName(num as RoleNumber)
 }));

@@ -40,7 +40,7 @@ export default function EventTrackingPage() {
 
     const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role].filter(Boolean);
     const isPM = userRoles.some(r => ['project_manager', 15].includes(r as any));
-    const isSuperAdmin = userRoles.some(r => r === 'super_admin' || r === 8);
+    const isSuperAdmin = userRoles.some(r => r === 'super_admin' || r === 8 || r === 'event_admin' || r === 30);
 
     const fetchData = useCallback(async () => {
         if (!id) return;

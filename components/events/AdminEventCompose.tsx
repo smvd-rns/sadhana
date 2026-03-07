@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Mail, Plus, Users, Layout, Send, User, Smile, Code, Type, RefreshCw, Layers, Shield, Globe, Building2, MapPin, Check, X, Info, Search, Calendar, Star, Pin } from 'lucide-react';
+import { Mail, Plus, Users, Layout, Send, User, Smile, Code, Type, RefreshCw, Layers, Shield, Globe, Building2, MapPin, Check, X, Info, Search, Calendar, Star, Pin, Clock } from 'lucide-react';
 
 import { supabase } from '@/lib/supabase/config';
 import { toast } from 'react-hot-toast';
@@ -13,8 +13,8 @@ import LiveMessagePreview from '@/components/ui/LiveMessagePreview';
 import AttachmentPicker from '@/components/ui/AttachmentPicker';
 import { roleOptions, ashramOptions, campOptions } from '@/lib/utils/event-constants';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getActiveSadhanaSupabase } from '@/lib/supabase/sadhana';
 import { ManagedEventAttachment } from '@/types';
+import { useMemo } from 'react';
 
 interface AdminEventComposeProps {
     onSuccess: () => void;
@@ -26,8 +26,9 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
     const [message, setMessage] = useState('');
     const [attachments, setAttachments] = useState<ManagedEventAttachment[]>([]);
     const [pendingImages, setPendingImages] = useState<Map<string, File>>(new Map());
-    const [selectedTemples, setSelectedTemples] = useState<string[]>([]);
     const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
+    const [rsvpDeadlineDate, setRsvpDeadlineDate] = useState('');
+    const [rsvpDeadlineTime, setRsvpDeadlineTime] = useState('');
     const [isImportant, setIsImportant] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,19 +59,35 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
         fetch('/api/upload/google-drive', { method: 'HEAD' }).catch(() => { });
 
         const fetchFilterData = async () => {
+            if (!userData || !supabase) return;
             setLoadingFilters(true);
             try {
-                if (!userData || !supabase) return;
-
                 const userRoles = Array.isArray(userData.role) ? userData.role : [userData.role];
                 const normalizedRoles = userRoles.map(r => String(r));
 
                 const isSuperAdmin = normalizedRoles.some(r => r === '8' || r === 'super_admin');
                 const isTempleAdmin = normalizedRoles.some(r => ['11', '12', '13', '21', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r));
                 const isCenterAdmin = normalizedRoles.some(r => ['14', '15', '16', 'project_advisor', 'project_manager', 'acting_manager'].includes(r));
+                const isEventAdmin = normalizedRoles.some(r => r === '30' || r === 'event_admin');
 
                 let templeQuery = supabase.from('temples').select('id, name').order('name');
                 let centerQuery = supabase.from('centers').select('id, name, temple_name').order('name');
+
+                // Get Event Admin Allocations if applicable
+                let eventAdminTemples: string[] = [];
+                let eventAdminCenters: string[] = [];
+                if (isEventAdmin && !isSuperAdmin && !isTempleAdmin && !isCenterAdmin) {
+                    const { data: alloc } = await supabase
+                        .from('event_admin_allocations')
+                        .select('allowed_temples, allowed_centers')
+                        .eq('user_id', userData.id)
+                        .maybeSingle();
+
+                    if (alloc) {
+                        eventAdminTemples = alloc.allowed_temples || [];
+                        eventAdminCenters = alloc.allowed_centers || [];
+                    }
+                }
 
                 // Filter for Temple-level Admin (MD, Director, etc.)
                 if (isTempleAdmin && !isSuperAdmin) {
@@ -89,6 +106,12 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
 
                 let filteredTemples = templeData?.map(t => ({ id: t.name, name: t.name })) || [];
                 let filteredCenters = centerData?.map(c => ({ id: c.name, name: c.name, temple_name: c.temple_name })) || [];
+
+                // Filter for Event Admin
+                if (isEventAdmin && !isSuperAdmin && !isTempleAdmin && !isCenterAdmin) {
+                    filteredTemples = filteredTemples.filter(t => eventAdminTemples.includes(t.name));
+                    filteredCenters = filteredCenters.filter(c => eventAdminCenters.includes(c.name) || eventAdminTemples.includes(c.temple_name));
+                }
 
                 // If MD/Temple Admin, also restrict centers to those belonging to their temples
                 if (isTempleAdmin && !isSuperAdmin && templeData) {
@@ -146,8 +169,31 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
             const isSuperAdmin = normalizedRoles.some(r => r === '8' || r === 'super_admin');
             const isTempleAdmin = normalizedRoles.some(r => ['11', '12', '13', '21', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r));
             const isCenterAdmin = normalizedRoles.some(r => ['14', '15', '16', 'project_advisor', 'project_manager', 'acting_manager'].includes(r));
+            const isEventAdmin = normalizedRoles.some(r => r === '30' || r === 'event_admin');
 
-            if (isTempleAdmin && !isSuperAdmin) {
+            if (isEventAdmin && !isSuperAdmin && !isTempleAdmin && !isCenterAdmin) {
+                // Fetch allocations again (or rely on what was loaded in `temples`/`centers`)
+                const allowedTempleNames = temples.map(t => t.name);
+                const allowedCenterNames = centers.map(c => c.name);
+
+                if (allowedTempleNames.length > 0 || allowedCenterNames.length > 0) {
+                    const orConditions = [];
+                    if (allowedTempleNames.length > 0) {
+                        const values = `(${allowedTempleNames.map(v => `"${v}"`).join(',')})`;
+                        orConditions.push(`current_temple.in.${values}`, `hierarchy->>temple.in.${values}`, `hierarchy->>currentTemple.in.${values}`);
+                    }
+                    if (allowedCenterNames.length > 0) {
+                        const values = `(${allowedCenterNames.map(v => `"${v}"`).join(',')})`;
+                        orConditions.push(`current_center.in.${values}`, `center.in.${values}`, `hierarchy->>center.in.${values}`, `hierarchy->>currentCenter.in.${values}`);
+                    }
+                    query = query.or(orConditions.join(','));
+                } else {
+                    setRecipientCount(0);
+                    setSelectedUsersList([]);
+                    setIsFetchingUsers(false);
+                    return;
+                }
+            } else if (isTempleAdmin && !isSuperAdmin) {
                 // If Temple Admin (MD, Director, etc.), restrict to users in their assigned temples
                 const allowedTempleNames = temples.map(t => t.name);
                 if (allowedTempleNames.length > 0) {
@@ -325,6 +371,11 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
             }
 
             // 4. Submit the final event data
+            let parsedRsvpDeadline: Date | undefined = undefined;
+            if (rsvpDeadlineDate && rsvpDeadlineTime) {
+                parsedRsvpDeadline = new Date(`${rsvpDeadlineDate}T${rsvpDeadlineTime}`);
+            }
+
             await createEvent({
                 createdBy: userData?.id || '',
                 title,
@@ -339,7 +390,8 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                 excludedUserIds: Array.from(excludedUserIds),
                 reachedCount: activeRecipientCount,
                 isImportant: isImportant,
-                isPinned: isPinned
+                isPinned: isPinned,
+                rsvpDeadline: parsedRsvpDeadline
             });
 
 
@@ -364,6 +416,8 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
 
         setTitle('');
         setEventDate(new Date().toISOString().split('T')[0]);
+        setRsvpDeadlineDate('');
+        setRsvpDeadlineTime('');
         setIsImportant(false);
         setIsPinned(false);
         setMessage('');
@@ -371,7 +425,6 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
 
         setAttachments([]);
         setPendingImages(new Map());
-        setSelectedTemples([]);
         setTargetAshrams([]);
         setTargetRoles([]);
         setTargetTemples([]);
@@ -384,14 +437,28 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
 
     const activeRecipientCount = recipientCount - excludedUserIds.size;
 
+    // Derived permissions
+    const userPermissions = useMemo(() => {
+        const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+        const normalizedRoles = userRoles.map(r => String(r));
+        return {
+            isSuperAdmin: normalizedRoles.some(r => r === '8' || r === 'super_admin'),
+            isTempleAdmin: normalizedRoles.some(r => ['11', '12', '13', '21', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r)),
+            isCenterAdmin: normalizedRoles.some(r => ['14', '15', '16', 'project_advisor', 'project_manager', 'acting_manager'].includes(r)),
+            isEventAdmin: normalizedRoles.some(r => r === '30' || r === 'event_admin')
+        };
+    }, [userData?.role]);
+
     // Filter centers based on selected temples
-    const filteredCenterOptions = centers.filter(center => {
-        if (targetTemples.length === 0) return true;
-        // Check if center.temple_name matches any of the selected temple names
-        return targetTemples.some(selectedTemple =>
-            String(selectedTemple).trim().toLowerCase() === String(center.temple_name).trim().toLowerCase()
-        );
-    });
+    const filteredCenterOptions = useMemo(() => {
+        return centers.filter(center => {
+            if (targetTemples.length === 0) return true;
+            // Check if center.temple_name matches any of the selected temple names
+            return targetTemples.some(selectedTemple =>
+                String(selectedTemple).trim().toLowerCase() === String(center.temple_name).trim().toLowerCase()
+            );
+        });
+    }, [centers, targetTemples]);
 
     return (
         <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-gray-200 border border-gray-100 flex flex-col xl:flex-row items-start min-h-[600px] animate-in slide-in-from-bottom-6 duration-1000">
@@ -430,6 +497,33 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                                     onChange={(e) => setEventDate(e.target.value)}
                                     className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
                                 />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Date (Count Lock)</label>
+                                <div className="relative">
+                                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="date"
+                                        value={rsvpDeadlineDate}
+                                        onChange={(e) => setRsvpDeadlineDate(e.target.value)}
+                                        className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Time</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <input
+                                        type="time"
+                                        value={rsvpDeadlineTime}
+                                        onChange={(e) => setRsvpDeadlineTime(e.target.value)}
+                                        className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -534,12 +628,12 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                         </div>
 
                         <div className="space-y-4">
-                            {(!userData?.role || !Array.isArray(userData.role) ? [userData?.role] : userData.role).some(r => [8, 11, 12, 13, 21, 'super_admin', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r as any)) && (
+                            {userPermissions.isTempleAdmin || userPermissions.isSuperAdmin || userPermissions.isEventAdmin ? (
                                 <div className="space-y-1.5">
                                     <label className="text-[9px] font-black text-gray-900 uppercase tracking-tighter">Temple</label>
                                     <MultiSelect options={temples} selectedValues={targetTemples} onChange={setTargetTemples} placeholder="All Temples" valueProperty="id" disabled={loadingFilters} />
                                 </div>
-                            )}
+                            ) : null}
                             <div className="space-y-1.5">
                                 <label className="text-[9px] font-black text-gray-900 uppercase tracking-tighter">Specific Centers</label>
                                 <MultiSelect

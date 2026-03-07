@@ -1,6 +1,6 @@
 import { UserRole } from '@/types';
 
-export type RoleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29;
+export type RoleNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 20 | 21 | 22 | 23 | 24 | 25 | 26 | 27 | 28 | 29 | 30;
 
 // Helper function to get role hierarchy number
 export const getRoleHierarchyNumber = (role: UserRole): number => {
@@ -12,7 +12,7 @@ export const getRoleHierarchyNumber = (role: UserRole): number => {
   if (typeof role === 'string' && !isNaN(Number(role)) && role.trim() !== '') {
     const numRole = Number(role);
     if (numRole === 20) return 2; // Special case for Care Giver
-    if ((numRole >= 1 && numRole <= 17) || numRole === 21 || (numRole >= 22 && numRole <= 29)) {
+    if ((numRole >= 1 && numRole <= 17) || numRole === 21 || (numRole >= 22 && numRole <= 30)) {
       return numRole;
     }
   }
@@ -46,6 +46,7 @@ export const getRoleHierarchyNumber = (role: UserRole): number => {
     accountant: 27,
     kitchen_head: 28,
     study_in_charge: 29,
+    event_admin: 30,
     student: 1,
   };
   return hierarchy[role] || 1;
@@ -83,6 +84,7 @@ export const roleNumberToName: Record<RoleNumber, UserRole> = {
   27: 'accountant',
   28: 'kitchen_head',
   29: 'study_in_charge',
+  30: 'event_admin',
   1: 'student',
 };
 
@@ -178,6 +180,7 @@ export const getRoleDisplayName = (role: UserRole): string => {
     accountant: 'Accountant',
     kitchen_head: 'Kitchen Head',
     study_in_charge: 'Study In-charge',
+    event_admin: 'Event Admin',
     student: 'Student',
   };
   return displayNames[role as string] || 'Student';
@@ -261,7 +264,7 @@ export const hasRole = (userRoles: UserRole | UserRole[], targetRole: UserRole):
 
 // Check if a role number represents an admin role
 export const isAdminRoleNumber = (roleNumber: number): boolean => {
-  return (roleNumber >= 4 && roleNumber <= 17) || roleNumber === 21; // center_admin (4) to oc (17) OR youth_preacher (21)
+  return (roleNumber >= 4 && roleNumber <= 17) || roleNumber === 21 || roleNumber === 30; // center_admin (4) to oc (17) OR youth_preacher (21) OR event_admin (30)
 };
 
 // Check if a role number represents super admin

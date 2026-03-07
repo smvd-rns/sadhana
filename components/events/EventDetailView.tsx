@@ -38,9 +38,10 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
             });
             toast.success(status === 'coming' ? "See you there! 🙏" : "Response recorded.");
             onResponseUpdate();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error submitting response:', error);
-            toast.error('Failed to submit response');
+            const message = error.message || 'Failed to submit response';
+            toast.error(message);
         } finally {
             setIsSubmitting(false);
         }
@@ -117,10 +118,12 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
             <div className="p-6 md:p-10 space-y-8">
                 {/* Message Body */}
                 {event.message && (
-                    <div
-                        className="prose prose-slate prose-sm max-w-none prose-p:font-medium prose-p:leading-relaxed prose-p:text-gray-950 prose-headings:text-gray-950 prose-strong:font-black prose-a:text-orange-600 prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-6 prose-img:mx-auto text-gray-950"
-                        dangerouslySetInnerHTML={{ __html: event.message }}
-                    />
+                    <div className="w-full overflow-hidden">
+                        <div
+                            className="prose prose-slate prose-sm max-w-full prose-p:font-medium prose-p:leading-relaxed prose-p:text-gray-950 prose-headings:text-gray-950 prose-strong:font-black prose-a:text-orange-600 prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-6 prose-img:mx-auto text-gray-950 break-words [&_*]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:!overflow-x-hidden"
+                            dangerouslySetInnerHTML={{ __html: event.message }}
+                        />
+                    </div>
                 )}
 
                 {/* Optimized Image Gallery */}
@@ -231,6 +234,20 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                                 Change
                             </button>
                         )}
+                    </div>
+                ) : (event.rsvpDeadline && new Date() > new Date(event.rsvpDeadline)) ? (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-2xl flex items-center gap-4 text-gray-400 grayscale">
+                        <div className="p-2.5 rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
+                            <Clock className="h-5 w-5 text-gray-400" />
+                        </div>
+                        <div>
+                            <h5 className="text-[11px] font-black uppercase tracking-widest mb-0.5 text-gray-500">
+                                Time is over
+                            </h5>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                No more responses
+                            </p>
+                        </div>
                     </div>
                 ) : (
                     <div className="flex flex-col sm:flex-row gap-4">

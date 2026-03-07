@@ -1,17 +1,22 @@
 import { useState, useMemo } from 'react';
 import { ManagedEvent } from '@/types';
 import { format } from 'date-fns';
-import { Mail, Users, CheckCircle, Clock, ChevronDown, Search, ArrowUpDown, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { Mail, Users, CheckCircle, Clock, ChevronDown, Search, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Edit2, Calendar, X, Save, RefreshCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { updateEventDeadline } from '@/lib/actions/events';
+import { toast } from 'react-hot-toast';
 
 interface AdminEventHistoryProps {
     events: ManagedEvent[];
+    onRefresh?: () => void;
 }
 
 type SortKey = 'createdAt' | 'title' | 'reachedCount' | 'comingCount';
 
-export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
+export default function AdminEventHistory({ events, onRefresh }: AdminEventHistoryProps) {
     const router = useRouter();
+    const { userData } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({
         key: 'createdAt',
@@ -19,6 +24,52 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
     });
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
+
+    // Editing State
+    const [editingEvent, setEditingEvent] = useState<ManagedEvent | null>(null);
+    const [newDeadlineDate, setNewDeadlineDate] = useState('');
+    const [newDeadlineTime, setNewDeadlineTime] = useState('');
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const isSuperAdmin = useMemo(() => {
+        const roles = Array.isArray(userData?.role) ? userData.role : [userData?.role];
+        return roles.some(r => (r as any) === '8' || String(r) === 'super_admin');
+    }, [userData?.role]);
+
+    const handleOpenEdit = (e: React.MouseEvent, event: ManagedEvent) => {
+        e.stopPropagation();
+        setEditingEvent(event);
+        if (event.rsvpDeadline) {
+            const dateObj = new Date(event.rsvpDeadline);
+            setNewDeadlineDate(format(dateObj, 'yyyy-MM-dd'));
+            setNewDeadlineTime(format(dateObj, 'HH:mm'));
+        } else {
+            setNewDeadlineDate('');
+            setNewDeadlineTime('');
+        }
+    };
+
+    const handleUpdateDeadline = async () => {
+        if (!editingEvent || !userData) return;
+        setIsUpdating(true);
+        try {
+            let deadline: Date | null = null;
+            if (newDeadlineTime) {
+                // If time is provided, we MUST have a date. Default to today if none selected.
+                const dateStr = newDeadlineDate || new Date().toISOString().split('T')[0];
+                deadline = new Date(`${dateStr}T${newDeadlineTime}`);
+            }
+            await updateEventDeadline(editingEvent.id, deadline, userData.id);
+            toast.success('RSVP Deadline updated successfully');
+            setEditingEvent(null);
+            onRefresh?.();
+        } catch (error: any) {
+            console.error('Update failed:', error);
+            toast.error(error.message || 'Failed to update deadline');
+        } finally {
+            setIsUpdating(false);
+        }
+    };
 
     // 1. Filtering Logic
     const filteredEvents = useMemo(() => {
@@ -116,8 +167,8 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                 </div>
             </div>
 
-            <div className="overflow-x-auto min-h-[300px]">
-                <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto min-h-[300px] custom-scrollbar-horizontal">
+                <table className="w-full text-left border-collapse min-w-[900px]">
                     <thead>
                         <tr className="bg-gray-50/30 text-[9px] font-black text-gray-500 uppercase tracking-widest border-b border-gray-100">
                             <th
@@ -139,6 +190,7 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                                 </div>
                             </th>
                             <th className="px-6 py-4 hidden md:table-cell">Author</th>
+                            <th className="px-6 py-4">RSVP Deadline</th>
                             <th
                                 className="px-6 py-4 text-center cursor-pointer hover:bg-gray-100 group transition-colors"
                                 onClick={() => handleSort('reachedCount')}
@@ -164,8 +216,8 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                                             <Clock className="h-3.5 w-3.5" />
                                         </div>
                                         <div>
-                                            <div className="text-xs font-black text-gray-900 leading-none mb-1">{format(new Date(event.createdAt), 'MMM d, yyyy')}</div>
-                                            <div className="text-[9px] font-bold text-gray-400 leading-none">{format(new Date(event.createdAt), 'hh:mm a')}</div>
+                                            <div className="text-xs font-black text-black leading-none mb-1">{format(new Date(event.createdAt), 'MMM d, yyyy')}</div>
+                                            <div className="text-[9px] font-bold text-black leading-none">{format(new Date(event.createdAt), 'hh:mm a')}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -185,6 +237,21 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                                         </div>
                                     </div>
                                 </td>
+                                <td className="px-6 py-4">
+                                    <div className="flex items-center gap-2">
+                                        <div className={`p-1 rounded ${event.rsvpDeadline && new Date() > new Date(event.rsvpDeadline) ? 'bg-rose-50 text-rose-500' : 'bg-blue-50 text-blue-500'}`}>
+                                            <Clock className="h-3 w-3" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={`text-[10px] font-black ${event.rsvpDeadline ? 'text-gray-900 shadow-sm' : 'text-gray-400'}`}>
+                                                {event.rsvpDeadline ? format(new Date(event.rsvpDeadline), 'MMM d, hh:mm a') : 'No Deadline'}
+                                            </span>
+                                            {event.rsvpDeadline && new Date() > new Date(event.rsvpDeadline) && (
+                                                <span className="text-[8px] font-bold text-rose-500 uppercase tracking-tighter animate-pulse">Expired</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </td>
                                 <td className="px-6 py-4 text-center">
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black border border-blue-100/50">
                                         <Users className="h-3 w-3" />
@@ -194,9 +261,20 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black border border-emerald-100">
-                                        <CheckCircle className="h-3 w-3" />
-                                        Sent
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black border border-emerald-100">
+                                            <CheckCircle className="h-3 w-3" />
+                                            Sent
+                                        </div>
+                                        {(event.createdBy === userData?.id || isSuperAdmin) && (
+                                            <button
+                                                onClick={(e) => handleOpenEdit(e, event)}
+                                                className="p-1.5 bg-white border border-gray-100 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all shadow-sm"
+                                                title="Edit RSVP Deadline"
+                                            >
+                                                <Edit2 className="h-3.5 w-3.5" />
+                                            </button>
+                                        )}
                                     </div>
                                 </td>
                             </tr>
@@ -204,6 +282,102 @@ export default function AdminEventHistory({ events }: AdminEventHistoryProps) {
                     </tbody>
                 </table>
             </div>
+
+            {/* Edit Deadline Modal */}
+            {editingEvent && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setEditingEvent(null)}>
+                    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden border border-gray-200 animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+                        <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-100 text-purple-600 rounded-xl">
+                                    <Calendar className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black text-gray-900 tracking-tight">Edit RSVP Deadline</h3>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Extension & Grace Period</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setEditingEvent(null)}
+                                className="p-2 bg-white border border-gray-100 rounded-xl shadow-sm hover:bg-gray-50 transition-all"
+                            >
+                                <X className="h-4 w-4 text-gray-400" />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100">
+                                <p className="text-[11px] font-black text-purple-900 uppercase tracking-tight mb-1">{editingEvent.title}</p>
+                                <p className="text-[10px] text-black font-bold leading-tight">Current Deadline: {editingEvent.rsvpDeadline ? format(editingEvent.rsvpDeadline, 'MMM d, h:mm a') : 'No deadline set'}</p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-black uppercase tracking-widest ml-1">New Date</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                        <input
+                                            type="date"
+                                            value={newDeadlineDate}
+                                            onChange={(e) => setNewDeadlineDate(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-purple-600 outline-none transition-all font-bold text-xs text-black"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-black uppercase tracking-widest ml-1">New Time</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                                        <input
+                                            type="time"
+                                            value={newDeadlineTime}
+                                            onChange={(e) => setNewDeadlineTime(e.target.value)}
+                                            className="w-full pl-9 pr-3 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:bg-white focus:border-purple-600 outline-none transition-all font-bold text-xs text-black"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                <div className="flex gap-3">
+                                    <div className="p-1.5 bg-amber-100 text-amber-600 rounded-lg h-fit">
+                                        <RefreshCw className="h-3 w-3" />
+                                    </div>
+                                    <p className="text-[10px] text-amber-800 font-bold leading-relaxed">
+                                        Changing the deadline will instantly lock or unlock RSVPs for all targeted users.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex gap-3">
+                            <button
+                                onClick={() => setEditingEvent(null)}
+                                className="flex-1 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all active:scale-95"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdateDeadline}
+                                disabled={isUpdating}
+                                className="flex-[2] py-3 bg-gray-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-purple-700 transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xl shadow-gray-200"
+                            >
+                                {isUpdating ? (
+                                    <>
+                                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                        Updating...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-3.5 w-3.5" />
+                                        Update Deadline
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Pagination Controls */}
             {sortedEvents.length > 0 && (

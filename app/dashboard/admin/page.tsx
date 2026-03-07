@@ -78,6 +78,14 @@ export default function AdminDashboardPage() {
             bgColor: 'bg-teal-100',
         },
         {
+            title: 'Event Admins',
+            description: 'Manage event broadcast rights',
+            icon: Radio,
+            href: '/dashboard/admin/event-admins',
+            color: 'text-rose-600',
+            bgColor: 'bg-rose-100',
+        },
+        {
             title: 'Import',
             description: 'Import bulk data from files',
             icon: Upload,
