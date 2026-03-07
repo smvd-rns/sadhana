@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { supabase } from '@/lib/supabase/config';
 import {
@@ -41,13 +41,7 @@ export default function PoliciesPage() {
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [selectedRoles, setSelectedRoles] = useState<number[]>([]);
 
-    useEffect(() => {
-        if (!loading && userData) {
-            fetchPolicies();
-        }
-    }, [userData, loading]);
-
-    const fetchPolicies = async () => {
+    const fetchPolicies = useCallback(async () => {
         setIsLoading(true);
         try {
             const { data: { session } } = await supabase!.auth.getSession();
@@ -68,7 +62,13 @@ export default function PoliciesPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!loading && userData) {
+            fetchPolicies();
+        }
+    }, [userData, loading, fetchPolicies]);
 
     const userRoles = userData?.role ? (Array.isArray(userData.role) ? userData.role : [userData.role]) : [];
     const numericRoles = userRoles.map((r: any) => typeof r === 'number' ? r : parseInt(r)).filter((r: number) => !isNaN(r));

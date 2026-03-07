@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { getUsersByHierarchy } from '@/lib/supabase/users';
@@ -51,12 +51,12 @@ export default function EventAdminAssignmentPage() {
         type: 'info'
     });
 
-    const showToast = (message: string, type: 'success' | 'error') => {
+    const showToast = useCallback((message: string, type: 'success' | 'error') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3000);
-    };
+    }, []);
 
-    const loadUsersAndFilters = async () => {
+    const loadUsersAndFilters = useCallback(async () => {
         setLoading(true);
         setLoadingFilters(true);
         try {
@@ -91,7 +91,7 @@ export default function EventAdminAssignmentPage() {
             setLoadingFilters(false);
             setLoading(false);
         }
-    };
+    }, [showToast]);
 
     useEffect(() => {
         if (userData) {
@@ -105,7 +105,7 @@ export default function EventAdminAssignmentPage() {
             }
             loadUsersAndFilters();
         }
-    }, [userData, router]);
+    }, [userData, router, loadUsersAndFilters]);
 
     const handleAssignClick = async () => {
         try {
