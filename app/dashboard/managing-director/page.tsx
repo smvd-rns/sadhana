@@ -132,6 +132,8 @@ export default function ManagingDirectorDashboard() {
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [pendingAdminRole, setPendingAdminRole] = useState<number | null>(null);
     const [pendingSpiritualRole, setPendingSpiritualRole] = useState<number | 'none'>('none');
+    const [updatingGroupUserId, setUpdatingGroupUserId] = useState<string | null>(null);
+    const BV_GROUPS = ['Yudhishthira', 'Bhima', 'Arjuna', 'Nakula', 'Sahadeva'];
 
     // --- Counselor Assignment States ---
     const [showCounselorModal, setShowCounselorModal] = useState(false);
@@ -937,7 +939,37 @@ export default function ManagingDirectorDashboard() {
         }
     };
 
+    const handleAssignGroup = async (userId: string, groupName: string) => {
+        if (!supabase) return;
+        setUpdatingGroupUserId(userId);
 
+        try {
+            const response = await fetch('/api/admin/assign-bv-group', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                },
+                body: JSON.stringify({
+                    userId,
+                    bvGroup: groupName || null
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to assign group');
+            }
+
+            toast.success(`Group assigned successfully`);
+            loadUsers(); // Refresh list to show updated group
+        } catch (error: any) {
+            toast.error(error.message || 'Group assignment failed');
+        } finally {
+            setUpdatingGroupUserId(null);
+        }
+    };
     // --- Approvals Logic (Simplified from ProfileApprovalsPage) ---
     const loadRequests = useCallback(async () => {
         if (!supabase) return;
@@ -981,16 +1013,25 @@ export default function ManagingDirectorDashboard() {
 
             if (data && data.length > 0) {
                 setAssignedTemples(data);
-                // Preference: If current profile temple is in assigned list, use it. Otherwise use first.
-                const profileTempleName = (userData.hierarchy as any)?.currentTemple?.name || (userData as any).current_temple;
-                const match = data.find(t => t.name === profileTempleName);
-                setSelectedTemple(match || data[0]);
+
+                // Only set the default selectedTemple if one hasn't been set yet
+                // This prevents the temple from resetting to default when switching tabs
+                // IF the user has already manually selected a different temple.
+                setSelectedTemple((prev: any) => {
+                    if (prev) return prev; // Keep current selection if it exists
+
+                    // Preference: If current profile temple is in assigned list, use it. Otherwise use first.
+                    const profileTempleName = (userData.hierarchy as any)?.currentTemple?.name || (userData as any).current_temple;
+                    const match = data.find(t => t.name === profileTempleName);
+                    return match || data[0];
+                });
             } else {
                 // Fallback for transition period if no assignments yet but they have the role
-                const profileTempleName = (userData.hierarchy as any)?.currentTemple?.name || (userData as any).current_temple;
-                if (profileTempleName) {
-                    setSelectedTemple({ name: profileTempleName });
-                }
+                setSelectedTemple((prev: any) => {
+                    if (prev) return prev;
+                    const profileTempleName = (userData.hierarchy as any)?.currentTemple?.name || (userData as any).current_temple;
+                    return profileTempleName ? { name: profileTempleName } : null;
+                });
             }
             setLoadingAssignments(false);
         };
@@ -1827,6 +1868,31 @@ export default function ManagingDirectorDashboard() {
                                                         <span className="text-gray-400">Ashram:</span> {uH?.ashram || 'None'}
                                                     </div>
                                                 </div>
+
+                                                <div className="mb-5">
+                                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 block mb-1">VOICE group level</label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={user.bv_group || ''}
+                                                            onChange={(e) => handleAssignGroup(user.id, e.target.value)}
+                                                            disabled={updatingGroupUserId === user.id}
+                                                            className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:bg-gray-50 disabled:opacity-70 transition-all cursor-pointer"
+                                                        >
+                                                            <option value="">-- No Group Segment --</option>
+                                                            {BV_GROUPS.map(g => (
+                                                                <option key={g} value={g}>{g}</option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                            {updatingGroupUserId === user.id ? (
+                                                                <div className="animate-spin h-3.5 w-3.5 border-2 border-teal-500 border-t-transparent rounded-full" />
+                                                            ) : (
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
                                                 <div className="flex flex-wrap gap-1.5 mb-5">
                                                     {(Array.isArray(user.role) ? user.role : [user.role]).map((r: any, i: number) => (
                                                         <span key={i} className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider border ${getRoleHierarchyNumber(r) >= 12
@@ -1919,6 +1985,7 @@ export default function ManagingDirectorDashboard() {
                                                     <th className="px-6 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Temple & Center</th>
                                                     <th className="px-6 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Spiritual Identity</th>
                                                     <th className="px-6 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Privileges</th>
+                                                    <th className="px-6 py-6 text-left text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] w-40">VOICE group level</th>
                                                     <th className="px-6 py-6 text-right text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Quick Actions</th>
                                                 </tr>
                                             </thead>
@@ -1979,6 +2046,28 @@ export default function ManagingDirectorDashboard() {
                                                                             {getRoleDisplayName(r)}
                                                                         </span>
                                                                     ))}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-6">
+                                                                <div className="relative w-full">
+                                                                    <select
+                                                                        value={user.bv_group || ''}
+                                                                        onChange={(e) => handleAssignGroup(user.id, e.target.value)}
+                                                                        disabled={updatingGroupUserId === user.id}
+                                                                        className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:bg-gray-50 transition-all cursor-pointer hover:border-teal-300"
+                                                                    >
+                                                                        <option value="">- No Group -</option>
+                                                                        {BV_GROUPS.map(g => (
+                                                                            <option key={g} value={g}>{g}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                                        {updatingGroupUserId === user.id ? (
+                                                                            <div className="animate-spin h-3.5 w-3.5 border-2 border-teal-500 border-t-transparent rounded-full" />
+                                                                        ) : (
+                                                                            <ChevronDown className="h-3.5 w-3.5" />
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-6 text-right">

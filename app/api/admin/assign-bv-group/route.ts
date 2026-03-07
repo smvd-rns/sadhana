@@ -1,0 +1,73 @@
+import { createClient } from '@supabase/supabase-js';
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: Request) {
+    try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+        if (!supabaseUrl || !serviceRoleKey) {
+            return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
+        }
+
+        const supabase = createClient(supabaseUrl, serviceRoleKey, {
+            auth: { autoRefreshToken: false, persistSession: false }
+        });
+
+        const authHeader = request.headers.get('Authorization');
+        if (!authHeader) {
+            return NextResponse.json({ error: 'Missing authorization header' }, { status: 401 });
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Invalid token or user not found' }, { status: 401 });
+        }
+
+        const { userId, bvGroup } = await request.json();
+
+        // Security Check: Ensure caller is a Project Manager/Advisor (roles 14, 15, 16)
+        const { data: currentUser, error: userError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+
+        if (userError || !currentUser) {
+            return NextResponse.json({ error: 'Unauthorized to perform action' }, { status: 403 });
+        }
+
+        const roles = Array.isArray(currentUser.role) ? currentUser.role : [currentUser.role];
+        const isAuthorized = roles.some((r: any) => [8, 10, 11, 12, 13, 14, 15, 16, 21, 'project_manager', 'project_advisor', 'acting_manager', 'super_admin', 'managing_director', 'director', 'central_voice_manager', 'youth_preacher'].includes(r));
+
+        if (!isAuthorized) {
+            return NextResponse.json({ error: 'Unauthorized to assign groups' }, { status: 403 });
+        }
+
+        // Validate group
+        const validGroups = ['Yudhishthira', 'Bhima', 'Arjuna', 'Nakula', 'Sahadeva', null];
+        if (!validGroups.includes(bvGroup)) {
+            return NextResponse.json({ error: 'Invalid VOICE group level' }, { status: 400 });
+        }
+
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ bv_group: bvGroup })
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('Error updating group:', updateError);
+            return NextResponse.json({ error: 'Failed to update group' }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, message: 'Group assigned successfully' });
+
+    } catch (error: any) {
+        console.error('Group assigning error:', error);
+        return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    }
+}

@@ -325,6 +325,9 @@ export default function ProjectManagerDashboard() {
     const [users, setUsers] = useState<any[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [userSearch, setUserSearch] = useState('');
+    const [updatingGroupUserId, setUpdatingGroupUserId] = useState<string | null>(null);
+
+    const BV_GROUPS = ['Yudhishthira', 'Bhima', 'Arjuna', 'Nakula', 'Sahadeva'];
 
     // Service Team State
     const [loadingStructure, setLoadingStructure] = useState(false);
@@ -1038,6 +1041,39 @@ export default function ProjectManagerDashboard() {
             toast.error(error.message || 'Update failed');
         } finally {
             setUpdatingUserId(null);
+        }
+    };
+
+    const handleAssignGroup = async (userId: string, groupName: string) => {
+        if (!supabase) return;
+        setUpdatingGroupUserId(userId);
+
+        try {
+            const response = await fetch('/api/admin/assign-bv-group', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+                },
+                body: JSON.stringify({
+                    userId,
+                    bvGroup: groupName || null
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to assign group');
+            }
+
+            toast.success(`Group assigned successfully`);
+            loadUsers(); // Refresh list to show updated group
+            loadStats(currentCenter, currentTemple);
+        } catch (error: any) {
+            toast.error(error.message || 'Group assignment failed');
+        } finally {
+            setUpdatingGroupUserId(null);
         }
     };
 
@@ -1804,6 +1840,30 @@ export default function ProjectManagerDashboard() {
                                                 })()}
                                             </div>
                                         </div>
+
+                                        <div className="mt-2">
+                                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 block mb-1">VOICE group level</label>
+                                            <div className="relative">
+                                                <select
+                                                    value={user.bv_group || ''}
+                                                    onChange={(e) => handleAssignGroup(user.id, e.target.value)}
+                                                    disabled={updatingGroupUserId === user.id}
+                                                    className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:bg-gray-50 disabled:opacity-70 transition-all cursor-pointer"
+                                                >
+                                                    <option value="">-- No Group Segment --</option>
+                                                    {BV_GROUPS.map(g => (
+                                                        <option key={g} value={g}>{g}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                    {updatingGroupUserId === user.id ? (
+                                                        <div className="animate-spin h-3.5 w-3.5 border-2 border-teal-500 border-t-transparent rounded-full" />
+                                                    ) : (
+                                                        <ChevronDown className="h-3.5 w-3.5" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                         </div>
@@ -1815,8 +1875,9 @@ export default function ProjectManagerDashboard() {
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-56">Center Post</th>
-                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-48">Center Post</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-40">VOICE group level</th>
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-16">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-100">
@@ -1843,7 +1904,7 @@ export default function ProjectManagerDashboard() {
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div className="relative w-48">
+                                                    <div className="relative w-48 text-left">
                                                         {(() => {
                                                             const existingRoles = (Array.isArray(user.role) ? user.role : [user.role]).map((r: any) => Number(r));
                                                             const isLocked = existingRoles.some((r: number) => !MANAGEABLE_ROLES.some(mr => mr.value === r));
@@ -1873,6 +1934,28 @@ export default function ProjectManagerDashboard() {
                                                                 </div>
                                                             );
                                                         })()}
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="relative w-full">
+                                                        <select
+                                                            value={user.bv_group || ''}
+                                                            onChange={(e) => handleAssignGroup(user.id, e.target.value)}
+                                                            disabled={updatingGroupUserId === user.id}
+                                                            className="w-full appearance-none bg-white border border-gray-200 text-gray-700 text-xs font-bold py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 disabled:bg-gray-50 transition-all cursor-pointer hover:border-teal-300"
+                                                        >
+                                                            <option value="">- No Group -</option>
+                                                            {BV_GROUPS.map(g => (
+                                                                <option key={g} value={g}>{g}</option>
+                                                            ))}
+                                                        </select>
+                                                        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                                                            {updatingGroupUserId === user.id ? (
+                                                                <div className="animate-spin h-3.5 w-3.5 border-2 border-teal-500 border-t-transparent rounded-full" />
+                                                            ) : (
+                                                                <ChevronDown className="h-3.5 w-3.5" />
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
