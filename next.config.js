@@ -3,6 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: ['firebasestorage.googleapis.com'],
+    unoptimized: true,
   },
   webpack: (config, { isServer }) => {
     // Exclude undici from client-side bundle
