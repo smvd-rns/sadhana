@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthUserFromRequest } from '@/lib/supabase/admin'
 import { getUserData } from '@/lib/supabase/auth'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana'
 import { extractFolderId, scanFolderAndSave } from '@/lib/utils/driveScan'
 
 export const maxDuration = 60;
-
-// Use Secondary (Sadhana) Database for the 'drive_scans' table
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey)
 
 // POST - Start a Drive folder scan (admin only)
 export async function POST(request: NextRequest) {
@@ -38,6 +33,11 @@ export async function POST(request: NextRequest) {
         */
         if (!profile) {
             return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
+        }
+
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
         }
 
         const body = await request.json()
@@ -135,6 +135,11 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url)
         const scanId = searchParams.get('scanId')
+
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
+        }
 
         if (scanId) {
             // Get specific scan

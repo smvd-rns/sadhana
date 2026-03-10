@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
-import { createClient } from '@supabase/supabase-js';
-
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!;
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!;
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey);
+import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana';
 
 export async function POST(request: NextRequest) {
     try {
@@ -16,6 +12,11 @@ export async function POST(request: NextRequest) {
         const { ids } = await request.json();
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
             return NextResponse.json({ error: 'No file IDs provided' }, { status: 400 });
+        }
+
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
         }
 
         console.log(`[Delete API] User ${user.id} attempting to delete ${ids.length} files:`, ids);

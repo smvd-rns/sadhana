@@ -1,14 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
-
-// Connect to Secondary (Sadhana) Database
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey)
-
-// Connect to Primary Database (used only if we need user info from the primary DB, though auth usually handles this)
-const primaryDbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const primaryDbServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const primaryDbAdmin = createClient(primaryDbUrl, primaryDbServiceKey)
+import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana'
+import { getAdminClient } from '@/lib/supabase/admin'
 
 // Get access token helper
 export async function getAccessToken() {
@@ -183,6 +174,9 @@ async function scanFolderRecursively(
 
 async function isScanCancelled(scanId: string): Promise<boolean> {
     try {
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) return false;
+
         const { data } = await sadhanaDbAdmin
             .from('drive_scans')
             .select('scan_status')
@@ -220,6 +214,9 @@ async function resolveFolderId(
         }
 
         // Try to find existing folder
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) return null;
+
         const { data: existing } = await sadhanaDbAdmin
             .from('folders')
             .select('id')
@@ -262,6 +259,9 @@ export async function scanFolderAndSave(folderId: string, scanId: string, userId
     console.log(`[Scan ${scanId}] Starting scan for folder ${folderId} (Custom Root: ${displayName || 'None'})`);
 
     try {
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) throw new Error('Database initialization error');
+
         // Fetch scan record from Secondary DB
         const { data: scanRecord, error: scanFetchError } = await sadhanaDbAdmin
             .from('drive_scans')

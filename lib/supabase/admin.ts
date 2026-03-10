@@ -7,11 +7,16 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
  */
 let _adminClient: SupabaseClient | null = null;
 
+const cleanEnvVar = (val: string | undefined) => {
+    if (!val) return undefined;
+    return val.trim().replace(/^["']|["']$/g, '');
+};
+
 export function getAdminClient(): SupabaseClient {
     if (_adminClient) return _adminClient;
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = cleanEnvVar(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    const serviceRoleKey = cleanEnvVar(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
     if (!supabaseUrl || !serviceRoleKey) {
         throw new Error('Missing Supabase environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');

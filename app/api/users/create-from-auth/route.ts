@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminClient } from '@/lib/supabase/admin';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -54,13 +54,8 @@ export async function POST(request: Request) {
     }
 
     // Create user record - use service role key if available to bypass RLS
-    const clientToUse = serviceRoleKey
-      ? createClient(supabaseUrl, serviceRoleKey, {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: false,
-        },
-      })
+    const clientToUse = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ? getAdminClient()
       : supabase;
 
     const { data: insertedUser, error: insertError } = await clientToUse
