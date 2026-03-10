@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana';
 import { getAccessToken, findOrCreateFolder } from '@/lib/utils/drive';
 import { getUserData } from '@/lib/supabase/auth';
-
-// Connect to Secondary (Sadhana) Database
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!;
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!;
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey);
 
 export async function POST(request: NextRequest) {
     try {
@@ -21,6 +16,12 @@ export async function POST(request: NextRequest) {
 
         if (!name) {
             return NextResponse.json({ error: 'Folder name is required' }, { status: 400 });
+        }
+
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            console.error('[Folder Create API] Failed to initialize Sadhana DB client');
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
         }
 
         // --- Google Drive Sync Section ---

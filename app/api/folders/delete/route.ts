@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana';
 import { getUserData } from '@/lib/supabase/auth';
 import { isAdminRoleNumber, getRoleHierarchyNumber } from '@/lib/utils/roles';
-
-// Connect to Secondary (Sadhana) Database
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!;
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!;
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey);
 
 export async function POST(request: NextRequest) {
     try {
@@ -23,10 +18,11 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Folder ID is required' }, { status: 400 });
         }
 
-        // Diagnostic: Check if DB client is initialized
-        if (!sadhanaDbUrl || !sadhanaDbServiceKey) {
-            console.error('[Folder Delete API] Missing configuration for Sadhana DB');
-            return NextResponse.json({ error: 'Database configuration missing' }, { status: 500 });
+
+        const sadhanaDbAdmin = getAdminSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            console.error('[Folder Delete API] Failed to initialize Sadhana DB client');
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
         }
 
         // Check ownership or admin status of the target folder

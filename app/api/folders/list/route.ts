@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
-import { createClient } from '@supabase/supabase-js';
-
-// Connect to Secondary (Sadhana) Database
-const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!;
-const sadhanaDbServiceKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY!;
-const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbServiceKey);
+import { getActiveSadhanaSupabase } from '@/lib/supabase/sadhana';
 
 export async function GET(request: NextRequest) {
     try {
         const user = await getAuthUserFromRequest(request as any);
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const sadhanaDbAdmin = getActiveSadhanaSupabase();
+        if (!sadhanaDbAdmin) {
+            return NextResponse.json({ error: 'Database initialization error' }, { status: 500 });
         }
 
         const { searchParams } = new URL(request.url);
