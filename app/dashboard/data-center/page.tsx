@@ -613,7 +613,7 @@ export default function DataCenterPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [searchQuery, activeCategory, activeTab, user, sortBy, currentPage, limit, viewMode, currentFolderId, getDescendantFolderIds]);
+    }, [searchQuery, activeCategory, activeTab, user, sortBy, currentPage, limit, currentFolderId, getDescendantFolderIds]);
 
     useEffect(() => {
         fetchStats();
@@ -624,7 +624,7 @@ export default function DataCenterPage() {
             fetchFiles();
         }, 300);
         return () => clearTimeout(debounceTimer);
-    }, [searchQuery, activeCategory, activeTab, sortBy, currentPage, limit, currentFolderId, viewMode]);
+    }, [searchQuery, activeCategory, activeTab, sortBy, currentPage, limit, currentFolderId, viewMode, fetchFiles]);
 
     useEffect(() => {
         // Clear selection when changing tabs
@@ -1433,6 +1433,7 @@ export default function DataCenterPage() {
                                                                                 </button>
                                                                             </div>
                                                                             {file.thumbnail_link ? (
+                                                                                /* eslint-disable-next-line @next/next/no-img-element */
                                                                                 <img
                                                                                     src={file.thumbnail_link.replace('=s220', '=w400-h250-c')}
                                                                                     alt=""
@@ -1645,7 +1646,7 @@ export default function DataCenterPage() {
                             <div className="text-[13px] text-gray-500 mb-6 leading-relaxed px-2">
                                 {folderToDelete && (
                                     <>
-                                        You are about to remove <span className="text-gray-900 font-bold">"{folderToDelete.name}"</span>.
+                                        You are about to remove <span className="text-gray-900 font-bold">&quot;{folderToDelete.name}&quot;</span>.
                                         <br />
                                         <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-lg border border-red-100 font-bold text-[11px] uppercase tracking-wider">
                                             Warning: All subfolders and files inside will also be removed from Data Center.
@@ -1653,7 +1654,7 @@ export default function DataCenterPage() {
                                     </>
                                 )}
                                 {fileToDelete && (
-                                    <>You are about to remove <span className="text-gray-900 font-bold">"{fileToDelete.file_name}"</span>.</>
+                                    <>You are about to remove <span className="text-gray-900 font-bold">&quot;{fileToDelete.file_name}&quot;</span>.</>
                                 )}
                                 {showBulkDeleteConfirm && (
                                     <>You are about to permanently delete <span className="text-gray-900 font-bold">{selectedIds.size} selected files</span>.</>

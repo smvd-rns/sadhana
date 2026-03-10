@@ -10,7 +10,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 export default function DataCenterUploadPage() {
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
     const [activeTab, setActiveTab] = useState<'upload' | 'fetch'>('upload');
     const [targetFolderId, setTargetFolderId] = useState<string>('root');
     const [allFolders, setAllFolders] = useState<any[]>([]);
@@ -377,7 +377,7 @@ export default function DataCenterUploadPage() {
                     description: scanDescription,
                     parentId: targetFolderId === 'root' ? null : targetFolderId,
                     userId: user.id,
-                    userName: user.name || user.email?.split('@')[0] || user.id.substring(0, 8)
+                    userName: userData?.name || user.email?.split('@')[0] || user.id.substring(0, 8)
                 })
             });
 
@@ -830,7 +830,7 @@ export default function DataCenterUploadPage() {
 
                                                             {scan.description && (
                                                                 <p className="text-xs font-medium text-slate-500 line-clamp-2 px-1 italic">
-                                                                    "{scan.description}"
+                                                                    &quot;{scan.description}&quot;
                                                                 </p>
                                                             )}
 
