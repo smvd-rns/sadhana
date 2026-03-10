@@ -146,6 +146,7 @@ export default function DataCenterPage() {
     const [matchingResourceUserIds, setMatchingResourceUserIds] = useState<Set<string>>(new Set());
     const [foldersWithFiles, setFoldersWithFiles] = useState<Set<string>>(new Set());
     const [folderFilesMap, setFolderFilesMap] = useState<Record<string, FileRecord[]>>({});
+    const [failedThumbnails, setFailedThumbnails] = useState<Record<string, boolean>>({});
 
     const [limit, setLimit] = useState(20);
     const [currentPage, setCurrentPage] = useState(1);
@@ -487,6 +488,20 @@ export default function DataCenterPage() {
             return `https://drive.google.com/uc?export=download&id=${idMatch[0]}`;
         }
         return file.google_drive_url;
+    };
+
+    const getThumbnailUrl = (file: FileRecord): string | null => {
+        if (file.google_drive_id) {
+            // Use Google Drive image delivery endpoint with requested size
+            return `https://lh3.googleusercontent.com/d/${file.google_drive_id}=w400-h250-c`;
+        }
+
+        if (file.thumbnail_link) {
+            // Fallback to stored thumbnail link, normalizing size if possible
+            return file.thumbnail_link.replace('=s220', '=w400-h250-c');
+        }
+
+        return null;
     };
 
     const getDescendantFolderIds = useCallback((folderId: string): string[] => {
@@ -1432,21 +1447,18 @@ export default function DataCenterPage() {
                                                                                     {selectedIds.has(file.id) && <CheckCircle2 className="w-4 h-4 fill-white text-blue-600" />}
                                                                                 </button>
                                                                             </div>
-                                                                            {file.thumbnail_link ? (
+                                                                            {getThumbnailUrl(file) && !failedThumbnails[file.id] ? (
                                                                                 /* eslint-disable-next-line @next/next/no-img-element */
                                                                                 <img
-                                                                                    src={file.thumbnail_link.replace('=s220', '=w400-h250-c')}
+                                                                                    src={getThumbnailUrl(file) as string}
                                                                                     alt=""
                                                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                                                                     referrerPolicy="no-referrer"
-                                                                                    onError={(e) => {
-                                                                                        (e.target as HTMLImageElement).style.display = 'none';
-                                                                                        const parent = (e.target as HTMLImageElement).parentElement;
-                                                                                        if (parent) {
-                                                                                            parent.style.display = 'flex';
-                                                                                            parent.style.alignItems = 'center';
-                                                                                            parent.style.justifyContent = 'center';
-                                                                                        }
+                                                                                    onError={() => {
+                                                                                        setFailedThumbnails(prev => ({
+                                                                                            ...prev,
+                                                                                            [file.id]: true,
+                                                                                        }));
                                                                                     }}
                                                                                 />
                                                                             ) : (
