@@ -401,6 +401,34 @@ export default function DataCenterUploadPage() {
         }
     };
 
+    const handleCancelScan = async (scanId: string) => {
+        if (!user) return;
+        try {
+            const { data: sessionData } = await (supabase as any).auth.getSession();
+            const token = sessionData?.session?.access_token;
+
+            const res = await fetch('/api/drive/scan/cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ scanId })
+            });
+
+            if (res.ok) {
+                toast.success('Cancellation requested');
+                fetchRecentScans();
+            } else {
+                const data = await res.json();
+                throw new Error(data.error || 'Failed to cancel scan');
+            }
+        } catch (err: any) {
+            console.error('Cancel scan error:', err);
+            toast.error(err.message || 'Failed to cancel scan');
+        }
+    };
+
     const getFileIcon = (type: string, name: string) => {
         if (type.includes('video')) return <Video className="w-8 h-8 text-blue-500" />;
         if (type.includes('audio')) return <Music className="w-8 h-8 text-yellow-500" />;
@@ -826,6 +854,15 @@ export default function DataCenterUploadPage() {
                                                                     }`}>
                                                                     {scan.scan_status}
                                                                 </div>
+                                                                {scan.scan_status === 'processing' && (
+                                                                    <button
+                                                                        onClick={() => handleCancelScan(scan.id)}
+                                                                        className="p-1.5 hover:bg-rose-50 text-slate-300 hover:text-rose-600 rounded-lg transition-all border border-transparent hover:border-rose-100"
+                                                                        title="Cancel Scan"
+                                                                    >
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                )}
                                                             </div>
 
                                                             {scan.description && (
@@ -834,18 +871,22 @@ export default function DataCenterUploadPage() {
                                                                 </p>
                                                             )}
 
-                                                            <div className="grid grid-cols-3 gap-4 pt-5 border-t-2 border-slate-50">
+                                                            <div className="grid grid-cols-4 gap-2 pt-5 border-t-2 border-slate-50">
                                                                 <div className="text-center group-hover:scale-105 transition-transform bg-slate-50/50 py-3 rounded-2xl">
                                                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter mb-1">Found</p>
-                                                                    <p className="text-lg font-black text-slate-900 leading-none">{scan.files_found || 0}</p>
+                                                                    <p className="text-sm font-black text-slate-900 leading-none">{scan.files_found || 0}</p>
                                                                 </div>
                                                                 <div className="text-center group-hover:scale-105 transition-transform bg-emerald-50/50 py-3 rounded-2xl border border-emerald-100/30">
                                                                     <p className="text-[9px] font-black text-emerald-400 uppercase tracking-tighter mb-1">Added</p>
-                                                                    <p className="text-lg font-black text-emerald-600 leading-none">{scan.files_processed || 0}</p>
+                                                                    <p className="text-sm font-black text-emerald-600 leading-none">{scan.files_processed || 0}</p>
+                                                                </div>
+                                                                <div className="text-center group-hover:scale-105 transition-transform bg-amber-50/50 py-3 rounded-2xl border border-amber-100/30">
+                                                                    <p className="text-[9px] font-black text-amber-400 uppercase tracking-tighter mb-1">Skipped</p>
+                                                                    <p className="text-sm font-black text-amber-600 leading-none">{scan.files_skipped || 0}</p>
                                                                 </div>
                                                                 <div className="text-center group-hover:scale-105 transition-transform bg-rose-50/50 py-3 rounded-2xl border border-rose-100/30">
                                                                     <p className="text-[9px] font-black text-rose-400 uppercase tracking-tighter mb-1">Error</p>
-                                                                    <p className="text-lg font-black text-rose-600 leading-none">{scan.files_failed || 0}</p>
+                                                                    <p className="text-sm font-black text-rose-600 leading-none">{scan.files_failed || 0}</p>
                                                                 </div>
                                                             </div>
                                                         </div>

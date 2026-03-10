@@ -196,7 +196,8 @@ async function resolveFolderId(
     rootFolderId: string | null,
     path: string,
     userId: string,
-    folderMap: Map<string, string>
+    folderMap: Map<string, string>,
+    localFolderCache: Map<string, any> // Added local cache for existing folders
 ): Promise<string | null> {
     if (!path) return rootFolderId;
     if (folderMap.has(path)) return folderMap.get(path)!;
@@ -210,6 +211,14 @@ async function resolveFolderId(
 
         if (folderMap.has(currentPath)) {
             currentParentId = folderMap.get(currentPath)!;
+            continue;
+        }
+
+        // Check local cache first to avoid DB query
+        const cacheKey = `${segment}:${currentParentId || 'root'}:${userId}`;
+        if (localFolderCache.has(cacheKey)) {
+            currentParentId = localFolderCache.get(cacheKey).id;
+            folderMap.set(currentPath, currentParentId!);
             continue;
         }
 
@@ -227,6 +236,7 @@ async function resolveFolderId(
 
         if (existing) {
             currentParentId = existing.id;
+            localFolderCache.set(cacheKey, { id: currentParentId });
         } else {
             // Create new folder
             const { data: created, error } = await sadhanaDbAdmin
@@ -241,9 +251,9 @@ async function resolveFolderId(
 
             if (error) {
                 console.error(`Error creating folder ${segment}:`, error);
-                // Fallback to parent?
             } else {
                 currentParentId = created.id;
+                localFolderCache.set(cacheKey, { id: currentParentId });
             }
         }
 
@@ -316,16 +326,30 @@ export async function scanFolderAndSave(folderId: string, scanId: string, userId
         filesFound = files.length;
         foldersFound = scanResult.foldersFound;
 
-        const BATCH_SIZE = 50; // Smaller batch size due to folder resolution
+        const BATCH_SIZE = 200; // Larger batch size to reduce DB round-trips
         const currentTime = new Date().toISOString();
         let lastProgressUpdate = Date.now();
         const folderIdMap = new Map<string, string>();
+        const localFolderCache = new Map<string, any>();
+
+        // Pre-fetch all user folders to seed the cache and avoid repeated queries
+        const { data: allUserFolders } = await sadhanaDbAdmin
+            .from('folders')
+            .select('id, name, parent_id')
+            .eq('user_id', userId);
+
+        if (allUserFolders) {
+            allUserFolders.forEach(f => {
+                const cacheKey = `${f.name}:${f.parent_id || 'root'}:${userId}`;
+                localFolderCache.set(cacheKey, { id: f.id });
+            });
+        }
 
         // Create or resolve the custom display name folder if provided
         let rootFolderIdForScan: string | null = null;
         if (displayName) {
             console.log(`[Scan ${scanId}] Resolving custom root folder: ${displayName}`);
-            rootFolderIdForScan = await resolveFolderId(null, displayName, userId, folderIdMap);
+            rootFolderIdForScan = await resolveFolderId(null, displayName, userId, folderIdMap, localFolderCache);
         }
 
         for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -341,7 +365,8 @@ export async function scanFolderAndSave(folderId: string, scanId: string, userId
                 const { data: existingFiles, error: checkError } = await sadhanaDbAdmin
                     .from('files')
                     .select('file_name')
-                    .in('file_name', batchFileNames);
+                    .in('file_name', batchFileNames)
+                    .eq('user_id', userId); // Ensure we only check this user's files
 
                 if (checkError) throw checkError;
 
@@ -354,7 +379,7 @@ export async function scanFolderAndSave(folderId: string, scanId: string, userId
 
                     for (const file of newFilesData) {
                         // Resolve folder ID for this file's path, starting from our custom root if it exists
-                        const targetFolderId = await resolveFolderId(rootFolderIdForScan, file.folderPath || '', userId, folderIdMap);
+                        const targetFolderId = await resolveFolderId(rootFolderIdForScan, file.folderPath || '', userId, folderIdMap, localFolderCache);
 
                         // Infer category roughly the same as upload uses
                         const mimeType = file.mimeType || '';

@@ -68,7 +68,7 @@ async function isScanCancelled(sadhanaDbAdmin, scanId) {
     }
 }
 
-async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folderMap) {
+async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folderMap, localFolderCache) {
     if (!path) return rootFolderId;
     if (folderMap.has(path)) return folderMap.get(path);
 
@@ -84,6 +84,14 @@ async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folde
             continue;
         }
 
+        // Check local cache first
+        const cacheKey = `${segment}:${currentParentId || 'root'}:${userId}`;
+        if (localFolderCache.has(cacheKey)) {
+            currentParentId = localFolderCache.get(cacheKey).id;
+            folderMap.set(currentPath, currentParentId);
+            continue;
+        }
+
         const { data: existing } = await sadhanaDbAdmin
             .from('folders')
             .select('id')
@@ -94,6 +102,7 @@ async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folde
 
         if (existing) {
             currentParentId = existing.id;
+            localFolderCache.set(cacheKey, { id: currentParentId });
         } else {
             const { data: created, error } = await sadhanaDbAdmin
                 .from('folders')
@@ -107,6 +116,7 @@ async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folde
 
             if (!error && created) {
                 currentParentId = created.id;
+                localFolderCache.set(cacheKey, { id: currentParentId });
             }
         }
 
@@ -264,14 +274,28 @@ export async function processAndSaveFiles({
         filesFound = files.length;
         foldersFound = scanResult.foldersFound;
 
-        const BATCH_SIZE = 50;
+        const BATCH_SIZE = 200; // Increased BATCH_SIZE for Render microservice
         const currentTime = new Date().toISOString();
         let lastProgressUpdate = Date.now();
         const folderIdMap = new Map();
+        const localFolderCache = new Map();
+
+        // Pre-fetch all user folders to seed the cache
+        const { data: allUserFolders } = await sadhanaDbAdmin
+            .from('folders')
+            .select('id, name, parent_id')
+            .eq('user_id', userId);
+
+        if (allUserFolders) {
+            allUserFolders.forEach(f => {
+                const cacheKey = `${f.name}:${f.parent_id || 'root'}:${userId}`;
+                localFolderCache.set(cacheKey, { id: f.id });
+            });
+        }
 
         let rootFolderIdForScan = null;
         if (displayName) {
-            rootFolderIdForScan = await resolveFolderId(sadhanaDbAdmin, null, displayName, userId, folderIdMap);
+            rootFolderIdForScan = await resolveFolderId(sadhanaDbAdmin, null, displayName, userId, folderIdMap, localFolderCache);
         }
 
         for (let i = 0; i < files.length; i += BATCH_SIZE) {
@@ -284,7 +308,8 @@ export async function processAndSaveFiles({
                 const { data: existingFiles } = await sadhanaDbAdmin
                     .from('files')
                     .select('file_name')
-                    .in('file_name', batchFileNames);
+                    .in('file_name', batchFileNames)
+                    .eq('user_id', userId);
 
                 const existingNameSet = new Set(existingFiles?.map(f => f.file_name) || []);
                 const newFilesData = batch.filter(f => !existingNameSet.has(f.name));
@@ -294,7 +319,7 @@ export async function processAndSaveFiles({
                     const filesToInsert = [];
 
                     for (const file of newFilesData) {
-                        const targetFolderId = await resolveFolderId(sadhanaDbAdmin, rootFolderIdForScan, file.folderPath || '', userId, folderIdMap);
+                        const targetFolderId = await resolveFolderId(sadhanaDbAdmin, rootFolderIdForScan, file.folderPath || '', userId, folderIdMap, localFolderCache);
 
                         const mimeType = file.mimeType || '';
                         const extension = file.name.split('.').pop()?.toLowerCase() || '';
