@@ -294,7 +294,7 @@ export default function CounselorPage() {
       setLoading(false);
       setIsAnalyzing(false);
     }
-  }, [userData?.email, dateRange, supabase]);
+  }, [userData?.email, dateRange]);
 
   const loadProfileRequests = useCallback(async () => {
     if (!userData?.email || !hasCounselorRole) return;
@@ -376,7 +376,7 @@ export default function CounselorPage() {
     } finally {
       setLoadingPending(false);
     }
-  }, [userData?.email, userData?.id, hasCounselorRole, supabase]);
+  }, [userData?.email, hasCounselorRole]);
 
   const loadStats = useCallback(async () => {
     if (!userData?.email || !hasCounselorRole || !supabase) return;
@@ -470,7 +470,7 @@ export default function CounselorPage() {
       console.error('Error loading stats:', err);
       setStats(prev => ({ ...prev, loading: false }));
     }
-  }, [userData?.email, userData?.id, hasCounselorRole, supabase]);
+  }, [userData?.email, hasCounselorRole]);
 
   // LOAD BASE DATA (Stats) ONCE
   useEffect(() => {

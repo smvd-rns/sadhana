@@ -443,14 +443,21 @@ export async function scanFolderAndSave(folderId: string, scanId: string, userId
 
     } catch (error: any) {
         console.error(`[Scan ${scanId}] Fatal error:`, error);
-        await sadhanaDbAdmin
-            .from('drive_scans')
-            .update({
-                scan_status: 'failed',
-                error_message: error.message || 'Unknown error occurred',
-                completed_at: new Date().toISOString()
-            })
-            .eq('id', scanId);
+        try {
+            const sadhanaDbAdmin = getAdminSadhanaSupabase();
+            if (sadhanaDbAdmin) {
+                await sadhanaDbAdmin
+                    .from('drive_scans')
+                    .update({
+                        scan_status: 'failed',
+                        error_message: error.message || 'Unknown error occurred',
+                        completed_at: new Date().toISOString()
+                    })
+                    .eq('id', scanId);
+            }
+        } catch (updateError) {
+            console.error(`[Scan ${scanId}] Error updating failure status:`, updateError);
+        }
         throw error;
     }
 }
