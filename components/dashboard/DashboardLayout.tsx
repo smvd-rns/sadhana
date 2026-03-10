@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
 import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
-import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle, Briefcase, Mic, Globe, Radio, Shield, BookOpen, Calendar } from 'lucide-react';
+import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle2, Briefcase, Mic, Globe, Radio, Shield, BookOpen, Calendar } from 'lucide-react';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import ProfileCreationLoadingModal from '@/components/auth/ProfileCreationLoadingModal';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
@@ -18,6 +18,8 @@ import { Bell, X as CloseIcon } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarImgError, setSidebarImgError] = useState(false);
+  const [topbarImgError, setTopbarImgError] = useState(false);
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -311,10 +313,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* User Profile Section */}
           <div className="border-t border-gray-200/60 p-5 flex-shrink-0 relative z-10 bg-white/60 backdrop-blur-xl">
             <div className="flex items-center mb-4 p-3 bg-gradient-to-br from-orange-50/80 to-amber-50/80 backdrop-blur-md rounded-xl hover:from-orange-100/80 hover:to-amber-100/80 transition-all duration-300 transform hover:scale-[1.02] shadow-sm hover:shadow-md">
-              {userData?.profileImage && (
-                <div className="mr-3 flex-shrink-0">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-40"></div>
+              <div className="mr-3 flex-shrink-0">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-40"></div>
+                  {userData?.profileImage && !sidebarImgError ? (
                     <Image
                       src={getSmallThumbnailUrl(userData.profileImage) || userData.profileImage}
                       alt={userData.name || 'Profile'}
@@ -322,10 +324,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       height={48}
                       className="relative w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
                       unoptimized={true}
+                      onError={() => setSidebarImgError(true)}
                     />
-                  </div>
+                  ) : (
+                    <div className="relative w-12 h-12 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 border-2 border-white shadow-lg flex items-center justify-center">
+                      <UserCircle2 className="w-8 h-8 text-orange-500" />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-gray-800 truncate font-display tracking-wide">
                   {userData?.name}
@@ -369,9 +376,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center gap-2 lg:gap-3">
             {/* User Profile */}
             <div className="flex items-center gap-2 lg:gap-2.5 px-2 py-1.5 lg:px-3 lg:py-2 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg hover:from-orange-100 hover:to-amber-100 transition-all duration-200 border border-orange-100/50">
-              {userData?.profileImage && (
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-30"></div>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-400 rounded-full blur-sm opacity-30"></div>
+                {userData?.profileImage && !topbarImgError ? (
                   <Image
                     src={getSmallThumbnailUrl(userData.profileImage) || userData.profileImage}
                     alt={userData.name || 'Profile'}
@@ -379,9 +386,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     height={32}
                     className="relative w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
                     unoptimized={true}
+                    onError={() => setTopbarImgError(true)}
                   />
-                </div>
-              )}
+                ) : (
+                  <div className="relative w-8 h-8 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 border-2 border-white shadow-sm flex items-center justify-center">
+                    <UserCircle2 className="w-5 h-5 text-orange-500" />
+                  </div>
+                )}
+              </div>
               <div className="hidden sm:flex flex-col">
                 <p className="text-sm font-semibold text-gray-800 leading-tight max-w-[100px] truncate">
                   {userData?.name}
