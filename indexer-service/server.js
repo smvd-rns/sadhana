@@ -1,0 +1,114 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
+import { extractFolderId, processAndSaveFiles } from './utils/drive.js';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+// Middleware
+app.use(cors({ origin: '*' })); // Allow requests from Vercel frontend
+app.use(express.json());
+
+// Initialize Supabase Admin for minimal auth/validation if needed
+const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL;
+const sadhanaDbKey = process.env.SADHANA_DB_SERVICE_ROLE_KEY;
+const sadhanaDbAdmin = createClient(sadhanaDbUrl, sadhanaDbKey);
+
+/**
+ * Wake-Up / Health Check Endpoint
+ * The Vercel frontend pings this when the Upload page mounts
+ * to ensure Render is awake and ready before the user clicks "Start Indexing"
+ */
+app.get('/health', (req, res) => {
+    console.log('[Health Check] Ping received, server is awake!');
+    res.status(200).json({ status: 'awake', timestamp: new Date().toISOString() });
+});
+
+/**
+ * Trigger Scan Endpoint
+ * Initiates the background Google Drive scan and responds immediately to Vercel
+ */
+app.post('/scan', async (req, res) => {
+    try {
+        const { driveLink, displayName, description, parentId, userId, userName } = req.body;
+
+        if (!driveLink || !userId) {
+            return res.status(400).json({ error: 'Drive link and User ID are required' });
+        }
+
+        const folderId = extractFolderId(driveLink.trim());
+        if (!folderId) {
+            return res.status(400).json({ error: 'Invalid Drive folder link' });
+        }
+
+        console.log(`[Scan Initializing] User: ${userName}, Folder: ${folderId}`);
+
+        // 1. Create the scan record in the database FIRST to give the frontend an ID to track
+        const { data: scanRecord, error: scanError } = await sadhanaDbAdmin
+            .from('drive_scans')
+            .insert({
+                user_id: userId,
+                user_name: userName,
+                drive_link: driveLink,
+                description: description || null,
+                scan_status: 'processing',
+                started_at: new Date().toISOString(),
+                metadata: {
+                    display_name: displayName || null,
+                    render_worker: true
+                }
+            })
+            .select()
+            .single();
+
+        if (scanError || !scanRecord) {
+            console.error('[Scan Init Error] DB Insert Failed:', scanError);
+            return res.status(500).json({ error: 'Failed to create scan record in database' });
+        }
+
+        console.log(`[Scan Started] ID: ${scanRecord.id}`);
+
+        // 2. Respond immediately to prevent Vercel 504 Timeouts
+        res.status(200).json({
+            success: true,
+            scanId: scanRecord.id,
+            message: 'Scan started in the background on Render'
+        });
+
+        // 3. Fire-and-forget: Start the heavy Drive processing in the background Native Node process
+        processAndSaveFiles({
+            folderId,
+            scanId: scanRecord.id,
+            userId,
+            displayName, // The custom root folder name provided by the user
+            sadhanaDbUrl,
+            sadhanaDbKey
+        }).catch(async (err) => {
+            console.error(`[Scan ${scanRecord.id} Background Error]`, err);
+            await sadhanaDbAdmin
+                .from('drive_scans')
+                .update({
+                    scan_status: 'failed',
+                    error_message: err.message,
+                    completed_at: new Date().toISOString()
+                })
+                .eq('id', scanRecord.id);
+        });
+
+    } catch (error) {
+        console.error('[Express Scan Route Error]', error);
+        res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+});
+
+// Start Server
+app.listen(PORT, () => {
+    console.log(`\n==========================================`);
+    console.log(`🚀 Render Indexer Service running on port ${PORT}`);
+    console.log(`⏰ Native Node.js timeouts bypassed`);
+    console.log(`==========================================\n`);
+});
