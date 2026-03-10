@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
 import { createClient } from '@supabase/supabase-js';
+import { getUserData } from '@/lib/supabase/auth';
+import { isAdminRoleNumber, getRoleHierarchyNumber } from '@/lib/utils/roles';
 
 // Connect to Secondary (Sadhana) Database
 const sadhanaDbUrl = process.env.NEXT_PUBLIC_SADHANA_DB_URL!;
@@ -21,19 +23,41 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Folder ID is required' }, { status: 400 });
         }
 
-        // Check ownership of the target folder
-        const { data: targetFolder, error: fetchError } = await sadhanaDbAdmin
-            .from('folders')
-            .select('user_id')
-            .eq('id', id)
-            .single();
-
-        if (fetchError || !targetFolder) {
-            return NextResponse.json({ error: 'Folder not found' }, { status: 404 });
+        // Diagnostic: Check if DB client is initialized
+        if (!sadhanaDbUrl || !sadhanaDbServiceKey) {
+            console.error('[Folder Delete API] Missing configuration for Sadhana DB');
+            return NextResponse.json({ error: 'Database configuration missing' }, { status: 500 });
         }
 
-        if (targetFolder.user_id !== user.id) {
-            return NextResponse.json({ error: 'Forbidden: You do not own this folder' }, { status: 403 });
+        // Check ownership or admin status of the target folder
+        const { data: targetFolder, error: fetchError } = await sadhanaDbAdmin
+            .from('folders')
+            .select('user_id, name')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.error(`[Folder Delete API] Error fetching folder ${id}:`, fetchError);
+            return NextResponse.json({
+                error: `Database error: ${fetchError.message}`,
+                details: fetchError.hint || fetchError.details
+            }, { status: 500 });
+        }
+
+        if (!targetFolder) {
+            console.warn(`[Folder Delete API] Folder ${id} not found in database`);
+            return NextResponse.json({ error: 'Folder not found in database' }, { status: 404 });
+        }
+
+        // Check Permissions: Owner OR Admin
+        const profile = await getUserData(user.id);
+        const userRoles = profile?.role ? (Array.isArray(profile.role) ? profile.role : [profile.role]) : [];
+        const isAdmin = userRoles.some(r => isAdminRoleNumber(getRoleHierarchyNumber(r as any)));
+
+        console.log(`[Folder Delete API] User ${user.id} attempting to delete folder "${targetFolder.name}" (${id}). IsAdmin: ${isAdmin}, Owner: ${targetFolder.user_id}`);
+
+        if (targetFolder.user_id !== user.id && !isAdmin) {
+            return NextResponse.json({ error: 'Forbidden: You do not own this folder and do not have admin permissions' }, { status: 403 });
         }
 
         // --- Recursive Deletion Logic ---
