@@ -212,7 +212,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [userData]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen bg-gray-50 flex overflow-hidden">
       {/* Profile Creation Loading Modal */}
       <ProfileCreationLoadingModal isOpen={!!showLoadingModal} />
 
@@ -237,7 +237,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-30 w-72 bg-gradient-to-b from-white via-orange-50 to-amber-50 shadow-xl border-r border-gray-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:relative lg:inset-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed inset-y-0 left-0 z-30 w-72 bg-gradient-to-b from-white via-orange-50 to-amber-50 shadow-xl border-r border-gray-100 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:flex-shrink-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
       >
         <div className="flex flex-col h-full relative overflow-hidden">
@@ -290,7 +290,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* User Profile Section */}
-          <div className="border-t border-gray-200/60 p-5 flex-shrink-0 relative z-10 bg-white/60 backdrop-blur-xl">
+          <div className="border-t border-gray-200/60 p-5 flex-shrink-0 relative z-10 bg-white/60 backdrop-blur-xl lg:hidden">
             <div className="flex items-center mb-4 p-3 bg-gradient-to-br from-orange-50/80 to-amber-50/80 backdrop-blur-md rounded-xl hover:from-orange-100/80 hover:to-amber-100/80 transition-all duration-300 transform hover:scale-[1.02] shadow-sm hover:shadow-md">
               <div className="mr-3 flex-shrink-0">
                 <div className="relative">

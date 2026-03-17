@@ -1349,7 +1349,12 @@ export default function DataCenterPage() {
                                     {/* File Results Area */}
                                     <div className="bg-white/95 backdrop-blur-xl border-2 border-blue-100 p-3 md:p-6 min-h-[500px] rounded-2xl lg:rounded-[2.5rem] shadow-2xl shadow-blue-900/5 mt-2">
                                         {isLoading && files.length === 0 ? (
-                                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+                                            <div 
+                                                className={viewMode === 'grid' 
+                                                    ? "grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 md:gap-6" 
+                                                    : "flex flex-col gap-2"
+                                                }
+                                            >
                                                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
                                                     <div key={i} className="animate-pulse bg-white border border-slate-100 h-48 md:h-64 rounded-[1.5rem] md:rounded-[2rem] shadow-sm p-3 md:p-6 flex flex-col gap-3 md:gap-4">
                                                         <div className="w-full h-24 md:h-32 bg-gray-100 rounded-xl md:rounded-2xl" />
@@ -1366,7 +1371,10 @@ export default function DataCenterPage() {
                                             </div>
                                         ) : (
                                             <div
-                                                className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6" : "flex flex-col gap-2"}
+                                                className={viewMode === 'grid' 
+                                                    ? "grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4 md:gap-6" 
+                                                    : "flex flex-col gap-2"
+                                                }
                                             >
 
                                                 <AnimatePresence mode="popLayout">
@@ -1379,9 +1387,9 @@ export default function DataCenterPage() {
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             exit={{ opacity: 0, scale: 0.98 }}
                                                             onClick={() => navigateToFolder(folder)}
-                                                            className={`group relative bg-white rounded-[1rem] md:rounded-[1.5rem] border-2 cursor-pointer border-slate-200 shadow-lg hover:shadow-2xl hover:border-indigo-400 hover:-translate-y-2 transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-2 md:p-3 flex flex-col h-full'}`}
+                                                            className={`group relative bg-white rounded-[1.25rem] md:rounded-[1.5rem] border-2 cursor-pointer border-slate-200 shadow-lg hover:shadow-2xl hover:border-indigo-400 hover:-translate-y-2 transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-3 md:p-4 flex flex-col h-full'}`}
                                                         >
-                                                            <div className={viewMode === 'grid' ? "relative aspect-video mb-2 md:mb-3 rounded-[0.75rem] md:rounded-[1rem] bg-indigo-50/50 flex items-center justify-center overflow-hidden border-2 border-slate-100" : "flex items-center gap-4 w-full"}>
+                                                            <div className={viewMode === 'grid' ? "relative aspect-video mb-3 md:mb-4 rounded-[1rem] bg-indigo-50/50 flex items-center justify-center overflow-hidden border-2 border-slate-100" : "flex items-center gap-4 w-full"}>
                                                                 <div className={`absolute top-3 left-3 z-20 ${viewMode === 'list' ? 'relative top-0 left-0' : ''}`}>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); toggleSelect(folder.id); }}
@@ -1413,7 +1421,7 @@ export default function DataCenterPage() {
                                                                 <div className="flex-1 min-w-0 px-2 pb-1">
                                                                     <h3
                                                                         title={folder.name}
-                                                                        className="font-bold text-slate-900 line-clamp-2 leading-tight text-xs lg:text-sm group-hover:text-indigo-700 transition-colors uppercase tracking-tight min-h-[2.5rem] lg:min-h-[4rem] flex items-start break-words"
+                                                                        className="font-bold text-slate-900 line-clamp-2 leading-tight text-xs lg:text-sm group-hover:text-indigo-700 transition-colors uppercase tracking-tight min-h-[2.5rem] lg:min-h-[3rem] flex items-start break-words"
                                                                     >
                                                                         {folder.name}
                                                                     </h3>
@@ -1437,11 +1445,11 @@ export default function DataCenterPage() {
                                                                 animate={{ opacity: 1, scale: 1 }}
                                                                 exit={{ opacity: 0, scale: 0.98 }}
                                                                 onClick={() => setSelectedFile(file)}
-                                                                className={`group relative bg-white rounded-[1rem] md:rounded-[1.5rem] border-2 cursor-pointer ${selectedIds.has(file.id) ? 'border-blue-700 shadow-2xl ring-4 ring-blue-500/20 translate-y-[-4px]' : 'border-slate-200 shadow-lg hover:shadow-2xl hover:border-blue-400 hover:-translate-y-2'} transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-2 md:p-3 flex flex-col h-full'}`}
+                                                                className={`group relative bg-white rounded-[1.25rem] md:rounded-[1.5rem] border-2 cursor-pointer ${selectedIds.has(file.id) ? 'border-blue-700 shadow-2xl ring-4 ring-blue-500/20 translate-y-[-4px]' : 'border-slate-200 shadow-lg hover:shadow-2xl hover:border-blue-400 hover:-translate-y-2'} transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-3 md:p-4 flex flex-col h-full'}`}
                                                             >
                                                                 {viewMode === 'grid' ? (
                                                                     <>
-                                                                        <div className="relative aspect-video mb-2 md:mb-3 rounded-[0.75rem] md:rounded-[1rem] bg-slate-50 overflow-hidden border-2 border-slate-100">
+                                                                        <div className="relative aspect-video mb-3 md:mb-4 rounded-[1rem] bg-slate-50 overflow-hidden border-2 border-slate-100">
                                                                             <div className={`absolute top-0 left-0 right-0 h-1 md:h-2 z-10 ${theme.iconBg}`} />
                                                                             <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20">
                                                                                 <button
@@ -1474,7 +1482,7 @@ export default function DataCenterPage() {
                                                                         <div className="flex-1 min-w-0 px-2 pb-1">
                                                                             <h3
                                                                                 title={file.file_name}
-                                                                                className="font-bold text-slate-900 line-clamp-2 leading-tight text-[10px] lg:text-sm group-hover:text-blue-700 transition-colors uppercase tracking-tight min-h-[2rem] lg:min-h-[4rem] flex items-start break-words"
+                                                                                className="font-bold text-slate-900 line-clamp-2 leading-tight text-xs lg:text-sm group-hover:text-blue-700 transition-colors uppercase tracking-tight min-h-[2.5rem] lg:min-h-[3rem] flex items-start break-words"
                                                                             >
                                                                                 {file.file_name}
                                                                             </h3>
@@ -1582,11 +1590,11 @@ export default function DataCenterPage() {
                                                     {Array.from({ length: Math.ceil(totalCount / limit) }).map((_, i) => {
                                                         const pageNum = i + 1;
                                                         const totalPages = Math.ceil(totalCount / limit);
-                                                        
+
                                                         // Show first, last, current, and neighbors
                                                         if (
-                                                            pageNum === 1 || 
-                                                            pageNum === totalPages || 
+                                                            pageNum === 1 ||
+                                                            pageNum === totalPages ||
                                                             (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
                                                         ) {
                                                             return (
@@ -1599,7 +1607,7 @@ export default function DataCenterPage() {
                                                                 </button>
                                                             );
                                                         } else if (
-                                                            (pageNum === currentPage - 2 && pageNum > 1) || 
+                                                            (pageNum === currentPage - 2 && pageNum > 1) ||
                                                             (pageNum === currentPage + 2 && pageNum < totalPages)
                                                         ) {
                                                             return <span key={pageNum} className="text-slate-400">...</span>;
