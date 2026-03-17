@@ -355,17 +355,29 @@ export default function DataCenterPage() {
     const fetchFoldersWithFiles = useCallback(async () => {
         if (!sadhanaDb) return;
         try {
-            // Get all folder_ids that have at least one file
-            const { data, error } = await sadhanaDb
-                .from('files')
-                .select('folder_id')
-                .not('folder_id', 'is', null);
+            let allFolderIds = new Set<string>();
+            let from = 0;
+            const limit = 1000;
 
-            if (error) throw error;
-            if (data) {
-                const ids = new Set(data.map(f => f.folder_id!));
-                setFoldersWithFiles(ids);
+            while (true) {
+                const { data, error } = await sadhanaDb
+                    .from('files')
+                    .select('folder_id')
+                    .not('folder_id', 'is', null)
+                    .range(from, from + limit - 1);
+
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+
+                data.forEach(f => {
+                    if (f.folder_id) allFolderIds.add(f.folder_id);
+                });
+
+                if (data.length < limit) break;
+                from += limit;
             }
+
+            setFoldersWithFiles(allFolderIds);
         } catch (err) {
             console.error('Fetch folders with files error:', err);
         }
@@ -1588,47 +1600,6 @@ export default function DataCenterPage() {
                         </div>
                     </div>
                 </div>
-                {/* Mobile/Floating Bulk Action Bar */}
-                <AnimatePresence>
-                    {selectedIds.size > 0 && !fileToDelete && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 100 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 100 }}
-                            className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-gray-200 p-3 rounded-[2rem] shadow-2xl flex items-center gap-6 z-40 min-w-[280px] max-w-lg w-full sm:w-auto"
-                        >
-                            <div className="flex items-center gap-2.5 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl font-bold text-[11px] uppercase tracking-wider">
-                                <CheckCircle2 className="w-4 h-4" />
-                                <span>{selectedIds.size} Selected</span>
-                            </div>
-                            <div className="flex-1 flex justify-end gap-3 pr-1">
-                                <button
-                                    onClick={() => setSelectedIds(new Set())}
-                                    className="px-4 py-2 text-gray-400 font-bold hover:text-blue-600 text-[11px] uppercase tracking-widest transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleBulkDownloadConfirm}
-                                    disabled={isDownloadingBulk}
-                                    className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg hover:shadow-blue-500/40 transition-all active:scale-95 text-[11px] uppercase tracking-widest flex items-center gap-2"
-                                >
-                                    {isDownloadingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                                    Download
-                                </button>
-                                {activeTab === 'my' && (
-                                    <button
-                                        onClick={() => setShowBulkDeleteConfirm(true)}
-                                        className="px-5 py-2.5 bg-red-600 text-white rounded-xl font-bold shadow-lg hover:shadow-red-500/30 transition-all active:scale-95 text-[11px] uppercase tracking-widest flex items-center gap-2"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                        Delete
-                                    </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
 
             {/* Modals placed outside the z-10 container to break stacking context */}
@@ -2003,10 +1974,20 @@ export default function DataCenterPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex gap-3">
+                                {selectedIds.size > 0 && (
+                                    <button
+                                        onClick={handleBulkDownloadConfirm}
+                                        disabled={isDownloadingBulk}
+                                        className="flex-1 py-3 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-700 text-white font-black text-[11px] uppercase tracking-widest rounded-xl shadow-[0_8px_25px_-5px_rgba(99,102,241,0.5)] border-2 border-indigo-400/30 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isDownloadingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                        Download
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setIsMobileSidebarOpen(false)}
-                                    className="w-full py-3 bg-white text-slate-600 font-bold text-sm rounded-xl border-2 border-slate-100 shadow-sm active:scale-95 transition-all"
+                                    className="flex-1 py-3 bg-white text-slate-600 font-bold text-sm rounded-xl border-2 border-slate-100 shadow-sm active:scale-95 transition-all"
                                 >
                                     Close Explorer
                                 </button>
@@ -2079,6 +2060,47 @@ export default function DataCenterPage() {
                                 ${toast.type === 'success' ? 'bg-emerald-500' :
                                     toast.type === 'error' ? 'bg-rose-500' : 'bg-blue-500'}
                             `} />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+            {/* Mobile/Floating Bulk Action Bar */}
+            <AnimatePresence>
+                {selectedIds.size > 0 && !fileToDelete && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 100 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 100 }}
+                        className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-2xl border-2 border-blue-100 p-2 sm:p-3 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] hidden lg:flex items-center gap-2.5 sm:gap-6 z-[1000] w-[calc(100%-1.5rem)] max-w-[500px]"
+                    >
+                        {/* Selected count badge - compact on mobile */}
+                        <div className="flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest shrink-0 shadow-lg shadow-blue-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                            <span className="hidden min-[400px]:inline">{selectedIds.size} Selected</span>
+                            <span className="min-[400px]:hidden">{selectedIds.size}</span>
+                        </div>
+
+                        <div className="flex-1 flex justify-end items-center gap-2 sm:gap-3 pr-1">
+                            {/* Cancel — icon only on mobile, text on sm+ */}
+                            <button
+                                onClick={() => setSelectedIds(new Set())}
+                                className="p-2 sm:px-4 sm:py-2 text-slate-400 font-black hover:text-blue-600 text-[10px] sm:text-[11px] uppercase tracking-widest transition-all rounded-xl hover:bg-blue-50 active:scale-95 flex items-center justify-center border-2 border-transparent hover:border-blue-100"
+                                title="Cancel Selection"
+                            >
+                                <X className="w-4 h-4 sm:hidden" />
+                                <span className="hidden sm:inline">Cancel</span>
+                            </button>
+
+                            {/* Download — icon+text on all sizes, but compact padding on mobile */}
+                            <button
+                                onClick={handleBulkDownloadConfirm}
+                                disabled={isDownloadingBulk}
+                                className="px-4 py-2.5 sm:px-6 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-700 text-white rounded-xl font-black shadow-[0_8px_25px_-5px_rgba(99,102,241,0.5)] border-2 border-indigo-400/30 hover:shadow-indigo-500/40 hover:brightness-110 active:scale-95 text-[10px] sm:text-[11px] uppercase tracking-widest flex items-center gap-1.5 sm:gap-2 shrink-0 transition-all"
+                            >
+                                {isDownloadingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                                <span className="hidden min-[350px]:inline">Download</span>
+                                <span className="min-[350px]:hidden">DL</span>
+                            </button>
                         </div>
                     </motion.div>
                 )}

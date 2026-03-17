@@ -7,12 +7,12 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { logout } from '@/lib/supabase/auth';
 import { getRoleDisplayName, getHighestRole } from '@/lib/utils/roles';
-import { Menu, X, Home, MessageSquare, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle2, Briefcase, Mic, Globe, Radio, Shield, BookOpen, Calendar } from 'lucide-react';
+import { Menu, X, Home, BarChart3, Users, Settings, LogOut, Upload, Building2, MapPin, UserCheck, CheckCircle2, UserCircle2, Briefcase, Mic, Globe, Radio, Shield, BookOpen, Calendar } from 'lucide-react';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 import ProfileCreationLoadingModal from '@/components/auth/ProfileCreationLoadingModal';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
 import { requestNotificationPermission, getNotificationPermission, isNotificationSupported } from '@/lib/utils/notifications';
-import { useMessageNotifications } from '@/hooks/useMessageNotifications';
+
 import { useEventNotifications } from '@/hooks/useEventNotifications';
 import { Bell, X as CloseIcon } from 'lucide-react';
 
@@ -23,11 +23,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+
   const [showNotificationBanner, setShowNotificationBanner] = useState(false);
 
-  // Enable message notifications
-  useMessageNotifications();
+
   // Enable event (announcement) notifications
   useEventNotifications();
 
@@ -55,26 +54,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [userData, loading, user, isProfileComplete]);
 
 
-  // Fetch unread messages count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      if (!userData?.id) return;
 
-      try {
-        const { getUserMessages } = await import('@/lib/supabase/messages');
-        const messages = await getUserMessages(userData.id);
-        const unread = messages.filter(msg => !msg.readBy.includes(userData.id));
-        setUnreadCount(unread.length);
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
-      }
-    };
-
-    fetchUnreadCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [userData?.id]);
 
   // Check notification permission on mount
   useEffect(() => {
@@ -147,7 +127,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const baseNavigation = [
       { name: 'Dashboard', href: '/dashboard', icon: Home },
-      { name: 'Messages', href: '/dashboard/messages', icon: MessageSquare },
       { name: 'Sadhana', href: '/dashboard/sadhana', icon: BookOpen },
       { name: 'Events', href: '/dashboard/events', icon: Calendar },
       { name: 'Data Center', href: '/dashboard/data-center', icon: Globe },
@@ -456,24 +435,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">{children}</main>
 
-        {/* Floating Unread Messages Indicator */}
-        {unreadCount > 0 && (
-          <Link
-            href="/dashboard/messages"
-            className="fixed bottom-6 right-6 z-50 group"
-          >
-            <div className="relative">
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-110 flex items-center gap-3 px-5 py-3 animate-bounce hover:animate-none">
-                <MessageSquare className="h-5 w-5" />
-                <span className="font-bold text-sm">
-                  {unreadCount} Unread {unreadCount === 1 ? 'Message' : 'Messages'}
-                </span>
-              </div>
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full animate-ping"></span>
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full"></span>
-            </div>
-          </Link>
-        )}
+
       </div>
     </div>
   );
