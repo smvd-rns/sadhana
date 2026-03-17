@@ -148,7 +148,7 @@ export default function DataCenterPage() {
     const [folderFilesMap, setFolderFilesMap] = useState<Record<string, FileRecord[]>>({});
     const [failedThumbnails, setFailedThumbnails] = useState<Record<string, boolean>>({});
 
-    const [limit, setLimit] = useState(20);
+    const [limit, setLimit] = useState(24);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const isSearching = searchQuery.trim().length > 0;
@@ -213,7 +213,7 @@ export default function DataCenterPage() {
         };
     }, [isResizing]);
 
-    const totalPages = Math.ceil(totalCount / limit);
+
 
     const toggleSelect = (id: string) => {
         const newSelected = new Set(selectedIds);
@@ -537,10 +537,7 @@ export default function DataCenterPage() {
             setSelectedIds(new Set());
 
             // 1. Fetch Folders
-            if (currentFolderId === 'root' || !currentFolderId.startsWith('root-')) {
-                // Logic to fetch child folders for the current view
-                // This is already handled by folders state being updated elsewhere
-            }
+            // (Folders are fetched independently via fetchAllFolders)
 
             // 2. Fetch Files
             let query = sadhanaDb.from('files').select('*', { count: 'exact' });
@@ -550,29 +547,23 @@ export default function DataCenterPage() {
             }
 
             // Recursive Folder filtering
-            const isSearching = searchQuery.trim().length > 0;
-            if (!isSearching) {
+            const searching = searchQuery.trim().length > 0;
+            if (!searching) {
                 if (currentFolderId === 'root') {
-                    // "All Files" view - no folder filtering applied
+                    // All files
                 } else if (currentFolderId.startsWith('root-')) {
-                    // Specific user root in Global - show all their files recursively
                     const userId = currentFolderId.replace('root-', '');
                     query = query.eq('user_id', userId);
-                    // In global user root, we don't apply folder_id null because we want the recursive view
                 } else {
-                    // Specific folder ID - Recursive View
                     const descendantIds = getDescendantFolderIds(currentFolderId);
                     const allTargetIds = [currentFolderId, ...descendantIds];
                     query = query.in('folder_id', allTargetIds);
                 }
             } else {
-                // When searching, we respect user-specific root in Global mode
                 if (activeTab === 'global' && currentFolderId.startsWith('root-')) {
                     const userId = currentFolderId.replace('root-', '');
                     query = query.eq('user_id', userId);
                 }
-                // If in a deep folder and searching, we might want to restrict search to that folder + subfolders?
-                // For now, following "search in all files" behavior unless a specific sub-drive is selected.
                 if (activeTab === 'global' && !currentFolderId.startsWith('root-') && currentFolderId !== 'root') {
                     const descendantIds = getDescendantFolderIds(currentFolderId);
                     const allTargetIds = [currentFolderId, ...descendantIds];
@@ -580,31 +571,30 @@ export default function DataCenterPage() {
                 }
             }
 
-            // Search and Category filtering
-            // Split query into individual words for flexible, word-order-independent search
             if (searchQuery.trim()) {
                 const words = searchQuery.trim().split(/\s+/).filter(Boolean);
                 for (const word of words) {
                     query = query.or(`file_name.ilike.%${word}%,description.ilike.%${word}%`);
                 }
             }
+
             if (activeCategory !== 'all') {
                 query = query.eq('category', activeCategory);
             }
 
-            // Sorting
+            // Sorting - Added stable ID sort as secondary
             switch (sortBy) {
-                case 'newest': query = query.order('created_at', { ascending: false }); break;
-                case 'oldest': query = query.order('created_at', { ascending: true }); break;
-                case 'name_asc': query = query.order('file_name', { ascending: true }); break;
-                case 'name_desc': query = query.order('file_name', { ascending: false }); break;
-                case 'views_desc': query = query.order('views', { ascending: false }); break;
+                case 'newest': query = query.order('created_at', { ascending: false }).order('id', { ascending: true }); break;
+                case 'oldest': query = query.order('created_at', { ascending: true }).order('id', { ascending: true }); break;
+                case 'name_asc': query = query.order('file_name', { ascending: true }).order('id', { ascending: true }); break;
+                case 'name_desc': query = query.order('file_name', { ascending: false }).order('id', { ascending: true }); break;
+                case 'views_desc': query = query.order('views', { ascending: false }).order('id', { ascending: true }); break;
+                default: query = query.order('created_at', { ascending: false }).order('id', { ascending: true });
             }
 
             query = query.range((currentPage - 1) * limit, currentPage * limit - 1);
 
-            // Side-effect: If searching, find ALL unique folder_ids that have matching files for tree filtering
-            if (isSearching) {
+            if (searching) {
                 let treeFilterQuery = sadhanaDb.from('files').select('folder_id, user_id');
                 if (activeTab === 'my' && user) {
                     treeFilterQuery = treeFilterQuery.eq('user_id', user.id);
@@ -640,7 +630,7 @@ export default function DataCenterPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [searchQuery, activeCategory, activeTab, user, sortBy, currentPage, limit, currentFolderId, getDescendantFolderIds]);
+    }, [searchQuery, activeCategory, activeTab, user, sortBy, limit, currentPage, currentFolderId, getDescendantFolderIds]);
 
     useEffect(() => {
         fetchStats();
@@ -652,6 +642,11 @@ export default function DataCenterPage() {
         }, 300);
         return () => clearTimeout(debounceTimer);
     }, [searchQuery, activeCategory, activeTab, sortBy, currentPage, limit, currentFolderId, viewMode, fetchFiles]);
+
+    useEffect(() => {
+        // Reset to page 1 when filters or folder changes
+        setCurrentPage(1);
+    }, [searchQuery, activeCategory, activeTab, sortBy, currentFolderId]);
 
     useEffect(() => {
         // Clear selection when changing tabs
@@ -695,11 +690,7 @@ export default function DataCenterPage() {
             setFileToDelete(null);
             setShowBulkDeleteConfirm(false);
 
-            if (files.length <= idsToDelete.length && currentPage > 1) {
-                setCurrentPage(prev => prev - 1);
-            } else {
-                await fetchFiles();
-            }
+            await fetchFiles();
 
             // Wait slightly for DB to settle and then refresh stats
             setTimeout(() => {
@@ -932,6 +923,8 @@ export default function DataCenterPage() {
             });
         }
         setCurrentPage(1);
+        // Reset scroll when navigating folders
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Recursive Tree Item Component
@@ -1356,12 +1349,12 @@ export default function DataCenterPage() {
                                     {/* File Results Area */}
                                     <div className="bg-white/95 backdrop-blur-xl border-2 border-blue-100 p-3 md:p-6 min-h-[500px] rounded-2xl lg:rounded-[2.5rem] shadow-2xl shadow-blue-900/5 mt-2">
                                         {isLoading && files.length === 0 ? (
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+                                            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
                                                 {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                                                    <div key={i} className="animate-pulse bg-white border border-white h-64 rounded-[2rem] shadow-sm p-6 flex flex-col gap-4">
-                                                        <div className="w-full h-32 bg-gray-100 rounded-2xl" />
-                                                        <div className="h-4 bg-gray-100 rounded w-3/4" />
-                                                        <div className="h-3 bg-gray-50 rounded w-1/2" />
+                                                    <div key={i} className="animate-pulse bg-white border border-slate-100 h-48 md:h-64 rounded-[1.5rem] md:rounded-[2rem] shadow-sm p-3 md:p-6 flex flex-col gap-3 md:gap-4">
+                                                        <div className="w-full h-24 md:h-32 bg-gray-100 rounded-xl md:rounded-2xl" />
+                                                        <div className="h-3 md:h-4 bg-gray-100 rounded w-3/4" />
+                                                        <div className="h-2 md:h-3 bg-gray-50 rounded w-1/2" />
                                                     </div>
                                                 ))}
                                             </div>
@@ -1373,8 +1366,7 @@ export default function DataCenterPage() {
                                             </div>
                                         ) : (
                                             <div
-                                                className={viewMode === 'grid' ? "grid gap-3 md:gap-4" : "flex flex-col gap-2"}
-                                                style={viewMode === 'grid' ? { gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' } : {}}
+                                                className={viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 lg:gap-6" : "flex flex-col gap-2"}
                                             >
 
                                                 <AnimatePresence mode="popLayout">
@@ -1387,9 +1379,9 @@ export default function DataCenterPage() {
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             exit={{ opacity: 0, scale: 0.98 }}
                                                             onClick={() => navigateToFolder(folder)}
-                                                            className={`group relative bg-white rounded-[1.5rem] border-2 cursor-pointer border-slate-200 shadow-lg hover:shadow-2xl hover:border-indigo-400 hover:-translate-y-2 transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-3 flex flex-col h-full'}`}
+                                                            className={`group relative bg-white rounded-[1rem] md:rounded-[1.5rem] border-2 cursor-pointer border-slate-200 shadow-lg hover:shadow-2xl hover:border-indigo-400 hover:-translate-y-2 transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-2 md:p-3 flex flex-col h-full'}`}
                                                         >
-                                                            <div className={viewMode === 'grid' ? "relative aspect-video mb-3 rounded-[1rem] bg-indigo-50/50 flex items-center justify-center overflow-hidden border-2 border-slate-100" : "flex items-center gap-4 w-full"}>
+                                                            <div className={viewMode === 'grid' ? "relative aspect-video mb-2 md:mb-3 rounded-[0.75rem] md:rounded-[1rem] bg-indigo-50/50 flex items-center justify-center overflow-hidden border-2 border-slate-100" : "flex items-center gap-4 w-full"}>
                                                                 <div className={`absolute top-3 left-3 z-20 ${viewMode === 'list' ? 'relative top-0 left-0' : ''}`}>
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); toggleSelect(folder.id); }}
@@ -1400,9 +1392,9 @@ export default function DataCenterPage() {
                                                                 </div>
                                                                 {viewMode === 'grid' ? (
                                                                     <>
-                                                                        <div className="absolute top-0 left-0 right-0 h-2 z-10 bg-indigo-500" />
-                                                                        <div className="p-4 bg-white rounded-2xl shadow-inner border-2 border-indigo-50 group-hover:scale-110 transition-transform duration-500">
-                                                                            <Folder className="w-10 h-10 fill-indigo-100 text-indigo-500" />
+                                                                        <div className="absolute top-0 left-0 right-0 h-1 md:h-2 z-10 bg-indigo-500" />
+                                                                        <div className="p-2 md:p-4 bg-white rounded-xl md:rounded-2xl shadow-inner border-2 border-indigo-50 group-hover:scale-110 transition-transform duration-500">
+                                                                            <Folder className="w-6 h-6 md:w-10 md:h-10 fill-indigo-100 text-indigo-500" />
                                                                         </div>
                                                                     </>
                                                                 ) : (
@@ -1445,13 +1437,13 @@ export default function DataCenterPage() {
                                                                 animate={{ opacity: 1, scale: 1 }}
                                                                 exit={{ opacity: 0, scale: 0.98 }}
                                                                 onClick={() => setSelectedFile(file)}
-                                                                className={`group relative bg-white rounded-[1.5rem] border-2 cursor-pointer ${selectedIds.has(file.id) ? 'border-blue-700 shadow-2xl ring-4 ring-blue-500/20 translate-y-[-4px]' : 'border-slate-200 shadow-lg hover:shadow-2xl hover:border-blue-400 hover:-translate-y-2'} transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-3 flex flex-col h-full'}`}
+                                                                className={`group relative bg-white rounded-[1rem] md:rounded-[1.5rem] border-2 cursor-pointer ${selectedIds.has(file.id) ? 'border-blue-700 shadow-2xl ring-4 ring-blue-500/20 translate-y-[-4px]' : 'border-slate-200 shadow-lg hover:shadow-2xl hover:border-blue-400 hover:-translate-y-2'} transition-all duration-300 overflow-hidden ${viewMode === 'list' ? 'flex items-center gap-4 p-4' : 'p-2 md:p-3 flex flex-col h-full'}`}
                                                             >
                                                                 {viewMode === 'grid' ? (
                                                                     <>
-                                                                        <div className="relative aspect-video mb-3 rounded-[1rem] bg-slate-50 overflow-hidden border-2 border-slate-100">
-                                                                            <div className={`absolute top-0 left-0 right-0 h-2 z-10 ${theme.iconBg}`} />
-                                                                            <div className="absolute top-3 left-3 z-20">
+                                                                        <div className="relative aspect-video mb-2 md:mb-3 rounded-[0.75rem] md:rounded-[1rem] bg-slate-50 overflow-hidden border-2 border-slate-100">
+                                                                            <div className={`absolute top-0 left-0 right-0 h-1 md:h-2 z-10 ${theme.iconBg}`} />
+                                                                            <div className="absolute top-2 left-2 md:top-3 md:left-3 z-20">
                                                                                 <button
                                                                                     onClick={(e) => { e.stopPropagation(); toggleSelect(file.id); }}
                                                                                     className={`w-7 h-7 rounded-lg border-2 transition-all flex items-center justify-center backdrop-blur-md shadow-md ${selectedIds.has(file.id) ? 'bg-blue-600 border-blue-700 text-white' : 'bg-white/90 border-slate-300 hover:border-blue-500'}`}
@@ -1556,42 +1548,77 @@ export default function DataCenterPage() {
                                             </div>
                                         )}
 
-                                        {totalPages > 1 && (
-                                            <div className="mt-8 flex flex-col items-center gap-6 pb-6 border-t-2 border-blue-100 pt-6">
-                                                <div className="flex items-center gap-2 select-none flex-wrap justify-center font-bold">
+                                        {/* Pagination Controls */}
+                                        {totalCount > 0 && (
+                                            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-6 pb-6 border-t border-slate-200/60 pt-8">
+                                                {/* Page Size Selector */}
+                                                <div className="flex items-center gap-3 bg-slate-50 p-1.5 rounded-xl border border-slate-200/50">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider pl-2">Show</p>
+                                                    {[24, 48, 96].map((size) => (
+                                                        <button
+                                                            key={size}
+                                                            onClick={() => {
+                                                                setLimit(size);
+                                                                setCurrentPage(1);
+                                                            }}
+                                                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${limit === size ? 'bg-white text-blue-600 shadow-sm border border-blue-100' : 'text-slate-500 hover:text-slate-700'}`}
+                                                        >
+                                                            {size}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
+                                                {/* Page Numbers */}
+                                                <div className="flex items-center gap-2 select-none">
                                                     <button
                                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                                         disabled={currentPage === 1}
-                                                        className="p-3 rounded-xl hover:bg-blue-50 border-2 border-slate-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all text-slate-500 bg-white shadow-md hover:border-blue-300"
+                                                        className="p-2.5 rounded-xl hover:bg-slate-100 border border-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600 bg-white"
                                                     >
                                                         <ChevronLeft className="w-4 h-4" />
                                                     </button>
 
-                                                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                                        let pageNum = i + 1;
-                                                        if (totalPages > 5 && currentPage > 3) {
-                                                            pageNum = currentPage - 2 + i;
-                                                            if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                                                    {/* Simplified pagination logic */}
+                                                    {Array.from({ length: Math.ceil(totalCount / limit) }).map((_, i) => {
+                                                        const pageNum = i + 1;
+                                                        const totalPages = Math.ceil(totalCount / limit);
+                                                        
+                                                        // Show first, last, current, and neighbors
+                                                        if (
+                                                            pageNum === 1 || 
+                                                            pageNum === totalPages || 
+                                                            (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+                                                        ) {
+                                                            return (
+                                                                <button
+                                                                    key={pageNum}
+                                                                    onClick={() => setCurrentPage(pageNum)}
+                                                                    className={`w-10 h-10 rounded-xl text-[12px] font-bold transition-all ${currentPage === pageNum ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'}`}
+                                                                >
+                                                                    {pageNum}
+                                                                </button>
+                                                            );
+                                                        } else if (
+                                                            (pageNum === currentPage - 2 && pageNum > 1) || 
+                                                            (pageNum === currentPage + 2 && pageNum < totalPages)
+                                                        ) {
+                                                            return <span key={pageNum} className="text-slate-400">...</span>;
                                                         }
-                                                        return (
-                                                            <button
-                                                                key={pageNum}
-                                                                onClick={() => setCurrentPage(pageNum)}
-                                                                className={`w-11 h-11 rounded-xl text-[12px] font-black transition-all border-2 ${currentPage === pageNum ? 'bg-blue-600 border-blue-800 text-white shadow-xl shadow-blue-500/40 scale-110' : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-700 shadow-md hover:-translate-y-0.5'}`}
-                                                            >
-                                                                {pageNum}
-                                                            </button>
-                                                        );
+                                                        return null;
                                                     })}
 
                                                     <button
-                                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                                        disabled={currentPage === totalPages}
-                                                        className="p-3 rounded-xl hover:bg-blue-50 border-2 border-slate-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all text-slate-500 bg-white shadow-md hover:border-blue-300"
+                                                        onClick={() => setCurrentPage(prev => Math.min(Math.ceil(totalCount / limit), prev + 1))}
+                                                        disabled={currentPage === Math.ceil(totalCount / limit)}
+                                                        className="p-2.5 rounded-xl hover:bg-slate-100 border border-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all text-slate-600 bg-white"
                                                     >
                                                         <ChevronRight className="w-4 h-4" />
                                                     </button>
                                                 </div>
+
+                                                <p className="text-[11px] font-bold text-slate-400 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200/50">
+                                                    Results: <span className="text-slate-700">{(currentPage - 1) * limit + 1} - {Math.min(currentPage * limit, totalCount)}</span> of <span className="text-slate-700">{totalCount}</span>
+                                                </p>
                                             </div>
                                         )}
                                     </div>
