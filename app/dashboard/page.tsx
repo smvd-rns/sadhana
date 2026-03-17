@@ -8,6 +8,8 @@ import { SadhanaReport, Message } from '@/types';
 import { BookOpen, MessageSquare, TrendingUp, Calendar, Zap, ArrowRight, Heart, Sparkles } from 'lucide-react';
 import { parseISO } from 'date-fns';
 import Link from 'next/link';
+import { getEventsForUser } from '@/lib/actions/events';
+import { ManagedEvent } from '@/types';
 
 const QUOTES = [
   "Chanting the holy name is the primary spiritual practice for this age.",
@@ -24,6 +26,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [quote, setQuote] = useState('');
   const [greeting, setGreeting] = useState('Welcome');
+  const [events, setEvents] = useState<ManagedEvent[]>([]);
 
   useEffect(() => {
     setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
@@ -36,10 +39,45 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       if (userData) {
-        const reports = await fetchSadhanaHistory(30);
-        const messages = await getUserMessages(userData.id, 10);
+        setLoading(true);
+        const [reports, messages, fetchedEvents] = await Promise.all([
+          fetchSadhanaHistory(30),
+          getUserMessages(userData.id, 10),
+          getEventsForUser({
+            userId: userData.id,
+            ashram: userData.hierarchy?.ashram,
+            role: String(Array.isArray(userData.role) ? userData.role[0] : userData.role),
+            temple: userData.hierarchy?.temple || userData.currentTemple,
+            center: userData.hierarchy?.center || userData.currentCenter,
+            completedCamps: Object.entries(userData)
+              .filter(([key, val]) => key.startsWith('camp') && val === true)
+              .map(([key]) => key),
+            allLocations: [
+              userData.hierarchy?.center,
+              userData.hierarchy?.currentCenter,
+              userData.hierarchy?.parentCenter,
+              userData.hierarchy?.temple,
+              userData.hierarchy?.currentTemple,
+              userData.hierarchy?.parentTemple,
+              userData.currentCenter,
+              userData.parentCenter,
+              userData.currentTemple,
+              userData.parentTemple
+            ].filter(Boolean) as string[],
+          })
+        ]);
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const upcomingEvents = fetchedEvents.filter(event => {
+          const eventDate = new Date(event.eventDate);
+          return eventDate >= today;
+        });
+
         setRecentReports(reports);
         setUnreadMessages(messages.filter(m => !m.readBy.includes(userData.id)));
+        setEvents(upcomingEvents);
         setLoading(false);
       }
     };
@@ -89,13 +127,13 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      name: 'Unread Messages',
-      value: unreadMessages.length.toString(),
-      icon: MessageSquare,
-      gradient: 'from-blue-500 to-indigo-600',
-      shadow: 'shadow-blue-500/25',
-      href: '/dashboard/messages',
-      subtext: unreadMessages.length > 0 ? 'Needs attention' : 'All caught up',
+      name: 'Upcoming Events',
+      value: events.length.toString(),
+      icon: Calendar,
+      gradient: 'from-orange-500 to-amber-600',
+      shadow: 'shadow-orange-500/25',
+      href: '/dashboard/events',
+      subtext: events.length > 0 ? `${events.filter(e => !e.userResponse).length} New Announcements` : 'Check back later',
     },
     {
       name: 'Sadhana Streak',
@@ -129,7 +167,7 @@ export default function DashboardPage() {
                 <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
                 <span>Hare Krishna</span>
               </div>
-              <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-slate-800 tracking-tight mb-2 sm:mb-3">
+              <h1 className="text-2xl sm:text-4xl md:text-4xl xl:text-5xl font-extrabold text-slate-800 tracking-tight mb-2 sm:mb-3">
                 {greeting}, <br className="sm:hidden" />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-amber-600">{userData?.name?.split(' ')[0] || 'Devotee'}</span>
               </h1>
@@ -174,7 +212,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-xl sm:text-3xl font-extrabold text-slate-800 mb-1 sm:mb-2 tracking-tight">{stat.value}</h3>
+                  <h3 className="text-xl sm:text-2xl xl:text-3xl font-extrabold text-slate-800 mb-1 sm:mb-2 tracking-tight">{stat.value}</h3>
                   <p className="text-[10px] sm:text-sm font-bold text-slate-500 uppercase sm:normal-case">{stat.name}</p>
                   <p className="text-[9px] sm:text-xs text-slate-400 mt-1 sm:mt-2 font-medium bg-slate-100/50 inline-block px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-md">{stat.subtext}</p>
                 </div>
@@ -289,18 +327,18 @@ export default function DashboardPage() {
             </div>
 
             <div className="p-7 flex-1 flex flex-col gap-5 relative z-10">
-              <Link href="/dashboard/messages" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
+              <Link href="/dashboard/events" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                  <MessageSquare className="w-7 h-7 text-white" />
-                  {unreadMessages.length > 0 && (
+                  <Calendar className="w-7 h-7 text-white" />
+                  {events.filter(e => !e.userResponse).length > 0 && (
                     <span className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black border-2 border-slate-900">
-                      {unreadMessages.length}
+                      {events.filter(e => !e.userResponse).length}
                     </span>
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Messages</h3>
-                  <p className="text-xs text-slate-400 font-medium">Connect with mentors</p>
+                  <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Events</h3>
+                  <p className="text-xs text-slate-400 font-medium">Community Gatherings</p>
                 </div>
                 <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
                   <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
