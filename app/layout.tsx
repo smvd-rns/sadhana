@@ -30,7 +30,34 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${playfair.variable} ${merriweather.variable} font-sans`}>
         <AuthProvider>{children}</AuthProvider>
-        <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+        <Toaster 
+          position="top-center" 
+          toastOptions={{ 
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#fff',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              padding: '16px 24px',
+              boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+              border: '1px solid rgba(255,255,255,0.1)',
+            },
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            }
+          }} 
+        />
       </body>
     </html>
   );

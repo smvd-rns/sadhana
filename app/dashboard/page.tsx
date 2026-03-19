@@ -10,6 +10,7 @@ import { parseISO } from 'date-fns';
 import Link from 'next/link';
 import { getEventsForUser } from '@/lib/actions/events';
 import { ManagedEvent } from '@/types';
+import MembershipCard from './components/MembershipCard';
 
 const QUOTES = [
   "Chanting the holy name is the primary spiritual practice for this age.",
@@ -193,8 +194,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
           {stats.map((stat, i) => {
             const Icon = stat.icon;
-            // On mobile, the third card takes full width if there are 3 cards, but here we can just let it span or flow
-            // Actually, a 3-col grid on mobile might be too tight, so 2 cols is better.
             const colSpan = i === 2 ? "col-span-2 sm:col-span-1" : "";
             return (
               <Link
@@ -223,8 +222,8 @@ export default function DashboardPage() {
 
         {/* Recent Activity & Quick Actions Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-
-          {/* Recent Sadhana Feed (Takes up 2 columns on large screens) */}
+          
+          {/* Left/Main Column: Recent Sadhana Feed (Takes up 2 columns on large screens) */}
           <div className="lg:col-span-2 bg-white/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-xl shadow-slate-200/40 border border-white/60 overflow-hidden flex flex-col">
             <div className="p-4 sm:p-6 border-b border-slate-100/50 flex items-center justify-between">
               <div className="flex items-center gap-3 sm:gap-4">
@@ -233,52 +232,56 @@ export default function DashboardPage() {
                 </div>
                 <h2 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight">Recent Sadhana</h2>
               </div>
-              <Link href="/dashboard/sadhana/progress" className="text-xs sm:text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 sm:gap-1.5 transition-colors px-3 py-1.5 sm:px-4 sm:py-2 hover:bg-orange-50 rounded-full">
-                View All <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+              <Link href="/dashboard/sadhana/progress" className="text-xs sm:text-sm font-bold text-orange-600 hover:text-orange-700 flex items-center gap-1 group transition-colors">
+                View All
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
 
-            <div className="p-3 sm:p-6 flex-1 flex flex-col justify-center">
+            <div className="flex-1 overflow-y-auto max-h-[500px] scrollbar-hide">
               {recentReports.length > 0 ? (
-                <div className="space-y-3 sm:space-y-4">
-                  {recentReports.slice(0, 4).map((report, idx) => {
-                    const reportDate = typeof report.date === 'string' ? parseISO(report.date.split('T')[0]) : report.date as Date;
-                    const reportDateStr = reportDate.toISOString().split('T')[0];
-                    const isToday = reportDateStr === todayStr;
+                <div className="divide-y divide-slate-50">
+                  {recentReports.slice(0, 7).map((report, idx) => {
                     const soul = report.soulPercent || 0;
                     const body = report.bodyPercent || 0;
-
+                    const date = typeof report.date === 'string' ? parseISO(report.date) : report.date;
+                    
                     return (
-                      <div key={report.id} className="group relative flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-100/50 bg-white hover:bg-slate-50/80 transition-all hover:shadow-md cursor-default">
-                        <div className="flex items-center gap-3 sm:gap-4 sm:w-[35%]">
-                          <div className={`w-10 h-10 sm:w-14 sm:h-14 flex flex-col items-center justify-center rounded-xl sm:rounded-2xl font-bold shrink-0 shadow-sm ${isToday ? 'bg-gradient-to-br from-orange-500 to-rose-500 text-white shadow-orange-500/20' : 'bg-slate-50 border border-slate-100 text-slate-600'}`}>
-                            <span className="text-sm sm:text-lg leading-none mb-0.5">{reportDate.getDate()}</span>
-                            <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider">{reportDate.toLocaleString('default', { month: 'short' })}</span>
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-800 text-xs sm:text-sm">{isToday ? "Today" : reportDate.toLocaleDateString(undefined, { weekday: 'long' })}</p>
-                            <div className="flex gap-2 sm:gap-3 text-[10px] sm:text-xs text-slate-500 mt-1 sm:mt-1.5 font-semibold">
-                              <span title="Japa rounds" className="flex items-center gap-0.5 sm:gap-1"><span className="text-orange-400">📿</span> {report.japa || 0}</span>
-                              <span title="Hearing mins" className="flex items-center gap-0.5 sm:gap-1"><span className="text-blue-400">🎧</span> {report.hearing || 0}m</span>
-                              <span title="Reading mins" className="flex items-center gap-0.5 sm:gap-1"><span className="text-emerald-400">📖</span> {report.reading || 0}m</span>
+                      <div key={idx} className="p-4 sm:p-6 hover:bg-slate-50/50 transition-colors group">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200 shadow-sm group-hover:border-orange-200 group-hover:bg-orange-50 group-hover:text-orange-600 transition-all">
+                              {date.getDate()}
                             </div>
+                            <div>
+                              <p className="text-sm font-bold text-slate-800">{date.toLocaleString('default', { weekday: 'long' })}</p>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{date.toLocaleString('default', { month: 'short', year: 'numeric' })}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-orange-50 text-orange-700 text-[10px] font-black uppercase tracking-wider border border-orange-100">
+                             <Sparkles className="w-3 h-3" />
+                             Day {30 - idx}
                           </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col gap-2 sm:gap-3">
-                          <div className="flex items-center gap-3 sm:gap-4">
-                            <span className="text-[10px] sm:text-xs font-bold text-slate-400 w-8 uppercase tracking-wider">Soul</span>
-                            <div className="flex-1 h-2 sm:h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                              <div className={`h-full rounded-full transition-all duration-1000 ${soul >= 80 ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : soul >= 50 ? 'bg-gradient-to-r from-blue-400 to-indigo-500' : 'bg-gradient-to-r from-orange-400 to-rose-400'}`} style={{ width: `${soul}%` }} />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                              <span>Soul</span>
+                              <span className={soul >= 80 ? 'text-emerald-500' : 'text-slate-600'}>{soul.toFixed(0)}%</span>
                             </div>
-                            <span className="text-[10px] sm:text-xs font-black text-slate-700 w-8 text-right">{soul.toFixed(0)}%</span>
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
+                              <div className={`h-full rounded-full transition-all duration-1000 delay-100 ${soul >= 80 ? 'bg-gradient-to-r from-orange-400 to-rose-500' : soul >= 50 ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-gradient-to-r from-slate-300 to-slate-400'}`} style={{ width: `${soul}%` }} />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3 sm:gap-4">
-                            <span className="text-[10px] sm:text-xs font-bold text-slate-400 w-8 uppercase tracking-wider">Body</span>
-                            <div className="flex-1 h-2 sm:h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                              <span>Body</span>
+                              <span className={body >= 80 ? 'text-emerald-500' : 'text-slate-600'}>{body.toFixed(0)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden flex">
                               <div className={`h-full rounded-full transition-all duration-1000 delay-100 ${body >= 80 ? 'bg-gradient-to-r from-teal-400 to-emerald-500' : body >= 50 ? 'bg-gradient-to-r from-cyan-400 to-blue-500' : 'bg-gradient-to-r from-rose-400 to-orange-400'}`} style={{ width: `${body}%` }} />
                             </div>
-                            <span className="text-[10px] sm:text-xs font-black text-slate-700 w-8 text-right">{body.toFixed(0)}%</span>
                           </div>
                         </div>
                       </div>
@@ -286,7 +289,7 @@ export default function DashboardPage() {
                   })}
                 </div>
               ) : (
-                <div className="text-center py-10 px-4">
+                <div className="text-center py-20 px-4">
                   <div className="w-20 h-20 bg-gradient-to-br from-orange-50 to-amber-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner border border-orange-100/50">
                     <BookOpen className="w-10 h-10 text-orange-400" />
                   </div>
@@ -301,65 +304,69 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Actions (Takes up 1 column on large screens) */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden relative flex flex-col">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-orange-500/20 to-rose-500/5 rounded-full blur-3xl transform translate-x-10 -translate-y-10" />
-            <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/20 to-indigo-500/5 rounded-full blur-3xl transform -translate-x-10 translate-y-10" />
+          {/* Right/Sidebar Column: Membership & Quick Actions */}
+          <div className="flex flex-col gap-6 sm:gap-8 lg:col-span-1">
+            <MembershipCard />
+            
+            {/* Quick Actions */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl shadow-slate-900/20 overflow-hidden relative flex flex-col">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-orange-500/20 to-rose-500/5 rounded-full blur-3xl transform translate-x-10 -translate-y-10" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-500/20 to-indigo-500/5 rounded-full blur-3xl transform -translate-x-10 translate-y-10" />
 
-            <div className="p-7 border-b border-white/5 relative z-10">
-              <h2 className="text-xl font-bold text-white flex items-center gap-3">
-                <Zap className="w-6 h-6 text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
-                Quick Actions
-              </h2>
-              <Link href="/dashboard/sadhana" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
-                  <BookOpen className="w-7 h-7 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-orange-300 transition-colors">Submit Sadhana</h3>
-                  <p className="text-xs text-slate-400 font-medium">Record today&apos;s practices</p>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-orange-300 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </Link>
+              <div className="p-7 border-b border-white/5 relative z-10">
+                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                  <Zap className="w-6 h-6 text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                  Quick Actions
+                </h2>
+              </div>
 
-            </div>
-
-            <div className="p-7 flex-1 flex flex-col gap-5 relative z-10">
-              <Link href="/dashboard/events" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                  <Calendar className="w-7 h-7 text-white" />
-                  {events.filter(e => !e.userResponse).length > 0 && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black border-2 border-slate-900">
-                      {events.filter(e => !e.userResponse).length}
-                    </span>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Events</h3>
-                  <p className="text-xs text-slate-400 font-medium">Community Gatherings</p>
-                </div>
-                <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
-                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
-                </div>
-              </Link>
-
-              <div className="mt-auto pt-4">
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-orange-500/20 backdrop-blur-md relative overflow-hidden group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                  <div className="flex items-center gap-2 mb-3">
-                    <Heart className="w-4 h-4 text-orange-400 animate-pulse" />
-                    <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest">Inspiration</span>
+              <div className="p-7 flex-1 flex flex-col gap-5 relative z-10">
+                <Link href="/dashboard/sadhana" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-rose-500 flex items-center justify-center shadow-lg shadow-orange-500/30 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300">
+                    <BookOpen className="w-7 h-7 text-white" />
                   </div>
-                  <p className="text-sm font-semibold text-slate-200 italic leading-relaxed">
-                    &quot;Service to the devotees is the highest of all services.&quot;
-                  </p>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-orange-300 transition-colors">Submit Sadhana</h3>
+                    <p className="text-xs text-slate-400 font-medium">Record today&apos;s practices</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-orange-500/20 transition-colors">
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-orange-300 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </Link>
+
+                <Link href="/dashboard/events" className="group flex items-center gap-5 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 hover:shadow-lg transition-all backdrop-blur-sm">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
+                    <Calendar className="w-7 h-7 text-white" />
+                    {events.filter(e => !e.userResponse).length > 0 && (
+                      <span className="absolute -top-2 -right-2 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black border-2 border-slate-900">
+                        {events.filter(e => !e.userResponse).length}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Events</h3>
+                    <p className="text-xs text-slate-400 font-medium">Community Gatherings</p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
+                    <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-300 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </Link>
+
+                <div className="mt-auto pt-4">
+                  <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-orange-500/20 backdrop-blur-md relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <div className="flex items-center gap-2 mb-3">
+                      <Heart className="w-4 h-4 text-orange-400 animate-pulse" />
+                      <span className="text-[10px] font-black text-orange-300 uppercase tracking-widest">Inspiration</span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-200 italic leading-relaxed">
+                      &quot;Service to the devotees is the highest of all services.&quot;
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

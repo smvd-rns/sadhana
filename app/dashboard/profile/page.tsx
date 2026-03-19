@@ -52,6 +52,7 @@ export default function ProfilePage() {
     introducedToKcIn: '',
     rounds: '',
     parentTemple: '',
+    otherParentTemple: '',
     parentCenter: '',
     currentTemple: '',
     currentCenter: '',
@@ -517,6 +518,7 @@ export default function ProfilePage() {
         introducedToKcIn: userData.hierarchy?.introducedToKcIn || '',
         rounds: userData.hierarchy?.rounds ? userData.hierarchy.rounds.toString() : '',
         parentTemple: userData.hierarchy?.parentTemple || '',
+        otherParentTemple: userData.hierarchy?.otherParentTemple || '',
         parentCenter: userData.hierarchy?.parentCenter || '',
         currentTemple: userData.hierarchy?.currentTemple || '',
         currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
@@ -841,6 +843,7 @@ export default function ProfilePage() {
       if (formData.introducedToKcIn) hierarchy.introducedToKcIn = sanitizeTextInput(formData.introducedToKcIn.trim());
       if (formData.rounds) hierarchy.rounds = parseInt(formData.rounds) || 0;
       if (formData.parentTemple) hierarchy.parentTemple = sanitizeTextInput(formData.parentTemple.trim());
+      if (formData.otherParentTemple) hierarchy.otherParentTemple = sanitizeTextInput(formData.otherParentTemple.trim());
       if (formData.parentCenter) hierarchy.parentCenter = sanitizeTextInput(formData.parentCenter.trim());
       if (formData.otherParentCenter) hierarchy.otherParentCenter = sanitizeTextInput(formData.otherParentCenter.trim());
       if (formData.currentTemple) hierarchy.currentTemple = sanitizeTextInput(formData.currentTemple.trim());
@@ -939,6 +942,7 @@ export default function ProfilePage() {
         introduced_to_kc_in: formData.introducedToKcIn ? sanitizeTextInput(formData.introducedToKcIn.trim()) : null,
         rounds: formData.rounds ? parseInt(formData.rounds) : null,
         parent_temple: formData.parentTemple ? sanitizeTextInput(formData.parentTemple.trim()) : null,
+        other_parent_temple: formData.parentTemple === 'Other' ? (formData.otherParentTemple ? sanitizeTextInput(formData.otherParentTemple.trim()) : null) : null,
         parent_center: formData.parentCenter ? sanitizeTextInput(formData.parentCenter.trim()) : null,
         other_parent_center: formData.parentCenter === 'Other' ? (formData.otherParentCenter ? sanitizeTextInput(formData.otherParentCenter.trim()) : null) : null,
         current_temple: formData.currentTemple ? sanitizeTextInput(formData.currentTemple.trim()) : null,
@@ -1017,7 +1021,7 @@ export default function ProfilePage() {
       const spiritualFields = [
         'initiation_status', 'initiated_name', 'spiritual_master_name',
         'aspiring_spiritual_master_name', 'rounds', 'introduced_to_kc_in',
-        'parent_temple', 'parent_center', 'other_parent_center',
+        'parent_temple', 'other_parent_temple', 'parent_center', 'other_parent_center',
         'current_temple', 'current_center', 'counselor', 'counselor_id',
         'other_counselor', 'other_center', 'ashram'
       ];
@@ -2001,7 +2005,8 @@ export default function ProfilePage() {
                     </label>
                     <SearchableSelect
                       options={[
-                        ...temples.map(t => ({ id: t.name, name: t.name }))
+                        ...temples.map(t => ({ id: t.name, name: t.name })),
+                        { id: 'Other', name: 'Other' }
                       ]}
                       value={formData.parentTemple}
                       onChange={(value) => setFormData({ ...formData, parentTemple: value })}
@@ -2009,6 +2014,22 @@ export default function ProfilePage() {
                       disabled={loadingTemples}
                     />
                   </div>
+
+                  {formData.parentTemple === 'Other' && (
+                    <div className="animate-fadeIn">
+                      <label htmlFor="otherParentTemple" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                        Other Parent Temple Name
+                      </label>
+                      <input
+                        id="otherParentTemple"
+                        type="text"
+                        value={formData.otherParentTemple}
+                        onChange={(e) => setFormData({ ...formData, otherParentTemple: e.target.value })}
+                        placeholder="Enter temple name"
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                      />
+                    </div>
+                  )}
 
                   <div>
                     <label htmlFor="parentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">

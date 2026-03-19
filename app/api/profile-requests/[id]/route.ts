@@ -222,6 +222,7 @@ export async function PATCH(
             if (requestedChanges.introducedToKcIn !== undefined) dbUpdates.introduced_to_kc_in = requestedChanges.introducedToKcIn;
             if (requestedChanges.ashram !== undefined) dbUpdates.ashram = requestedChanges.ashram;
             if (requestedChanges.parentTemple !== undefined) dbUpdates.parent_temple = requestedChanges.parentTemple;
+            if (requestedChanges.otherParentTemple !== undefined) dbUpdates.other_parent_temple = requestedChanges.otherParentTemple;
             if (requestedChanges.parentCenter !== undefined) dbUpdates.parent_center = requestedChanges.parentCenter;
             if (requestedChanges.currentTemple !== undefined) dbUpdates.current_temple = requestedChanges.currentTemple;
             if (requestedChanges.currentCenter !== undefined) dbUpdates.current_center = requestedChanges.currentCenter;

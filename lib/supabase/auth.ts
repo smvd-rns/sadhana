@@ -221,6 +221,7 @@ export const transformUserProfile = (data: any): User => {
     royalMember: data.royal_member || data.hierarchy?.royalMember,
     introducedToKcIn: data.introduced_to_kc_in || data.hierarchy?.introducedToKcIn,
     parentTemple: data.parent_temple || data.hierarchy?.parentTemple,
+    otherParentTemple: data.other_parent_temple || data.hierarchy?.otherParentTemple,
     parentCenter: data.parent_center || data.hierarchy?.parentCenter,
     currentTemple: data.current_temple || data.hierarchy?.currentTemple,
     currentCenter: data.current_center || data.hierarchy?.currentCenter,
@@ -262,6 +263,8 @@ export const transformUserProfile = (data: any): User => {
     relative3Phone: data.relative_3_phone,
     // Health fields
     healthChronicDisease: data.health_chronic_disease,
+    parentTemple: data.parent_temple || data.hierarchy?.parentTemple,
+    otherParentTemple: data.other_parent_temple || data.hierarchy?.otherParentTemple,
     introducedToKcIn: data.introduced_to_kc_in || data.hierarchy?.introducedToKcIn,
     // Camp completion fields
     campDys: data.camp_dys || false,
