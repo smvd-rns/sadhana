@@ -256,6 +256,11 @@ export default function UsersPage() {
     }
 
     try {
+      if (!supabase) {
+        toast.error('System error: Supabase client not initialized');
+        return;
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       

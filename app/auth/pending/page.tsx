@@ -1,13 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Clock, CheckCircle, Home, LogOut } from 'lucide-react';
+import { Clock, CheckCircle, Home, LogOut, CheckCircle2 } from 'lucide-react';
 
 export default function PendingApprovalPage() {
     const { user, userData, loading, signOut } = useAuth();
     const router = useRouter();
+    const [isAlreadyApproved, setIsAlreadyApproved] = useState(false);
 
     useEffect(() => {
         // If user is not logged in, redirect to login
@@ -16,9 +17,9 @@ export default function PendingApprovalPage() {
             return;
         }
 
-        // If user is approved, redirect to dashboard
+        // If user is approved, show approved message
         if (!loading && userData?.verificationStatus === 'approved') {
-            router.push('/dashboard');
+            setIsAlreadyApproved(true);
             return;
         }
 
@@ -61,49 +62,83 @@ export default function PendingApprovalPage() {
 
                     {/* Title */}
                     <h1 className="text-3xl font-bold text-gray-800 mb-4">
-                        Approval Pending
+                        {isAlreadyApproved ? 'Account Approved!' : 'Approval Pending'}
                     </h1>
 
                     {/* Message */}
                     <div className="space-y-4 mb-8">
-                        <p className="text-gray-600 text-lg">
-                            Thank you for registering, <span className="font-semibold text-orange-600">{user?.email}</span>!
-                        </p>
-                        <p className="text-gray-600">
-                            Your registration has been submitted successfully and is currently under review by our administrators.
-                        </p>
+                        {isAlreadyApproved ? (
+                            <>
+                                <p className="text-gray-600 text-lg">
+                                    Hare Krishna, <span className="font-semibold text-orange-600">{userData?.name || user?.email}</span>!
+                                </p>
+                                <p className="text-gray-600 font-medium">
+                                    Your account has been already approved and activated. You now have full access to the platform.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-gray-600 text-lg">
+                                    Thank you for registering, <span className="font-semibold text-orange-600">{user?.email}</span>!
+                                </p>
+                                <p className="text-gray-600">
+                                    Your registration has been submitted successfully and is currently under review by our administrators.
+                                </p>
+                            </>
+                        )}
 
                         {/* Info Box */}
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
-                            <div className="flex items-start gap-3">
-                                <CheckCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-                                <div className="text-left">
-                                    <p className="text-sm font-semibold text-orange-800 mb-1">What happens next?</p>
-                                    <ul className="text-sm text-orange-700 space-y-1">
-                                        <li>• Admin will review your registration</li>
-                                        <li>&bull; You&apos;ll receive access once approved</li>
-                                        <li>• This usually takes 24-48 hours</li>
-                                    </ul>
+                        <div className={`${isAlreadyApproved ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mt-4 text-left`}>
+                            {isAlreadyApproved ? (
+                                <div className="flex items-start gap-3">
+                                    <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-green-800 mb-1">What's next?</p>
+                                        <p className="text-sm text-green-700">
+                                            You can now access your dashboard to track your sadhana, view events, and connect with your mentors.
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="flex items-start gap-3">
+                                    <CheckCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-orange-800 mb-1">What happens next?</p>
+                                        <ul className="text-sm text-orange-700 space-y-1">
+                                            <li>• Admin will review your registration</li>
+                                            <li>&bull; You&apos;ll receive access once approved</li>
+                                            <li>• This usually takes 24-48 hours</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Status Badge */}
-                    <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold mb-6">
-                        <Clock className="w-4 h-4" />
-                        Status: Pending Approval
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 ${isAlreadyApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {isAlreadyApproved ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        Status: {isAlreadyApproved ? 'Approved' : 'Pending Approval'}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="space-y-3">
-                        {/* Go to Home Button */}
+                        {/* Primary Button */}
                         <button
-                            onClick={() => router.push('/')}
+                            onClick={() => router.push(isAlreadyApproved ? '/dashboard' : '/')}
                             className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white py-3 rounded-lg font-semibold hover:from-orange-600 hover:to-amber-600 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
                         >
-                            <Home className="w-5 h-5" />
-                            Go to Home
+                            {isAlreadyApproved ? (
+                                <>
+                                    <Home className="w-5 h-5" />
+                                    Go to Dashboard
+                                </>
+                            ) : (
+                                <>
+                                    <Home className="w-5 h-5" />
+                                    Go to Home
+                                </>
+                            )}
                         </button>
 
                         {/* Sign Out Button */}
