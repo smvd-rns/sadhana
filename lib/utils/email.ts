@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-const SENDER_EMAIL = process.env.SMTP_FROM_EMAIL || '"ISKCON Sadhana Platform" <noreply@iskconsadhana.org>';
+const SENDER_EMAIL = process.env.SMTP_FROM_EMAIL || '"VOICE Gurukul" <noreply@iskconsadhana.org>';
 
 /**
  * Sends a notification email to the managers for a new user registration.
@@ -37,7 +37,7 @@ export async function sendRegistrationNotification(
                 </div>
                 <div style="padding: 30px; color: #333333; line-height: 1.6;">
                     <p style="margin-top: 0; font-size: 16px;">Hare Krishna <strong>${managerName}</strong>,</p>
-                    <p style="font-size: 16px;">A new user has registered for the ISKCON Sadhana Platform and is awaiting your approval.</p>
+                    <p style="font-size: 16px;">A new user has registered for the VOICE Gurukul and is awaiting your approval.</p>
                     
                     <h3 style="color: #ea580c; border-bottom: 2px solid #ea580c; padding-bottom: 8px; margin-top: 25px; font-size: 18px;">User Details</h3>
                     <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 15px;">
@@ -106,7 +106,7 @@ export async function sendApprovalNotification(userEmail: string, userName: stri
                 </div>
                 <div style="padding: 30px; color: #333333; line-height: 1.6;">
                     <p style="margin-top: 0; font-size: 16px;">Hare Krishna <strong>${userName}</strong>,</p>
-                    <p style="font-size: 16px;">Your registration for the ISKCON Sadhana Platform has been reviewed and <strong>approved</strong>!</p>
+                    <p style="font-size: 16px;">Your registration for the VOICE Gurukul has been reviewed and <strong>approved</strong>!</p>
                     <p style="font-size: 16px;">You can now log in and access your dashboard to begin tracking your sadhana and staying connected with your center.</p>
 
                     <div style="text-align: center; margin: 40px 0;">

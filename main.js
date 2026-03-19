@@ -20,7 +20,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
-    title: "ISKCON Sadhana Platform",
+    title: "VOICE Gurukul",
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,

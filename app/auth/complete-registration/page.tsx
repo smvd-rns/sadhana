@@ -240,7 +240,7 @@ export default function CompleteRegistrationPage() {
                         <div className="p-2 bg-white/10 backdrop-blur-sm rounded-lg">
                             <Flower className="w-8 h-8 text-yellow-300" />
                         </div>
-                        <span className="text-2xl font-serif font-bold tracking-wide">Voicegurukul</span>
+                        <span className="text-2xl font-serif font-bold tracking-wide">VOICE Gurukul</span>
                     </div>
                 </div>
 

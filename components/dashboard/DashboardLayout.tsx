@@ -248,7 +248,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="flex items-center justify-between h-20 px-6 border-b border-gray-200/60 flex-shrink-0 relative z-10 bg-white/80 backdrop-blur-xl">
             <div className="flex items-center space-x-3">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600 bg-clip-text text-transparent font-display tracking-tight">
-                ISKCON Platform
+                VOICE Gurukul
               </h1>
             </div>
             <button
@@ -345,7 +345,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <Menu className="h-6 w-6" />
             </button>
             <span className="lg:hidden font-display font-bold text-lg text-orange-700">
-              ISKCON Platform
+              VOICE Gurukul
             </span>
           </div>
 

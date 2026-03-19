@@ -17,7 +17,7 @@ const merriweather = Merriweather({
 });
 
 export const metadata: Metadata = {
-  title: 'ISKCON Sadhana & Communication Platform',
+  title: 'VOICE Gurukul',
   description: 'Daily spiritual practice tracking and mentorship communication platform',
 };
 

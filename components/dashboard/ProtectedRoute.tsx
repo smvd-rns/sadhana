@@ -47,7 +47,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           <Flower className="w-8 h-8 text-white animate-spin-slow" />
         </div>
 
-        <h2 className="text-2xl font-serif font-bold text-white mb-2">Voicegurukul</h2>
+        <h2 className="text-2xl font-serif font-bold text-white mb-2">VOICE Gurukul</h2>
 
         <div className="flex items-center justify-center gap-3 text-orange-50 font-medium bg-black/10 py-2 px-4 rounded-full w-fit mx-auto mt-4">
           <Loader2 className="w-4 h-4 animate-spin" />

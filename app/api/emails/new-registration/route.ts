@@ -23,39 +23,76 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        // 1. Find the center this user belongs to
+        // Determine recipients based on hierarchy
         const userCenterName = newUser.hierarchy?.currentCenter;
-        if (!userCenterName) {
-            return NextResponse.json({ error: 'User has no center assigned' }, { status: 400 });
-        }
-
-        // 2. Fetch the specific center to find its PM and Acting Manager
-        const { data: center, error: centerError } = await supabase
-            .from('centers')
-            .select('project_manager_id, acting_manager_id')
-            .eq('name', userCenterName)
-            .single();
-
-        if (centerError || !center) {
-            return NextResponse.json({ error: 'Center not found' }, { status: 404 });
-        }
-
-        const managerIdsToNotify = [];
-        if (center.project_manager_id) managerIdsToNotify.push(center.project_manager_id);
-        if (center.acting_manager_id) managerIdsToNotify.push(center.acting_manager_id);
-
-        if (managerIdsToNotify.length === 0) {
-            return NextResponse.json({ success: true, emailsSent: 0, message: 'No managers assigned to this center' });
-        }
-
-        // 3. Fetch ONLY those specific managers
-        const { data: notifyManagers, error: managersError } = await supabase
-            .from('users')
-            .select('id, name, email')
-            .in('id', managerIdsToNotify);
+        const userTempleName = newUser.hierarchy?.currentTemple;
         
-        if (managersError || !notifyManagers) {
-             return NextResponse.json({ error: 'Failed to fetch managers' }, { status: 500 });
+        let managerIdsToNotify: string[] = [];
+        let notifyByRole8 = false;
+
+        // 1. If Center is selected (and not None)
+        if (userCenterName && userCenterName !== 'None' && userCenterName !== 'None/None') {
+            const { data: center } = await supabase
+                .from('centers')
+                .select('project_manager_id, acting_manager_id')
+                .eq('name', userCenterName)
+                .single();
+
+            if (center) {
+                if (center.project_manager_id) managerIdsToNotify.push(center.project_manager_id);
+                if (center.acting_manager_id) managerIdsToNotify.push(center.acting_manager_id);
+            }
+        }
+
+        // 2. If no IDs yet (either Center was None or Center had no managers), check if Temple is selected
+        if (managerIdsToNotify.length === 0 && userTempleName && userTempleName !== 'None' && userTempleName !== 'None/None') {
+            const { data: temple } = await supabase
+                .from('temples')
+                .select('central_voice_manager_id')
+                .eq('name', userTempleName)
+                .single();
+
+            if (temple && temple.central_voice_manager_id) {
+                managerIdsToNotify.push(temple.central_voice_manager_id);
+            }
+        }
+
+        // 3. If still no IDs, notify Super Admins (Role 8)
+        if (managerIdsToNotify.length === 0) {
+            notifyByRole8 = true;
+        }
+
+        let notifyManagers: { id: string, name: string, email: string }[] = [];
+
+        if (notifyByRole8) {
+            const { data: superAdmins, error: saError } = await supabase
+                .from('users')
+                .select('id, name, email')
+                .contains('role', [8]); // Role 8 in array
+
+            if (saError) {
+                // Try literal 8 if array check fails (depends on how roles are stored)
+                const { data: saLiteral } = await supabase
+                    .from('users')
+                    .select('id, name, email')
+                    .eq('role', 8);
+                notifyManagers = saLiteral || [];
+            } else {
+                notifyManagers = superAdmins || [];
+            }
+        } else if (managerIdsToNotify.length > 0) {
+            const { data: managers, error: managersError } = await supabase
+                .from('users')
+                .select('id, name, email')
+                .in('id', managerIdsToNotify);
+            
+            if (!managersError && managers) {
+                notifyManagers = managers;
+            }
+        }
+
+        if (notifyManagers.length === 0) {
+            return NextResponse.json({ success: true, emailsSent: 0, message: 'No recipients found for notification' });
         }
 
 

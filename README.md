@@ -1,4 +1,4 @@
-# ISKCON Sadhana & Communication Platform
+# VOICE Gurukul
 
 A comprehensive web and mobile application for ISKCON's all-India student community to facilitate daily spiritual practice tracking, mentorship communication, and hierarchical group management.
 

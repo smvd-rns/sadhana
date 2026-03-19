@@ -1,7 +1,7 @@
 {
   "name": "iskcon-sadhana-platform",
   "version": "1.0.0",
-  "description": "ISKCON Sadhana Platform Desktop Application",
+  "description": "VOICE Gurukul Desktop Application",
   "author": "ISKCON",
   "private": true,
   "main": "main.js",
@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.iskcon.sadhana",
-    "productName": "ISKCON Sadhana Platform",
+    "productName": "VOICE Gurukul",
     "win": {
       "target": "nsis"
     },

@@ -60,7 +60,7 @@ export default function LiveMessagePreview({ title, content, attachments = [], c
                                     <div className="w-5 h-5 bg-green-500 rounded-md flex items-center justify-center">
                                         <Bell className="h-3 w-3 text-white" />
                                     </div>
-                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">ISKCON CONNECT</span>
+                                    <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">VOICE CONNECT</span>
                                 </div>
                                 <span className="text-[10px] font-bold text-gray-400">now</span>
                             </div>
@@ -95,7 +95,7 @@ export default function LiveMessagePreview({ title, content, attachments = [], c
                         <div className="w-6 h-6 sm:w-8 sm:h-8 bg-white/20 rounded-full items-center justify-center flex">
                             <Smartphone className="h-3 w-3 sm:h-4 sm:w-4 text-white" />
                         </div>
-                        <span className="text-white font-black text-[10px] sm:text-xs tracking-widest uppercase italic">ISKCON Connect</span>
+                        <span className="text-white font-black text-[10px] sm:text-xs tracking-widest uppercase italic">VOICE Connect</span>
                     </div>
                 </div>
 
