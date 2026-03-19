@@ -76,6 +76,15 @@ export default function UserApprovalsPage() {
                 userIdsToApprove.forEach(id => newSet.delete(id));
                 return newSet;
             });
+
+            // Trigger approval emails silently
+            userIdsToApprove.forEach(id => {
+                fetch('/api/emails/approved', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: id })
+                }).catch(err => console.error('Failed to send approval email:', err));
+            });
         } catch (error) {
             console.error('Failed to approve user(s):', error);
             alert('Failed to approve user(s)');

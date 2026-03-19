@@ -121,7 +121,16 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                     <div className="w-full overflow-hidden">
                         <div
                             className="prose prose-slate prose-sm max-w-full prose-p:font-medium prose-p:leading-relaxed prose-p:text-gray-950 prose-headings:text-gray-950 prose-strong:font-black prose-a:text-orange-600 prose-img:rounded-2xl prose-img:shadow-lg prose-img:my-6 prose-img:mx-auto text-gray-950 break-words [&_*]:break-words [&_pre]:whitespace-pre-wrap [&_pre]:!overflow-x-hidden"
-                            dangerouslySetInnerHTML={{ __html: event.message }}
+                            dangerouslySetInnerHTML={{ 
+                                __html: event.attachments.reduce((html, att) => {
+                                    // Retroactively fix any expiring drive-storage URLs in the HTML body
+                                    // by replacing them with the permanent format if we have the fileId.
+                                    if (att.fileId && html.includes(att.url) && (att.url.includes('drive-storage') || att.url.includes('drive-viewer'))) {
+                                        return html.split(att.url).join(`https://lh3.googleusercontent.com/d/${att.fileId}=s1600`);
+                                    }
+                                    return html;
+                                }, event.message)
+                            }}
                         />
                     </div>
                 )}
@@ -142,7 +151,7 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                                     className="group relative aspect-video rounded-2xl overflow-hidden border-2 border-gray-50 shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1 block"
                                 >
                                     <NextImage
-                                        src={getThumbnailUrl(item.url, 800, 450) || item.url}
+                                        src={getThumbnailUrl(item.url, 800, 450, item.fileId) || item.url || ''}
                                         alt={item.name}
                                         width={800}
                                         height={450}

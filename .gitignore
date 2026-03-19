@@ -39,3 +39,10 @@ next-env.d.ts
 .firebase/
 firebase-debug.log
 firestore-debug.log
+
+# build outputs
+/Output/
+/dist-packager/
+*.exe
+*.dll
+*.bin

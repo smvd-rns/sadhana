@@ -58,26 +58,29 @@ export function extractFileId(url: string): string | null {
  * @param height - Thumbnail height (default: 400)
  * @returns Thumbnail URL or original URL if conversion fails
  */
-export function getThumbnailUrl(url: string | null | undefined, width: number = 400, height: number = 400): string | null {
-  if (!url) return null;
+export function getThumbnailUrl(url: string | null | undefined, width: number = 400, height: number = 400, fallbackFileId?: string): string | null {
+  if (!url && !fallbackFileId) return null;
 
-  const fileId = extractFileId(url);
+  const fileId = extractFileId(url || '') || fallbackFileId;
   if (!fileId) {
     // If we can't extract the file ID, return the original URL
-    return url;
+    return url || null;
   }
 
   // Explicitly check for data URLs (base64 images)
-  if (url.startsWith('data:')) {
+  if (url && url.startsWith('data:')) {
     return url;
   }
 
-  // Try to extract session info if already an lh3 link to preserve it
-  if (url.includes('lh3.googleusercontent.com')) {
-    return url.replace(/=s\d+$/, `=s${width}`);
+  // Try to preserve session info only if it's already a stable lh3 link
+  // DO NOT preserve drive-storage or drive-viewer links as they expire
+  if (url && url.includes('lh3.googleusercontent.com') && !url.includes('drive-storage') && !url.includes('drive-viewer')) {
+    if (url.includes('/d/')) {
+        return url.replace(/=s\d+$/, `=s${width}`);
+    }
   }
 
-  // Use Google Drive thumbnail API (lh3 format is more reliable for direct embedding)
+  // Use Google Drive thumbnail API (lh3 format is reliably stable with the file ID)
   // Format: https://lh3.googleusercontent.com/d/FILE_ID=s{size}
   return `https://lh3.googleusercontent.com/d/${fileId}=s${width}`;
 }
@@ -85,20 +88,20 @@ export function getThumbnailUrl(url: string | null | undefined, width: number = 
 /**
  * Get a small thumbnail URL (for profile pictures, avatars, etc.)
  */
-export function getSmallThumbnailUrl(url: string | null | undefined): string | null {
-  return getThumbnailUrl(url, 200, 200);
+export function getSmallThumbnailUrl(url: string | null | undefined, fallbackFileId?: string): string | null {
+  return getThumbnailUrl(url, 200, 200, fallbackFileId);
 }
 
 /**
  * Get a medium thumbnail URL
  */
-export function getMediumThumbnailUrl(url: string | null | undefined): string | null {
-  return getThumbnailUrl(url, 400, 400);
+export function getMediumThumbnailUrl(url: string | null | undefined, fallbackFileId?: string): string | null {
+  return getThumbnailUrl(url, 400, 400, fallbackFileId);
 }
 
 /**
  * Get a large thumbnail URL
  */
-export function getLargeThumbnailUrl(url: string | null | undefined): string | null {
-  return getThumbnailUrl(url, 800, 800);
+export function getLargeThumbnailUrl(url: string | null | undefined, fallbackFileId?: string): string | null {
+  return getThumbnailUrl(url, 800, 800, fallbackFileId);
 }

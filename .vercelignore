@@ -1,0 +1,26 @@
+# Exclude build artifacts
+dist/
+dist-packager/
+Output/
+temp-wrapper/
+out/
+.next/
+
+# Exclude desktop-specific files
+main.js
+inno_setup.iss
+electron-builder.yml
+package-lock.json.electron # if you have one
+node_modules/
+
+# Keep only the web code
+!app/
+!public/
+!lib/
+!components/
+!styles/
+!next.config.js
+!package.json
+!tsconfig.json
+!tailwind.config.js
+!postcss.config.js

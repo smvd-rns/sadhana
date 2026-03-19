@@ -642,6 +642,41 @@ export default function ManagingDirectorDashboard() {
             studyInChargeId: center.study_in_charge_id || '',
             ocId: center.oc_id || ''
         });
+
+        const missingUsers: any[] = [];
+        const checkAndAdd = (id: string | undefined | null, name: string | undefined | null) => {
+            if (id && name && !users.some(u => u.id === id)) {
+                missingUsers.push({ id, name, email: name + ' (Unlinked User)' });
+            }
+        };
+
+        checkAndAdd(center.project_manager_id, center.project_manager_name);
+        checkAndAdd(center.project_advisor_id, center.project_advisor_name);
+        checkAndAdd(center.acting_manager_id, center.acting_manager_name);
+        checkAndAdd(center.internal_manager_id, center.internal_manager_name);
+        checkAndAdd(center.preaching_coordinator_id, center.preaching_coordinator_name);
+        checkAndAdd(center.morning_program_in_charge_id, center.morning_program_in_charge_name);
+        checkAndAdd(center.accountant_id, center.accountant_name);
+        checkAndAdd(center.kitchen_head_id, center.kitchen_head_name);
+        checkAndAdd(center.study_in_charge_id, center.study_in_charge_name);
+        checkAndAdd(center.oc_id, center.oc_name);
+
+        if (center.mentor_ids && center.mentor_names && center.mentor_ids.length === center.mentor_names.length) {
+             center.mentor_ids.forEach((id, idx) => checkAndAdd(id, center.mentor_names![idx]));
+        } else if (center.mentor_id && center.mentor_name) {
+             checkAndAdd(center.mentor_id, center.mentor_name);
+        }
+
+        if (center.frontliner_ids && center.frontliner_names && center.frontliner_ids.length === center.frontliner_names.length) {
+             center.frontliner_ids.forEach((id, idx) => checkAndAdd(id, center.frontliner_names![idx]));
+        } else if (center.frontliner_id && center.frontliner_name) {
+             checkAndAdd(center.frontliner_id, center.frontliner_name);
+        }
+
+        if (missingUsers.length > 0) {
+            setUsers(prev => [...prev, ...missingUsers]);
+        }
+
         setShowEditCenterModal(true);
         // Ensure users are loaded for dropdowns
         if (users.length === 0) {

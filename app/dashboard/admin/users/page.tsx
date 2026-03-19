@@ -73,9 +73,8 @@ export default function UsersPage() {
     if (userData) {
       const currentUserRoles = Array.isArray(userData.role) ? userData.role : [userData.role];
       const isSuperAdmin = currentUserRoles.includes('super_admin') || currentUserRoles.includes(8);
-      const isBCVoiceManager = currentUserRoles.includes('bc_voice_manager') || currentUserRoles.includes(4);
 
-      if (!isSuperAdmin && !isBCVoiceManager) {
+      if (!isSuperAdmin) {
         router.push('/dashboard');
         return;
       }
@@ -92,32 +91,8 @@ export default function UsersPage() {
           if (currentUserRoles.includes('super_admin') || currentUserRoles.includes(8)) {
             // Super admin gets everyone
             fetchedUsers = await getUsersByHierarchy({});
-          } else if (currentUserRoles.includes('bc_voice_manager') || currentUserRoles.includes(4)) {
-            // BC Voice Manager logic
-            try {
-              const request = await getBCVoiceManagerRequestByUserId(userData.id);
-              if (request && request.status === 'approved' && request.approvedCenters && request.approvedCenters.length > 0) {
-                const approvedCenterIds = request.approvedCenters.filter(id => id && id.trim().length > 0);
-                if (approvedCenterIds.length > 0) {
-                  fetchedUsers = await getUsersByCenterIds(approvedCenterIds);
-                } else {
-                  // Fallback
-                  const hierarchy: any = {};
-                  if (userData.hierarchy?.state) hierarchy.state = userData.hierarchy.state;
-                  if (userData.hierarchy?.city) hierarchy.city = userData.hierarchy.city;
-                  fetchedUsers = await getUsersByHierarchy(hierarchy);
-                }
-              } else {
-                // Fallback
-                const hierarchy: any = {};
-                if (userData.hierarchy?.state) hierarchy.state = userData.hierarchy.state;
-                if (userData.hierarchy?.city) hierarchy.city = userData.hierarchy.city;
-                fetchedUsers = await getUsersByHierarchy(hierarchy);
-              }
-            } catch (error) {
-              console.error('Error fetching users for BC VM:', error);
-              fetchedUsers = [];
-            }
+          } else {
+            fetchedUsers = [];
           }
           setUsers(fetchedUsers);
 
@@ -274,6 +249,33 @@ export default function UsersPage() {
     return roles;
   }, []);
 
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user ${userName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete user');
+      
+      toast.success('User deleted successfully');
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (error: any) {
+      console.error('Delete user error:', error);
+      toast.error(error.message || 'Failed to delete user');
+    }
+  };
 
   // Role Management handlers
   const handleEditRole = (user: User) => {
@@ -675,6 +677,14 @@ export default function UsersPage() {
                       title="View Profile"
                     >
                       <ExternalLink className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDeleteUser(user.id, user.name || 'Unknown User')}
+                      className="p-2 text-red-500 hover:text-white hover:bg-red-500 rounded-xl transition-all active:scale-95 flex items-center justify-center border border-transparent shadow-sm"
+                      title="Delete User"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                     </button>
 
                     <button

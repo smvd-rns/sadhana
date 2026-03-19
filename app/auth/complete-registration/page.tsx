@@ -191,6 +191,17 @@ export default function CompleteRegistrationPage() {
                 hierarchy,
             });
 
+            // Trigger the email notification to project/acting managers silently
+            try {
+                await fetch('/api/emails/new-registration', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: user.id })
+                });
+            } catch (emailErr: any) {
+                console.error('Failed to trigger registration email:', emailErr);
+            }
+
             setSuccess('Registration submitted! Redirecting...');
 
             // Immediate redirect to pending page

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
 import { getActiveSadhanaSupabase } from '@/lib/supabase/sadhana';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
     try {
         const user = await getAuthUserFromRequest(request as any);

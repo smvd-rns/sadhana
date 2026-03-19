@@ -400,6 +400,30 @@ export default function CentersPage() {
       kitchenHeadId: center.kitchen_head_id || '',
       studyInChargeId: center.study_in_charge_id || ''
     });
+
+    const missingUsers: any[] = [];
+    const checkAndAdd = (id: string | undefined | null, name: string | undefined | null) => {
+        if (id && name && !users.some(u => u.id === id)) {
+            missingUsers.push({ id, name, email: name + ' (Unlinked User)' });
+        }
+    };
+
+    checkAndAdd(center.project_manager_id, center.project_manager_name);
+    checkAndAdd(center.project_advisor_id, center.project_advisor_name);
+    checkAndAdd(center.acting_manager_id, center.acting_manager_name);
+    checkAndAdd(center.internal_manager_id, center.internal_manager_name);
+    checkAndAdd(center.preaching_coordinator_id, center.preaching_coordinator_name);
+    checkAndAdd(center.morning_program_in_charge_id, center.morning_program_in_charge_name);
+    checkAndAdd(center.mentor_id, center.mentor_name);
+    checkAndAdd(center.frontliner_id, center.frontliner_name);
+    checkAndAdd(center.accountant_id, center.accountant_name);
+    checkAndAdd(center.kitchen_head_id, center.kitchen_head_name);
+    checkAndAdd(center.study_in_charge_id, center.study_in_charge_name);
+
+    if (missingUsers.length > 0) {
+        setUsers(prev => [...prev, ...missingUsers]);
+    }
+
     setIsEditing(true);
     setShowAddModal(true);
   };

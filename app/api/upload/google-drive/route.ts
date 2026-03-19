@@ -92,11 +92,8 @@ async function uploadToDrive(fileBuffer: Buffer, fileName: string, mimeType: str
     }
 
     // Construct the direct image URL for Google Drive files
-    // Using the thumbnailLink and replacing the size is the most reliable way to get a public lh3 link
-    const thumbnailLink = response.data.thumbnailLink;
-    const directImageUrl = thumbnailLink
-      ? thumbnailLink.replace(/=s\d+$/, '=s1600')
-      : `https://lh3.googleusercontent.com/d/${response.data.id}=s1600`;
+    // Using the stable lh3 link format directly is the best way to avoid expiring drive-storage URLs
+    const directImageUrl = `https://lh3.googleusercontent.com/d/${response.data.id}=s1600`;
 
     // Return the file ID, view link, and direct image URL
     return JSON.stringify({

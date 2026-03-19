@@ -4,6 +4,8 @@ import { getUserData } from '@/lib/supabase/auth'
 import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana'
 import { extractFolderId, scanFolderAndSave } from '@/lib/utils/driveScan'
 
+export const dynamic = 'force-dynamic';
+
 export const maxDuration = 60;
 
 // POST - Start a Drive folder scan (admin only)

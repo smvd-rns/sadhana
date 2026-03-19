@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to check if a user is a Super Admin (Role 8)
 const isSuperAdmin = (roles: any[] | any): boolean => {
     const rolesArray = Array.isArray(roles) ? roles : [roles];

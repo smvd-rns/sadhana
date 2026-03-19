@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { roleHierarchy, getRoleDisplayName } from '@/lib/utils/roles';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const groupBy = searchParams.get('groupBy') || 'temple';
