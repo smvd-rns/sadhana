@@ -7,12 +7,13 @@ import {
     Image as ImageIcon, FileArchive, LayoutGrid, List, Upload, Clock, Eye,
     HardDriveUpload, Trash2, AlertCircle, Loader2, CheckCircle2, ChevronRight, ChevronDown,
     SearchX, User, HardDrive, FileType, MoreHorizontal, ArrowUp, ArrowDown, PlusSquare, MinusSquare,
-    ChevronLeft, X, Presentation, FileSpreadsheet
+    ChevronLeft, X, Presentation, FileSpreadsheet, ShieldCheck, Settings2, Check, Users
 } from 'lucide-react';
 import sadhanaDb from '@/lib/supabase/sadhanaDb';
 import { useAuth } from '@/components/providers/AuthProvider';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/config';
+import { getRoleDisplayName, getRoleHierarchyNumber } from '@/lib/utils/roles';
 
 type FileRecord = {
     id: string;
@@ -126,8 +127,11 @@ const CATEGORIES = [
 export default function DataCenterPage() {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    const { user } = useAuth();
+    const { user, userData } = useAuth();
     const [activeTab, setActiveTab] = useState<'global' | 'my'>('global');
+    const [allowedUploadRoles, setAllowedUploadRoles] = useState<number[]>([2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21]);
+    const [isUpdatingPermissions, setIsUpdatingPermissions] = useState(false);
+    const [isPermissionDropdownOpen, setIsPermissionDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('all');
     const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'name_asc' | 'name_desc' | 'views_desc'>('newest');
@@ -184,6 +188,47 @@ export default function DataCenterPage() {
         setToast({ message, type });
         setTimeout(() => setToast(null), 4000);
     };
+
+    // Fetch allowed roles from database
+    useEffect(() => {
+        const fetchAllowedRoles = async () => {
+            if (!sadhanaDb) return;
+            try {
+                const { data, error } = await sadhanaDb
+                    .from('app_configs')
+                    .select('value')
+                    .eq('key', 'data_center_upload_roles')
+                    .maybeSingle();
+                
+                if (data && Array.isArray(data.value)) {
+                    setAllowedUploadRoles(data.value.map(Number));
+                }
+            } catch (err) {
+                console.error('Fetch allowed roles error:', err);
+            }
+        };
+        fetchAllowedRoles();
+    }, []);
+
+
+
+    const isSuperAdmin = useMemo(() => {
+        if (!userData?.role) return false;
+        const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
+        return roles.some(r => getRoleHierarchyNumber(r) === 8);
+    }, [userData?.role]);
+
+    const canUpload = useMemo(() => {
+        if (!userData?.role) return false;
+        const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
+        return roles.some(r => allowedUploadRoles.includes(getRoleHierarchyNumber(r)));
+    }, [userData?.role, allowedUploadRoles]);
+
+    useEffect(() => {
+        if (!canUpload && activeTab === 'my') {
+            setActiveTab('global');
+        }
+    }, [canUpload, activeTab]);
 
     useEffect(() => {
         if (!isResizing) return;
@@ -1102,7 +1147,7 @@ export default function DataCenterPage() {
                     </div>
 
                     {/* Header & Main Search Section */}
-                    <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] border-2 border-blue-100 shadow-2xl shadow-blue-900/10 overflow-hidden">
+                    <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] border-2 border-blue-100 shadow-2xl shadow-blue-900/10 relative z-0">
                         <div className="p-3 md:p-8 space-y-4 lg:space-y-8">
                             {/* Tabs & Active View */}
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -1113,12 +1158,14 @@ export default function DataCenterPage() {
                                     >
                                         Global
                                     </button>
-                                    <button
-                                        onClick={() => setActiveTab('my')}
-                                        className={`flex-1 lg:flex-none px-4 lg:px-6 py-2 rounded-xl font-black text-[11px] lg:text-sm uppercase tracking-widest transition-all ${activeTab === 'my' ? 'bg-blue-600 text-white shadow-lg border-b-2 border-blue-800' : 'text-slate-500 hover:text-blue-600'}`}
-                                    >
-                                        My Space
-                                    </button>
+                                    {canUpload && (
+                                        <button
+                                            onClick={() => setActiveTab('my')}
+                                            className={`flex-1 lg:flex-none px-4 lg:px-6 py-2 rounded-xl font-black text-[11px] lg:text-sm uppercase tracking-widest transition-all ${activeTab === 'my' ? 'bg-blue-600 text-white shadow-lg border-b-2 border-blue-800' : 'text-slate-500 hover:text-blue-600'}`}
+                                        >
+                                            My Space
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex items-center gap-2">
@@ -1169,10 +1216,12 @@ export default function DataCenterPage() {
                                             )}
                                         </AnimatePresence>
 
-                                        <Link href={`/dashboard/data-center/upload${currentFolderId !== 'root' ? `?folderId=${currentFolderId}` : ''}`} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest border-b-4 border-blue-800 hover:brightness-110 active:scale-95 transition-all shadow-lg">
-                                            <Upload className="w-3.5 h-3.5" />
-                                            Add Resource
-                                        </Link>
+                                        {canUpload && (
+                                            <Link href={`/dashboard/data-center/upload${currentFolderId !== 'root' ? `?folderId=${currentFolderId}` : ''}`} className="flex-1 lg:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest border-b-4 border-blue-800 hover:brightness-110 active:scale-95 transition-all shadow-lg">
+                                                <Upload className="w-3.5 h-3.5" />
+                                                Add Resource
+                                            </Link>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1223,7 +1272,126 @@ export default function DataCenterPage() {
                                 )}
 
                                 {/* Main Content Area */}
-                                <div className="flex-1 space-y-8 min-w-0">
+                                <div className="flex-1 space-y-4 lg:space-y-8 min-w-0">
+                                    {/* Permission Manager for Super Admins */}
+                                    {isSuperAdmin && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: -20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className={`bg-white/95 backdrop-blur-md border-2 border-indigo-100 p-4 lg:p-6 rounded-[2rem] shadow-xl relative mb-6 ${isPermissionDropdownOpen ? 'z-[60]' : 'z-10'}`}
+                                        >
+                                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2.5 bg-indigo-600 rounded-2xl shadow-lg shadow-indigo-500/20">
+                                                        <ShieldCheck className="w-5 h-5 text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">Upload Permissions</h3>
+                                                        <p className="text-[10px] font-black text-indigo-600/60 uppercase tracking-[0.2em]">Authorized Personnel</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex flex-wrap items-center gap-2 flex-1 lg:justify-end">
+                                                    <div className="relative w-full lg:w-96">
+                                                        <button
+                                                            onClick={() => setIsPermissionDropdownOpen(!isPermissionDropdownOpen)}
+                                                            className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 border-2 border-slate-100 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all group"
+                                                        >
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <Users className="w-4 h-4 text-indigo-500" />
+                                                                <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest truncate">
+                                                                    {allowedUploadRoles.length === 0 
+                                                                        ? "No Roles Selected" 
+                                                                        : `${allowedUploadRoles.length} Roles Authorized`}
+                                                                </span>
+                                                            </div>
+                                                            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-300 ${isPermissionDropdownOpen ? 'rotate-180' : ''}`} />
+                                                        </button>
+
+                                                        <AnimatePresence>
+                                                            {isPermissionDropdownOpen && (
+                                                                <>
+                                                                    <motion.div 
+                                                                        initial={{ opacity: 0 }} 
+                                                                        animate={{ opacity: 1 }} 
+                                                                        exit={{ opacity: 0 }}
+                                                                        onClick={() => setIsPermissionDropdownOpen(false)}
+                                                                        className="fixed inset-0 z-[60]"
+                                                                    />
+                                                                    <motion.div
+                                                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                        exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                                                                        className="absolute right-0 top-full mt-3 w-full lg:w-[480px] bg-white rounded-[2.5rem] border-2 border-indigo-100 shadow-2xl shadow-indigo-900/20 z-[70] overflow-hidden"
+                                                                    >
+                                                                        <div className="p-6 border-b border-indigo-50 bg-slate-50/50">
+                                                                            <h4 className="text-[10px] font-black text-indigo-900 uppercase tracking-widest flex items-center gap-2">
+                                                                                <Settings2 className="w-3.5 h-3.5" />
+                                                                                Select Authorized Roles
+                                                                            </h4>
+                                                                        </div>
+                                                                        <div className="max-h-[400px] overflow-y-auto p-4 scrollbar-hide bg-white">
+                                                                            <div className="grid grid-cols-2 gap-2">
+                                                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30].map(roleNum => (
+                                                                                    <label 
+                                                                                        key={roleNum}
+                                                                                        className={`flex items-center gap-3 p-3 rounded-2xl border-2 transition-all cursor-pointer group/item ${allowedUploadRoles.includes(roleNum) 
+                                                                                            ? 'bg-indigo-50 border-indigo-200 shadow-sm' 
+                                                                                            : 'bg-white border-slate-100 hover:border-indigo-100 hover:bg-slate-50'}`}
+                                                                                    >
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            className="hidden"
+                                                                                            checked={allowedUploadRoles.includes(roleNum)}
+                                                                                            onChange={async () => {
+                                                                                                const newRoles = allowedUploadRoles.includes(roleNum)
+                                                                                                    ? allowedUploadRoles.filter(r => r !== roleNum)
+                                                                                                    : [...allowedUploadRoles, roleNum];
+                                                                                                
+                                                                                                setIsUpdatingPermissions(true);
+                                                                                                try {
+                                                                                                    const { error } = await sadhanaDb
+                                                                                                        .from('app_configs')
+                                                                                                        .upsert({ key: 'data_center_upload_roles', value: newRoles });
+                                                                                                    
+                                                                                                    if (error) throw error;
+                                                                                                    setAllowedUploadRoles(newRoles);
+                                                                                                    showToast(`${getRoleDisplayName(roleNum)} Updated`, 'success');
+                                                                                                } catch (err: any) {
+                                                                                                    showToast(`Failed to Sync: ${err.message}`, 'error');
+                                                                                                } finally {
+                                                                                                    setIsUpdatingPermissions(false);
+                                                                                                }
+                                                                                            }}
+                                                                                        />
+                                                                                        <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${allowedUploadRoles.includes(roleNum) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-slate-200 group-hover/item:border-indigo-400'}`}>
+                                                                                            {allowedUploadRoles.includes(roleNum) && <Check className="w-3.5 h-3.5 text-white" />}
+                                                                                        </div>
+                                                                                        <div className="min-w-0">
+                                                                                            <p className={`text-[10px] font-black uppercase tracking-tight truncate ${allowedUploadRoles.includes(roleNum) ? 'text-indigo-900' : 'text-slate-500'}`}>
+                                                                                                {getRoleDisplayName(roleNum)}
+                                                                                            </p>
+                                                                                            <p className="text-[8px] font-bold opacity-40">Role ID: {roleNum}</p>
+                                                                                        </div>
+                                                                                    </label>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                        {isUpdatingPermissions && (
+                                                                            <div className="p-3 bg-indigo-600 text-white flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.3em]">
+                                                                                <Loader2 className="w-3 h-3 animate-spin" />
+                                                                                Synchronizing Access
+                                                                            </div>
+                                                                        )}
+                                                                    </motion.div>
+                                                                </>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
                                     {/* Search & Filters Row */}
                                     <div className="bg-white/95 backdrop-blur-md border-[1.5px] lg:border-2 border-blue-100 p-3 lg:p-5 rounded-2xl lg:rounded-[2rem] shadow-xl space-y-3 lg:space-y-4">
                                         <div className="flex flex-col sm:flex-row gap-3">

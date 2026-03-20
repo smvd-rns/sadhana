@@ -206,7 +206,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (isSuperAdmin) {
       baseNavigation.push({ name: 'Admin', href: '/dashboard/admin', icon: Shield });
-      baseNavigation.push({ name: 'Membership', href: '/dashboard/admin/membership', icon: CreditCard });
     }
 
     return baseNavigation;

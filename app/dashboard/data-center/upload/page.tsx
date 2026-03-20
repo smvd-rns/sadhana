@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Link as LinkIcon, FileCheck, AlertCircle, Loader2, FolderSearch, X, Music, Video, FileText, Image as ImageIcon, FileArchive, Search, File, Folder, PlusSquare, ChevronRight, ChevronDown, HardDrive } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -8,10 +8,13 @@ import { supabase } from '@/lib/supabase/config';
 import sadhanaDb from '@/lib/supabase/sadhanaDb';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
+import { getRoleHierarchyNumber } from '@/lib/utils/roles';
 
 export default function DataCenterUploadPage() {
     const { user, userData } = useAuth();
     const [activeTab, setActiveTab] = useState<'upload' | 'fetch'>('upload');
+    const [allowedUploadRoles, setAllowedUploadRoles] = useState<number[] | null>(null);
+    const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
     const [targetFolderId, setTargetFolderId] = useState<string>('root');
     const [allFolders, setAllFolders] = useState<any[]>([]);
     const [isCreatingFolder, setIsCreatingFolder] = useState(false);
@@ -98,8 +101,93 @@ export default function DataCenterUploadPage() {
     }, [user]);
 
     useEffect(() => {
+        const fetchAllowedRoles = async () => {
+            if (!sadhanaDb) return;
+            try {
+                const { data, error } = await sadhanaDb
+                    .from('app_configs')
+                    .select('value')
+                    .eq('key', 'data_center_upload_roles')
+                    .maybeSingle();
+                
+                if (data && Array.isArray(data.value)) {
+                    setAllowedUploadRoles(data.value.map(Number));
+                } else {
+                    setAllowedUploadRoles([2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21]);
+                }
+            } catch (err) {
+                console.error('Fetch allowed roles error:', err);
+                setAllowedUploadRoles([2, 8, 9, 10, 11, 12, 13, 14, 15, 16, 20, 21]);
+            } finally {
+                setIsCheckingPermissions(false);
+            }
+        };
+        fetchAllowedRoles();
+    }, []);
+
+    const canUpload = useMemo(() => {
+        if (!userData?.role || !allowedUploadRoles) return false;
+        const roles = Array.isArray(userData.role) ? userData.role : [userData.role];
+        return roles.some(r => allowedUploadRoles.includes(getRoleHierarchyNumber(r)));
+    }, [userData?.role, allowedUploadRoles]);
+
+    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer.files) {
+            const filesArray = Array.from(e.dataTransfer.files);
+            setSelectedFiles(prev => [...prev, ...filesArray]);
+
+            // Initialize statuses
+            const newStatuses = { ...fileStatuses };
+            filesArray.forEach(f => {
+                newStatuses[f.name] = 'pending';
+            });
+            setFileStatuses(newStatuses);
+
+            setUploadStatus('idle');
+            setUploadError('');
+        }
+    }, [fileStatuses]);
+
+    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    useEffect(() => {
         fetchFolders();
     }, [fetchFolders]);
+
+    if (isCheckingPermissions) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+                <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+                <p className="text-sm font-black text-slate-500 uppercase tracking-widest animate-pulse">Verifying Permissions...</p>
+            </div>
+        );
+    }
+
+    if (!canUpload) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8">
+                <div className="p-6 bg-rose-50 rounded-[2.5rem] border-2 border-rose-100 shadow-xl shadow-rose-500/10 transition-all hover:scale-105 group">
+                    <AlertCircle className="w-16 h-16 text-rose-600 group-hover:rotate-12 transition-transform" />
+                </div>
+                <div className="text-center space-y-3 max-w-sm">
+                    <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-none">Access Restricted</h2>
+                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Permission Required</p>
+                    <p className="text-sm font-bold text-slate-500 leading-relaxed italic border-t border-slate-100 pt-4">
+                        You do not have the required credentials to access the Data Center upload facility. Contact your administrator if you believe this is an error.
+                    </p>
+                </div>
+                <Link href="/dashboard/data-center" className="group flex items-center gap-3 px-8 py-3.5 bg-slate-900 hover:bg-black text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl hover:shadow-slate-500/20 active:scale-95">
+                    <HardDrive className="w-4 h-4 text-slate-400 group-hover:text-blue-400 transition-colors" />
+                    Return to Data Center
+                </Link>
+            </div>
+        );
+    }
 
     const handleCreateFolder = async () => {
         if (!newFolderName.trim() || !user) return;
@@ -156,24 +244,7 @@ export default function DataCenterUploadPage() {
         }
     };
 
-    const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.dataTransfer.files) {
-            const filesArray = Array.from(e.dataTransfer.files);
-            setSelectedFiles(prev => [...prev, ...filesArray]);
 
-            // Initialize statuses
-            const newStatuses = { ...fileStatuses };
-            filesArray.forEach(f => {
-                newStatuses[f.name] = 'pending';
-            });
-            setFileStatuses(newStatuses);
-
-            setUploadStatus('idle');
-            setUploadError('');
-        }
-    }, [fileStatuses]);
 
     const removeFile = (index: number) => {
         const fileToRemove = selectedFiles[index];
@@ -185,10 +256,7 @@ export default function DataCenterUploadPage() {
         }
     };
 
-    const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
+
 
     const performUpload = async () => {
         if (selectedFiles.length === 0 || !user) return;

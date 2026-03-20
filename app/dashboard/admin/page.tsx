@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, FileText, Activity, Shield, Settings, UserPlus, Database, AlertCircle, Briefcase, BarChart, UserCircle, Building2, MapPin, UserCheck, CheckCircle2, Upload, Radio, MessageSquare, ChevronRight } from 'lucide-react';
+import { Users, FileText, Activity, Shield, Settings, UserPlus, Database, AlertCircle, Briefcase, BarChart, UserCircle, Building2, MapPin, UserCheck, CheckCircle2, Upload, Radio, MessageSquare, ChevronRight, CreditCard } from 'lucide-react';
 
 export default function AdminDashboardPage() {
     const adminSections = [
@@ -132,6 +132,14 @@ export default function AdminDashboardPage() {
             href: '/dashboard/admin/organization',
             color: 'text-amber-600',
             bgColor: 'bg-amber-100',
+        },
+        {
+            title: 'Membership',
+            description: 'Manage and generate membership IDs',
+            icon: CreditCard,
+            href: '/dashboard/admin/membership',
+            color: 'text-rose-600',
+            bgColor: 'bg-rose-100',
         },
         {
             title: 'Counselor Dashboard',
