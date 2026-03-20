@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/config';
@@ -42,20 +42,7 @@ export default function AdminMembershipPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
 
-    useEffect(() => {
-        // Check access
-        if (userData) {
-            const currentUserRoles = Array.isArray(userData.role) ? userData.role : [userData.role];
-            if (!currentUserRoles.includes(8) && !currentUserRoles.includes('super_admin')) {
-                router.push('/dashboard');
-                return;
-            }
-        }
-
-        fetchRecords();
-    }, [userData, router, currentPage, pageSize]);
-
-    const fetchRecords = async () => {
+    const fetchRecords = useCallback(async () => {
         setLoading(true);
         try {
             const offset = (currentPage - 1) * pageSize;
@@ -80,7 +67,20 @@ export default function AdminMembershipPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [currentPage, pageSize]);
+
+    useEffect(() => {
+        // Check access
+        if (userData) {
+            const currentUserRoles = Array.isArray(userData.role) ? userData.role : [userData.role];
+            if (!currentUserRoles.includes(8) && !currentUserRoles.includes('super_admin')) {
+                router.push('/dashboard');
+                return;
+            }
+        }
+
+        fetchRecords();
+    }, [userData, router, fetchRecords]);
 
     const handleBulkGenerate = async () => {
         setIsBulkModalOpen(false);

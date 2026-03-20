@@ -1350,6 +1350,7 @@ export default function DataCenterPage() {
                                                                                                 
                                                                                                 setIsUpdatingPermissions(true);
                                                                                                 try {
+                                                                                                    if (!sadhanaDb) throw new Error('Database not connected');
                                                                                                     const { error } = await sadhanaDb
                                                                                                         .from('app_configs')
                                                                                                         .upsert({ key: 'data_center_upload_roles', value: newRoles });
