@@ -165,6 +165,14 @@ export default function AdminDashboardPage() {
             color: 'text-indigo-600',
             bgColor: 'bg-indigo-100',
         },
+        {
+            title: 'Donation Logs',
+            description: 'Audit all platform contributions',
+            icon: CreditCard,
+            href: '/dashboard/admin/donations',
+            color: 'text-orange-600',
+            bgColor: 'bg-orange-100',
+        },
     ];
 
     return (

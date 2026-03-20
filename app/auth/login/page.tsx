@@ -35,12 +35,11 @@ function LoginContent() {
       } else if (userData.verificationStatus === 'rejected') {
         router.push('/auth/complete-registration');
       } else {
-        // Only allow approved users or legacy users (with no status) to access dashboard
-        // If status is specifically 'approved' or undefined/null (legacy)
-        router.push('/dashboard');
+        const next = searchParams.get('next') || '/dashboard';
+        router.push(next);
       }
     }
-  }, [user, userData, loading, router]);
+  }, [user, userData, loading, router, searchParams]);
 
   useEffect(() => {
     // Check for error in URL params (from OAuth callback)
@@ -76,7 +75,8 @@ function LoginContent() {
     setGoogleLoading(true);
 
     try {
-      const { data, error } = await signInWithGoogle();
+      const next = searchParams.get('next') || undefined;
+      const { data, error } = await signInWithGoogle(next);
 
       if (error) {
         throw new Error((error as any).message || 'Failed to initiate Google sign-in');
@@ -137,7 +137,7 @@ function LoginContent() {
 
           <div className="space-y-2">
             <p className="text-xl text-gray-800 font-serif">
-              Redirecting to dashboard...
+              Redirecting to {searchParams.get('next') ? 'approval page' : 'dashboard'}...
             </p>
             <p className="text-sm text-orange-600/80 font-medium tracking-widest uppercase animate-pulse">
               Please wait...

@@ -484,15 +484,19 @@ export const resetPassword = async (email: string) => {
 };
 
 // Sign in with Google OAuth
-export const signInWithGoogle = async () => {
+export const signInWithGoogle = async (nextPath?: string) => {
   if (!supabase) {
     throw new Error('Supabase is not initialized');
   }
 
   try {
-    const redirectUrl = typeof window !== 'undefined'
+    let redirectUrl = typeof window !== 'undefined'
       ? `${window.location.origin}/auth/callback`
       : undefined;
+
+    if (redirectUrl && nextPath) {
+      redirectUrl += `?next=${encodeURIComponent(nextPath)}`;
+    }
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',

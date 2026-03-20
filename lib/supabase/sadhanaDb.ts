@@ -29,5 +29,27 @@ if (sadhanaDbUrl && sadhanaDbAnonKey) {
     }
 }
 
+/**
+ * Singleton Admin Client for Sadhana DB
+ */
+let _sadhanaAdmin: SupabaseClient | null = null;
+
+export function getSadhanaAdminClient(): SupabaseClient {
+    if (_sadhanaAdmin) return _sadhanaAdmin;
+
+    const url = process.env.NEXT_PUBLIC_SADHANA_DB_URL;
+    const key = process.env.SADHANA_DB_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+        throw new Error('Sadhana DB Service Role credentials missing.');
+    }
+
+    _sadhanaAdmin = createClient(url, key, {
+        auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    return _sadhanaAdmin;
+}
+
 export { sadhanaDb };
 export default sadhanaDb;

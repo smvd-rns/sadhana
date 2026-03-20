@@ -131,6 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       { name: 'Events', href: '/dashboard/events', icon: Calendar },
       { name: 'Data Center', href: '/dashboard/data-center', icon: Globe },
       { name: 'Policies', href: '/dashboard/policies', icon: BookOpen },
+      { name: 'Donations', href: '/dashboard/donations', icon: CreditCard },
       { name: 'Profile', href: '/dashboard/profile', icon: Settings },
     ];
 
