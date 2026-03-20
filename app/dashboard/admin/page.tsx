@@ -157,6 +157,14 @@ export default function AdminDashboardPage() {
             color: 'text-indigo-600',
             bgColor: 'bg-indigo-100',
         },
+        {
+            title: 'Data Center',
+            description: 'Manage all uploaded resources',
+            icon: Database,
+            href: '/dashboard/admin/data-center',
+            color: 'text-indigo-600',
+            bgColor: 'bg-indigo-100',
+        },
     ];
 
     return (
