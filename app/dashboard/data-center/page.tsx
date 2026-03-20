@@ -1370,7 +1370,7 @@ export default function DataCenterPage() {
                                                                                         </div>
                                                                                         <div className="min-w-0">
                                                                                             <p className={`text-[10px] font-black uppercase tracking-tight truncate ${allowedUploadRoles.includes(roleNum) ? 'text-indigo-900' : 'text-slate-500'}`}>
-                                                                                                {getRoleDisplayName(roleNum)}
+                                                                                                {getRoleDisplayName(roleNum as any)}
                                                                                             </p>
                                                                                             <p className="text-[8px] font-bold opacity-40">Role ID: {roleNum}</p>
                                                                                         </div>
