@@ -1357,7 +1357,7 @@ export default function DataCenterPage() {
                                                                                                     
                                                                                                     if (error) throw error;
                                                                                                     setAllowedUploadRoles(newRoles);
-                                                                                                    showToast(`${getRoleDisplayName(roleNum)} Updated`, 'success');
+                                                                                                    showToast(`${getRoleDisplayName(roleNum as any)} Updated`, 'success');
                                                                                                 } catch (err: any) {
                                                                                                     showToast(`Failed to Sync: ${err.message}`, 'error');
                                                                                                 } finally {
