@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Plus, 
   Search, 
@@ -84,6 +85,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, gateway, isLoading }: a
 };
 
 export default function AdminDonationsPage() {
+  const router = useRouter();
   const [view, setView] = useState<'grid' | 'table'>('table');
   const [donations, setDonations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,9 @@ export default function AdminDonationsPage() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [collectors, setCollectors] = useState<Record<string, {name: string, center: string}>>({});
   const [centers, setCenters] = useState<string[]>([]);
+  const [usersWithoutSlugs, setUsersWithoutSlugs] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [activeTab, setActiveTab] = useState<'donations' | 'missing-links'>('donations');
   
   // Filtering State
   const [searchTerm, setSearchTerm] = useState('');
@@ -122,6 +127,7 @@ export default function AdminDonationsPage() {
   useEffect(() => {
     if (user?.id && accessToken) {
       fetchData();
+      fetchUsersWithoutSlugs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, accessToken]);
@@ -209,6 +215,27 @@ export default function AdminDonationsPage() {
       setError(err.message || 'Error loading dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const fetchUsersWithoutSlugs = async () => {
+    setLoadingUsers(true);
+    try {
+      if (!supabase) return;
+      
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, name, email, center, created_at')
+        .or('donation_slug.is.null,donation_slug.eq.""')
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      setUsersWithoutSlugs(data || []);
+    } catch (err) {
+      console.error('Error fetching users without slugs:', err);
+    } finally {
+      setLoadingUsers(false);
     }
   };
 
@@ -351,13 +378,46 @@ export default function AdminDonationsPage() {
         <div className="absolute bottom-[-20%] left-[-5%] w-80 h-80 bg-orange-500/5 rounded-full blur-[100px] pointer-events-none" />
       </div>
 
-      {error && (
-        <div className="mb-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex items-center gap-4">
-           <XCircle className="w-6 h-6 text-rose-500" />
-           <p className="text-rose-500 font-bold text-sm tracking-tight">{error}</p>
-           <button onClick={() => fetchData()} className="ml-auto px-6 py-3 bg-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">Retry</button>
-        </div>
-      )}
+      {/* Primary Tab Switcher */}
+      <div className="flex items-center gap-1 mb-10 bg-slate-900/50 p-1.5 rounded-3xl border border-slate-800 w-fit backdrop-blur-md">
+        <button
+          onClick={() => setActiveTab('donations')}
+          className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${
+            activeTab === 'donations' 
+              ? 'bg-slate-800 text-emerald-500 shadow-xl border border-slate-700' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          Live Audit Log
+        </button>
+        <button
+          onClick={() => setActiveTab('missing-links')}
+          className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 relative ${
+            activeTab === 'missing-links' 
+              ? 'bg-slate-800 text-orange-500 shadow-xl border border-slate-700' 
+              : 'text-slate-500 hover:text-slate-300'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          Collectors without Links
+          {usersWithoutSlugs.length > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse">
+              {usersWithoutSlugs.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'donations' ? (
+        <>
+          {error && (
+            <div className="mb-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex items-center gap-4">
+               <XCircle className="w-6 h-6 text-rose-500" />
+               <p className="text-rose-500 font-bold text-sm tracking-tight">{error}</p>
+               <button onClick={() => fetchData()} className="ml-auto px-6 py-3 bg-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">Retry</button>
+            </div>
+          )}
 
       {/* Main Content Actions */}
       <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
@@ -638,6 +698,93 @@ export default function AdminDonationsPage() {
                </div>
             </div>
           ))}
+        </div>
+      )}
+
+        </>
+      ) : (
+        <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden p-10">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                  Collectors without Links
+                  <span className="px-3 py-1 bg-orange-500/10 rounded-full text-[10px] text-orange-500 font-black border border-orange-500/20">
+                    {usersWithoutSlugs.length} Pending
+                  </span>
+                </h2>
+                <p className="text-slate-500 font-bold text-sm">Members who need a Membership ID generated to activate their donation page.</p>
+              </div>
+              
+              <button 
+                onClick={() => router.push('/dashboard/admin/membership')}
+                className="px-8 py-4 bg-orange-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 transition-all flex items-center gap-2 group shadow-xl shadow-orange-600/20"
+              >
+                <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+                Go to Membership Management
+              </button>
+            </div>
+
+            {loadingUsers ? (
+              <div className="py-24 flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-10 h-10 text-orange-500 animate-spin" />
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Scanning Database...</p>
+              </div>
+            ) : usersWithoutSlugs.length === 0 ? (
+              <div className="py-32 text-center space-y-4">
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-[2rem] flex items-center justify-center mx-auto border border-emerald-500/20 shadow-inner">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                </div>
+                <h3 className="text-white font-black text-xl tracking-tight">All Links Active</h3>
+                <p className="text-slate-500 font-bold text-sm leading-relaxed max-w-sm mx-auto">Every platform member currently has a personalized donation link assigned and ready for use.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {usersWithoutSlugs.map((user) => (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    key={user.id} 
+                    className="bg-slate-950/50 rounded-3xl p-6 border border-slate-800 hover:border-orange-500/30 transition-all group"
+                  >
+                    <div className="flex items-start justify-between mb-6">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-lg font-black text-white border border-slate-700 group-hover:border-orange-500/30 transition-colors">
+                        {user.name?.charAt(0) || 'U'}
+                      </div>
+                      <div className="px-3 py-1 bg-slate-800 rounded-lg text-[8px] font-black text-slate-500 uppercase tracking-widest border border-slate-700">
+                        {user.center || 'No Center'}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1 mb-6">
+                      <h4 className="text-white font-black tracking-tight line-clamp-1">{user.name}</h4>
+                      <p className="text-[10px] font-bold text-slate-500 line-clamp-1 flex items-center gap-1.5 uppercase tracking-tighter">
+                        <Mail className="w-3 h-3" />
+                        {user.email}
+                      </p>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-800">
+                      <button 
+                        onClick={() => router.push('/dashboard/admin/membership')}
+                        className="w-full py-3 bg-slate-800 text-slate-300 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-orange-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                         Generate Link
+                         <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+            
+            <div className="mt-10 p-6 bg-amber-500/5 rounded-3xl border border-amber-500/10 flex items-start gap-4">
+              <Info className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs font-bold text-amber-500/80 leading-relaxed">
+                <span className="text-amber-500 font-black">Note:</span> A user's donation link is automatically activated when their unique Membership ID is generated. This ensures all contributions are correctly attributed to their official identity.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 

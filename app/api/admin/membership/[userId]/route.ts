@@ -52,6 +52,12 @@ export async function PATCH(
 
         if (error) throw error;
 
+        // Also update donation_slug in users table for sync
+        await supabaseAdmin
+            .from('users')
+            .update({ donation_slug: membershipId })
+            .eq('id', userId);
+
         return NextResponse.json({ success: true, data });
 
     } catch (error: any) {

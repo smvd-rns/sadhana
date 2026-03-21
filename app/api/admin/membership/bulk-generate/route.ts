@@ -77,6 +77,12 @@ export async function POST(request: Request) {
 
                 if (rpcError) throw rpcError;
                 
+                // Sync donation_slug in users table
+                await supabaseAdmin
+                    .from('users')
+                    .update({ donation_slug: membershipId })
+                    .eq('id', u.id);
+
                 successCount++;
                 results.push({ userId: u.id, membershipId, status: 'success' });
             } catch (err: any) {

@@ -88,6 +88,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: `Internal database error: ${rpcError.message}` }, { status: 500 });
         }
 
+        // Sync donation_slug in users table
+        await supabaseAdmin
+            .from('users')
+            .update({ donation_slug: membershipId })
+            .eq('id', user.id);
+
         return NextResponse.json({ 
             success: true, 
             membershipId,
