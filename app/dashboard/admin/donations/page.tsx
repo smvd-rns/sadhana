@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, 
@@ -107,17 +107,39 @@ export default function AdminDonationsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCollector, setSelectedCollector] = useState('all');
   const [selectedCenter, setSelectedCenter] = useState('all');
+  const [selectedStatus, setSelectedStatus] = useState('captured');
 
   // Pagination State
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Stats
-  const [stats, setStats] = useState({
-    totalAmount: 0,
-    uniqueDonors: 0,
-    avgDonation: 0
-  });
+  const filteredDonations = useMemo(() => {
+    return donations.filter(d => {
+      const search = searchTerm.toLowerCase();
+      const name = (d.donor_name || '').toLowerCase();
+      const email = (d.donor_email || '').toLowerCase();
+      const tx = (d.txnid || '').toLowerCase();
+      const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
+      const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
+      const matchesCenter = selectedCenter === 'all' || collectors[d.tag_user_id]?.center === selectedCenter;
+      const matchesStatus = selectedStatus === 'all' 
+        ? true 
+        : selectedStatus === 'captured' 
+          ? (d.payment_status === 'captured' || d.payment_status === 'success')
+          : d.payment_status === selectedStatus;
+      return matchesSearch && matchesCollector && matchesCenter && matchesStatus;
+    });
+  }, [donations, searchTerm, selectedCollector, selectedCenter, selectedStatus, collectors]);
+
+  const stats = useMemo(() => {
+    const total = filteredDonations.reduce((acc, curr) => acc + curr.amount, 0);
+    const unique = new Set(filteredDonations.map(d => d.donor_email)).size;
+    return {
+      totalAmount: total,
+      uniqueDonors: unique,
+      avgDonation: filteredDonations.length ? Math.round(total / filteredDonations.length) : 0
+    };
+  }, [filteredDonations]);
 
   useEffect(() => {
     fetchPlatformSettings();
@@ -177,15 +199,7 @@ export default function AdminDonationsPage() {
       const rawDonations = result.donations;
       setDonations(rawDonations);
 
-      // 2. Map Stats
-      const total = rawDonations.reduce((acc: number, curr: any) => acc + curr.amount, 0);
-      const unique = new Set(rawDonations.map((d: any) => d.donor_email)).size;
-      
-      setStats({
-        totalAmount: total,
-        uniqueDonors: unique,
-        avgDonation: rawDonations.length ? Math.round(total / rawDonations.length) : 0
-      });
+      // Derived stats are now handled reactively by useMemo
 
       // 3. IDENTIFY ACTIVE COLLECTORS
       const activeCollectorIds = Array.from(new Set(rawDonations.map((d: any) => d.tag_user_id)));
@@ -464,6 +478,21 @@ export default function AdminDonationsPage() {
             </select>
           </div>
 
+          {/* Status Filter */}
+          <div className="relative md:w-48 group">
+            <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
+            >
+              <option value="all">All Statuses</option>
+              <option value="captured">Successful</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed / Cancelled</option>
+            </select>
+          </div>
+
           {/* Center Filter */}
           <div className="relative md:w-56 group">
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
@@ -503,18 +532,8 @@ export default function AdminDonationsPage() {
               </thead>
               <tbody className="divide-y divide-slate-800/50">
                 {(() => {
-                  const filtered = donations.filter(d => {
-                    const search = searchTerm.toLowerCase();
-                    const name = (d.donor_name || '').toLowerCase();
-                    const email = (d.donor_email || '').toLowerCase();
-                    const tx = (d.txnid || '').toLowerCase();
-                    const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
-                    const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
-                    const matchesCenter = selectedCenter === 'all' || (donation => collectors[donation.tag_user_id]?.center === selectedCenter)(d);
-                    return matchesSearch && matchesCollector && matchesCenter;
-                  });
-                  const totalPages = Math.ceil(filtered.length / pageSize);
-                  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+                  const totalPages = Math.ceil(filteredDonations.length / pageSize);
+                  const paginated = filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
                   return paginated;
                 })().map((donation) => (
                   <tr key={donation.id} className="hover:bg-slate-800/30 transition-colors group">
@@ -565,7 +584,11 @@ export default function AdminDonationsPage() {
                       </div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-500 rounded-full border border-emerald-500/20 w-fit">
+                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border w-fit ${
+                        donation.payment_status === 'captured' || donation.payment_status === 'success'
+                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      }`}>
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-black uppercase tracking-widest">{donation.payment_status}</span>
                       </div>
@@ -575,16 +598,7 @@ export default function AdminDonationsPage() {
               </tbody>
             </table>
 
-            {donations.filter(d => {
-              const search = searchTerm.toLowerCase();
-              const name = (d.donor_name || '').toLowerCase();
-              const email = (d.donor_email || '').toLowerCase();
-              const tx = (d.txnid || '').toLowerCase();
-              const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
-              const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
-              const matchesCenter = selectedCenter === 'all' || collectors[d.tag_user_id]?.center === selectedCenter;
-              return matchesSearch && matchesCollector && matchesCenter;
-            }).length === 0 && (
+            {filteredDonations.length === 0 && (
               <div className="p-24 text-center space-y-4">
                  <div className="w-20 h-20 bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto border border-slate-700 shadow-inner">
                     <Search className="w-8 h-8 text-slate-600" />
@@ -596,18 +610,9 @@ export default function AdminDonationsPage() {
 
             {/* Pagination Controls */}
             {(() => {
-              const filtered = donations.filter(d => {
-                const search = searchTerm.toLowerCase();
-                const name = (d.donor_name || '').toLowerCase();
-                const email = (d.donor_email || '').toLowerCase();
-                const tx = (d.txnid || '').toLowerCase();
-                const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
-                const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
-                const matchesCenter = selectedCenter === 'all' || collectors[d.tag_user_id]?.center === selectedCenter;
-                return matchesSearch && matchesCollector && matchesCenter;
-              });
-              const totalPages = Math.ceil(filtered.length / pageSize);
-              if (filtered.length === 0) return null;
+              const totalPages = Math.ceil(filteredDonations.length / pageSize);
+              if (filteredDonations.length === 0) return null;
+              const filtered = filteredDonations;
               return (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-5 border-t border-slate-800 bg-slate-950/20">
                   <div className="flex items-center gap-3">
@@ -649,19 +654,7 @@ export default function AdminDonationsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {donations
-            .filter(d => {
-              const search = searchTerm.toLowerCase();
-              const name = (d.donor_name || '').toLowerCase();
-              const email = (d.donor_email || '').toLowerCase();
-              const tx = (d.txnid || '').toLowerCase();
-
-              const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
-              const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
-              const matchesCenter = selectedCenter === 'all' || collectors[d.tag_user_id]?.center === selectedCenter;
-              return matchesSearch && matchesCollector && matchesCenter;
-            })
-            .map((donation) => (
+          {filteredDonations.map((donation) => (
             <div key={donation.id} className="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl hover:border-emerald-500/30 transition-all group relative overflow-hidden">
                <div className="flex justify-between items-start mb-6">
                   <div className="space-y-1">
@@ -690,7 +683,11 @@ export default function AdminDonationsPage() {
 
                   <div className="flex items-center justify-between pt-6 border-t border-slate-800">
                      <span className="text-2xl font-black text-white">₹{donation.amount.toLocaleString()}</span>
-                     <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-500 rounded-2xl border border-emerald-500/20">
+                     <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border ${
+                        donation.payment_status === 'captured' || donation.payment_status === 'success'
+                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                      }`}>
                         <CheckCircle2 className="w-4 h-4" />
                         <span className="text-xs font-black uppercase tracking-widest">{donation.payment_status}</span>
                      </div>

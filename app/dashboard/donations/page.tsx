@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { 
@@ -34,6 +34,7 @@ export default function MyDonationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [copying, setCopying] = useState(false);
   const [userSlug, setUserSlug] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('captured');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -70,15 +71,23 @@ export default function MyDonationsPage() {
     setTimeout(() => setCopying(false), 2000);
   };
 
-  const filteredDonations = donations.filter(d => 
-    (d.donor_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.donor_email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (d.payment_id || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredDonations = useMemo(() => {
+    return donations.filter(d => {
+      const matchesSearch = (d.donor_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (d.donor_email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            (d.payment_id || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = selectedStatus === 'all' 
+        ? true 
+        : selectedStatus === 'captured' 
+          ? (d.payment_status === 'captured' || d.payment_status === 'success')
+          : d.payment_status === selectedStatus;
+      return matchesSearch && matchesStatus;
+    });
+  }, [donations, searchQuery, selectedStatus]);
 
   const totalPages = Math.ceil(filteredDonations.length / pageSize);
   const paginatedDonations = filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const totalAmount = donations.reduce((sum, d) => sum + (d.amount || 0), 0);
+  const totalAmount = filteredDonations.reduce((sum, d) => sum + (d.amount || 0), 0);
 
   if (isLoading) {
     return (
@@ -168,15 +177,29 @@ export default function MyDonationsPage() {
             <span className="px-3 py-1 bg-blue-50 text-blue-700 shadow-sm border border-blue-100 rounded-lg text-xs font-black">{filteredDonations.length}</span>
           </div>
           
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-            <input 
-              type="text"
-              placeholder="QUICK SEARCH PATRONS..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black text-slate-800 uppercase tracking-widest outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm"
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            {/* Status Dropdown */}
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full sm:w-auto px-4 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black text-slate-800 uppercase tracking-widest outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm appearance-none cursor-pointer"
+            >
+              <option value="all">All Statuses</option>
+              <option value="captured">Successful</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
+            </select>
+            
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+              <input 
+                type="text"
+                placeholder="QUICK SEARCH PATRONS..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-[11px] font-black text-slate-800 uppercase tracking-widest outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm"
+              />
+            </div>
           </div>
         </div>
 
@@ -225,7 +248,7 @@ export default function MyDonationsPage() {
                           <div className="flex flex-col gap-1.5">
                             <div className="flex items-center gap-2">
                               <span className="w-5 h-5 bg-slate-100 rounded-md flex items-center justify-center text-slate-500"><CreditCard className="w-3 h-3" /></span>
-                              <code className="text-[11px] font-black text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-widest">{d.payment_id}</code>
+                              <code className="text-[11px] font-black text-slate-700 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 uppercase tracking-widest">{d.payment_id || 'PENDING'}</code>
                             </div>
                             <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 ml-1">
                               <Contact className="w-3 h-3 text-amber-500" />
@@ -248,7 +271,9 @@ export default function MyDonationsPage() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex flex-col items-end">
                             <span className="text-lg font-black text-slate-900 tracking-tighter">₹{(d.amount || 0).toLocaleString()}</span>
-                            <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100 mt-1 uppercase tracking-widest shadow-sm">Verified</span>
+                            <span className={`text-[8px] font-black px-2 py-0.5 rounded border mt-1 uppercase tracking-widest shadow-sm ${d.payment_status === 'captured' ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-amber-600 bg-amber-50 border-amber-100'}`}>
+                              {d.payment_status === 'captured' ? 'Verified' : 'Pending'}
+                            </span>
                           </div>
                         </td>
                       </tr>
@@ -277,14 +302,16 @@ export default function MyDonationsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-lg font-black text-slate-900 tracking-tighter">₹{(d.amount || 0).toLocaleString()}</p>
-                        <span className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">Recorded</span>
+                        <span className={`text-[8px] font-black uppercase tracking-widest ${d.payment_status === 'captured' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                          {d.payment_status === 'captured' ? 'Recorded' : 'Pending'}
+                        </span>
                       </div>
                     </div>
                     
                     <div className="bg-slate-50/80 rounded-xl p-3 text-xs space-y-2.5 border border-slate-100 relative z-10">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 bg-slate-200/50 rounded flex items-center justify-center"><CreditCard className="w-3 h-3 text-slate-600" /></div>
-                        <span className="font-bold text-slate-700 bg-white px-1.5 rounded">{d.payment_id}</span>
+                        <span className="font-bold text-slate-700 bg-white px-1.5 rounded">{d.payment_id || 'PENDING'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                          <div className="w-5 h-5 bg-sky-100/50 rounded flex items-center justify-center"><Mail className="w-3 h-3 text-sky-500" /></div>

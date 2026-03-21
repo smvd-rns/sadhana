@@ -102,38 +102,7 @@ export default function DonationPage() {
   const handleNext = () => setStep(s => s + 1);
   const handlePrev = () => setStep(s => s - 1);
 
-  const saveDonationToDb = async (paymentId: string, method: string, additionalMeta = {}) => {
-    if (!sadhanaDb || !targetUser) return;
-    
-    const donationData = {
-      donor_name: formData.donorName,
-      donor_email: formData.donorEmail,
-      donor_mobile: formData.donorMobile,
-      donor_address: formData.donorAddress,
-      donor_pan: formData.donorPan,
-      amount: parseFloat(formData.amount),
-      payment_status: 'captured',
-      payment_method: method,
-      payment_id: paymentId,
-      txnid: `TXN_${Date.now()}`,
-      tag_user_id: targetUser.id,
-      center: targetUser.center || null,
-      metadata: {
-        ...additionalMeta,
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-      }
-    };
-
-    const { error: dbError } = await sadhanaDb
-      .from('donations')
-      .insert([donationData]);
-
-    if (dbError) throw dbError;
-    
-    setIsSuccess(true);
-    setStep(4);
-  };
+  // Server-side orders and verification handle DB logic now
 
   const handlePayment = async () => {
     if (!targetUser) return;
@@ -144,36 +113,61 @@ export default function DonationPage() {
       if (MOCK_MODE) {
         // --- MOCK FLOW ---
         await new Promise(resolve => setTimeout(resolve, 2000));
-        await saveDonationToDb(`MOCK_${Date.now()}`, 'Simulated (Mock)', { mock: true });
+        setIsSuccess(true);
+        setStep(4);
       } else if (activeGateway === 'razorpay') {
         // --- RAZORPAY FLOW ---
         if (!window.Razorpay) {
           throw new Error('Payment gateway failed to load. Please refresh.');
         }
-
-        console.log('--- RAZORPAY EXECUTION ---');
-        console.log('Key ID:', RAZORPAY_KEY_ID);
         
         if (!RAZORPAY_KEY_ID) {
           throw new Error('Payment configuration missing (Key ID). Please contact admin.');
         }
 
+        // 1. Fetch secure Order ID from backend
+        const orderRes = await fetch('/api/donations/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, targetUserId: targetUser.id, center: targetUser.center })
+        });
+        const orderData = await orderRes.json();
+
+        if (!orderRes.ok || !orderData.success) {
+          throw new Error(orderData.error || 'Failed to initialize secure payment order.');
+        }
+
         const options = {
           key: RAZORPAY_KEY_ID,
-          amount: Math.round(parseFloat(formData.amount) * 100), // convert to paise
+          amount: orderData.amount, // already converted to paise by backend
           currency: "INR",
           name: "Voice Gurukul",
           description: `Devotional contribution via ${targetUser.name}`,
           image: targetUser.profile_image || "",
+          order_id: orderData.orderId, // Securely bind the popup to your backend order
           handler: async function (response: any) {
             try {
               setIsProcessing(true);
-              await saveDonationToDb(response.razorpay_payment_id, 'Razorpay', {
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_signature: response.razorpay_signature
+              // 2. Validate the payment securely on backend
+              const verifyRes = await fetch('/api/donations/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature
+                })
               });
+              const verifyData = await verifyRes.json();
+              
+              if (!verifyRes.ok || !verifyData.success) {
+                throw new Error("Payment verification failed. If money was deducted, it will be refunded automatically.");
+              }
+              
+              setIsSuccess(true);
+              setStep(4);
             } catch (err: any) {
-              setError(err.message || "Payment saved, but database update failed.");
+              setError(err.message || "An error occurred verifying your payment.");
             } finally {
               setIsProcessing(false);
             }
