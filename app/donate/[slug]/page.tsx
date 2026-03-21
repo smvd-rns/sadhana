@@ -97,6 +97,20 @@ export default function DonationPage() {
     };
 
     fetchUser();
+
+    // Check for Gateway Redirect Returns
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      const msg = params.get('message');
+      
+      if (mode === 'success') {
+        setIsSuccess(true);
+        setStep(4);
+      } else if (mode === 'error') {
+        setError(msg === 'payment_failed' ? 'Your payment failed or was cancelled.' : 'A security error occurred processing your payment.');
+      }
+    }
   }, [slug]);
 
   const handleNext = () => setStep(s => s + 1);
@@ -191,7 +205,19 @@ export default function DonationPage() {
         rzp.open();
       } else if (activeGateway === 'easebuzz') {
         // --- EASEBUZZ FLOW ---
-        throw new Error('Easebuzz integration is currently being set up. Please switch to Razorpay in Admin for testing.');
+        const orderRes = await fetch('/api/donations/easebuzz/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, targetUserId: targetUser.id, slug, center: targetUser.center })
+        });
+        const orderData = await orderRes.json();
+
+        if (!orderRes.ok || !orderData.success) {
+          throw new Error(orderData.error || 'Failed to initialize secure Easebuzz order. Please ensure credentials are set.');
+        }
+
+        // Secure S2S redirect to Easebuzz hosted Gateway checkout
+        window.location.href = orderData.paymentUrl;
       }
     } catch (err: any) {
       setError(err.message || 'Payment initiation failed.');
