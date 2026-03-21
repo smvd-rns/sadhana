@@ -36,6 +36,7 @@ function ApproveGatewayContent() {
     
     processedRef.current = true;
     checkAuthAndProcess();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const checkAuthAndProcess = async () => {

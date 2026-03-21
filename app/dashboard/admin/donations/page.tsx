@@ -781,7 +781,7 @@ export default function AdminDonationsPage() {
             <div className="mt-10 p-6 bg-amber-500/5 rounded-3xl border border-amber-500/10 flex items-start gap-4">
               <Info className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
               <p className="text-xs font-bold text-amber-500/80 leading-relaxed">
-                <span className="text-amber-500 font-black">Note:</span> A user's donation link is automatically activated when their unique Membership ID is generated. This ensures all contributions are correctly attributed to their official identity.
+                <span className="text-amber-500 font-black">Note:</span> A user&apos;s donation link is automatically activated when their unique Membership ID is generated. This ensures all contributions are correctly attributed to their official identity.
               </p>
             </div>
           </div>

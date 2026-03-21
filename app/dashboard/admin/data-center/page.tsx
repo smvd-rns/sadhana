@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -242,6 +243,7 @@ export default function AdminDataCenterPage() {
         } finally {
             setIsLoading(false);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentPage, itemsPerPage, searchQuery, activeCategory, selectedUploaderId]);
 
     const fetchUploaders = useCallback(async () => {
