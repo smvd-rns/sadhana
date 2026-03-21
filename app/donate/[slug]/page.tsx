@@ -5,25 +5,20 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Heart, 
-  User, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  Contact, 
   CheckCircle2, 
   Loader2, 
-  ArrowRight, 
-  ArrowLeft,
   ShieldCheck,
-  Zap
+  Zap,
+  Lock,
+  HeartHandshake,
+  Award,
+  Heart,
+  Users
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/config';
-import { sadhanaDb } from '@/lib/supabase/sadhanaDb';
 
 import Script from 'next/script';
 
-// Toggle this to true to skip the real payment gateway and simulate a success
 const MOCK_MODE = false;
 const RAZORPAY_KEY_ID = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '';
 
@@ -33,12 +28,38 @@ declare global {
   }
 }
 
+// Counter component for smooth number animation
+function Counter({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let start = 0;
+    const end = target;
+    const duration = 2000;
+    const increment = end / (duration / 16);
+    
+    const timer = setInterval(() => {
+      start += increment;
+      if (start >= end) {
+        setCount(end);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(start));
+      }
+    }, 16);
+
+    return () => clearInterval(timer);
+  }, [target]);
+
+  return (
+    <span>{count.toLocaleString()}{suffix}</span>
+  );
+}
+
 export default function DonationPage() {
   const { slug } = useParams();
   const router = useRouter();
 
-  // State
-  const [step, setStep] = useState(1);
   const [targetUser, setTargetUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -46,7 +67,6 @@ export default function DonationPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [activeGateway, setActiveGateway] = useState('razorpay');
 
-  // Form Data
   const [formData, setFormData] = useState({
     amount: '',
     donorName: '',
@@ -56,7 +76,6 @@ export default function DonationPage() {
     donorPan: ''
   });
 
-  // Fetch target user by slug
   useEffect(() => {
     const fetchUser = async () => {
       if (!supabase) return;
@@ -73,7 +92,6 @@ export default function DonationPage() {
         } else {
           setTargetUser(data);
 
-          // Fetch Active Gateway from Platform Settings
           const { data: settings } = await supabase
             .from('platform_settings')
             .select('value')
@@ -81,11 +99,7 @@ export default function DonationPage() {
             .single();
           
           if (settings?.value) {
-            // Strip any leading/trailing quotes that might come from JSONB storage
             const normalized = String(settings.value).replace(/^["']|["']$/g, '');
-            console.log('--- GATEWAY INITIALIZATION ---');
-            console.log('Raw Value:', settings.value);
-            console.log('Normalized Value:', normalized);
             setActiveGateway(normalized);
           }
         }
@@ -98,7 +112,6 @@ export default function DonationPage() {
 
     fetchUser();
 
-    // Check for Gateway Redirect Returns
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
@@ -106,17 +119,11 @@ export default function DonationPage() {
       
       if (mode === 'success') {
         setIsSuccess(true);
-        setStep(4);
       } else if (mode === 'error') {
         setError(msg === 'payment_failed' ? 'Your payment failed or was cancelled.' : 'A security error occurred processing your payment.');
       }
     }
   }, [slug]);
-
-  const handleNext = () => setStep(s => s + 1);
-  const handlePrev = () => setStep(s => s - 1);
-
-  // Server-side orders and verification handle DB logic now
 
   const handlePayment = async () => {
     if (!targetUser) return;
@@ -125,12 +132,9 @@ export default function DonationPage() {
 
     try {
       if (MOCK_MODE) {
-        // --- MOCK FLOW ---
         await new Promise(resolve => setTimeout(resolve, 2000));
         setIsSuccess(true);
-        setStep(4);
       } else if (activeGateway === 'razorpay') {
-        // --- RAZORPAY FLOW ---
         if (!window.Razorpay) {
           throw new Error('Payment gateway failed to load. Please refresh.');
         }
@@ -139,7 +143,6 @@ export default function DonationPage() {
           throw new Error('Payment configuration missing (Key ID). Please contact admin.');
         }
 
-        // 1. Fetch secure Order ID from backend
         const orderRes = await fetch('/api/donations/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -153,16 +156,15 @@ export default function DonationPage() {
 
         const options = {
           key: RAZORPAY_KEY_ID,
-          amount: orderData.amount, // already converted to paise by backend
+          amount: orderData.amount,
           currency: "INR",
           name: "Voice Gurukul",
-          description: `Devotional contribution via ${targetUser.name}`,
+          description: `Supporting ${targetUser.name}`,
           image: targetUser.profile_image || "",
-          order_id: orderData.orderId, // Securely bind the popup to your backend order
+          order_id: orderData.orderId,
           handler: async function (response: any) {
             try {
               setIsProcessing(true);
-              // 2. Validate the payment securely on backend
               const verifyRes = await fetch('/api/donations/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -175,11 +177,10 @@ export default function DonationPage() {
               const verifyData = await verifyRes.json();
               
               if (!verifyRes.ok || !verifyData.success) {
-                throw new Error("Payment verification failed. If money was deducted, it will be refunded automatically.");
+                throw new Error("Payment verification failed.");
               }
               
               setIsSuccess(true);
-              setStep(4);
             } catch (err: any) {
               setError(err.message || "An error occurred verifying your payment.");
             } finally {
@@ -192,7 +193,7 @@ export default function DonationPage() {
             contact: formData.donorMobile,
           },
           theme: {
-            color: "#ea580c", // matches your orange-600
+            color: "#4f46e5", // indigo-600
           },
           modal: {
             ondismiss: function() {
@@ -204,7 +205,6 @@ export default function DonationPage() {
         const rzp = new window.Razorpay(options);
         rzp.open();
       } else if (activeGateway === 'easebuzz') {
-        // --- EASEBUZZ FLOW ---
         const orderRes = await fetch('/api/donations/easebuzz/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -213,10 +213,9 @@ export default function DonationPage() {
         const orderData = await orderRes.json();
 
         if (!orderRes.ok || !orderData.success) {
-          throw new Error(orderData.error || 'Failed to initialize secure Easebuzz order. Please ensure credentials are set.');
+          throw new Error(orderData.error || 'Failed to initialize Easebuzz order.');
         }
 
-        // Secure S2S redirect to Easebuzz hosted Gateway checkout
         window.location.href = orderData.paymentUrl;
       }
     } catch (err: any) {
@@ -225,362 +224,340 @@ export default function DonationPage() {
     }
   };
 
+  const isFormValid = formData.amount && parseFloat(formData.amount) > 0 && formData.donorName && formData.donorEmail && formData.donorMobile;
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100">
-        <Loader2 className="w-12 h-12 text-orange-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
       </div>
     );
   }
 
-  if (error && step !== 4) {
+  // Success view
+  if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100 px-4">
-        <div className="bg-white/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl border border-white text-center max-w-md">
-          <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck className="w-8 h-8 text-rose-600" />
+      <div className="min-h-screen relative flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-amber-600 p-4 font-sans overflow-hidden">
+         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-400/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 mix-blend-screen" />
+         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-400/30 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3 mix-blend-screen" />
+         <div className="absolute inset-0 bg-black/10 backdrop-blur-[30px] pointer-events-none" />
+        
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] w-full max-w-[400px] text-center border border-slate-100 relative z-10"
+        >
+          <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.1 }}>
+              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            </motion.div>
           </div>
-          <h2 className="text-2xl font-black text-slate-800 mb-2">Unavailable</h2>
-          <p className="text-slate-500 font-bold mb-8">{error}</p>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Payment Successful</h2>
+          <p className="text-slate-500 mb-6 text-sm">
+            Thank you! Your contribution of <strong className="text-slate-900">₹{formData.amount}</strong> was successful.
+          </p>
           <button 
-            onClick={() => router.push('/')}
-            className="px-8 py-3 bg-orange-600 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-orange-700 transition-all"
+            onClick={() => router.push('/')} 
+            className="w-full py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Back to Home
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-orange-100 to-yellow-100 py-12 px-4 relative overflow-hidden flex items-center justify-center">
-      {/* Background Decorative Elements */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-orange-200/40 rounded-full blur-[100px]"></div>
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-yellow-200/40 rounded-full blur-[100px]"></div>
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-amber-600 py-6 sm:py-12 px-4 relative flex items-center justify-center font-sans overflow-x-hidden">
+      
+      {/* Immersive Colorful Background Elements */}
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] right-[-5%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-blue-400/30 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }} />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-amber-400/30 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDuration: '10s' }} />
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-[30px]" />
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative w-full max-w-lg"
-      >
-        {/* Progress Bar */}
-        <div className="flex justify-between items-center mb-8 px-6">
-          {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
-                step >= s ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/20' : 'bg-white text-slate-400 border-2 border-slate-100'
-              }`}>
-                {step > s ? <CheckCircle2 className="w-4 h-4" /> : s}
-              </div>
-              {s < 3 && (
-                <div className={`w-12 h-1 mx-2 rounded-full transition-all ${
-                  step > s ? 'bg-orange-600' : 'bg-slate-200'
-                }`} />
-              )}
-            </div>
-          ))}
-        </div>
+      <div className="w-full max-w-[1050px] z-10 relative flex flex-col lg:flex-row items-center lg:items-start justify-center gap-10 lg:gap-16 lg:py-4">
+        
+        {/* Left Side: Inspiration */}
+        <div className="w-full lg:w-1/2 text-white space-y-8 max-w-lg mx-auto lg:max-w-none text-center lg:text-left">
+          
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+             <h2 className="text-4xl lg:text-6xl font-black tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400 pb-1">
+               A Purposeful Journey
+             </h2>
+             <p className="text-blue-100 text-lg leading-relaxed opacity-90 max-w-md hidden lg:block">
+               Your contribution directly empowers true growth, cultivating values that transform society at its core.
+             </p>
+          </motion.div>
 
-        {/* Main Card */}
-        <div className="bg-white/80 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl border border-white flex flex-col overflow-hidden">
-          {/* User Header */}
-          <div className="bg-gradient-to-r from-orange-600 to-amber-600 p-8 text-white relative">
-            <div className="flex items-center gap-4 relative z-10">
-              <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl font-black shadow-inner overflow-hidden">
-                {targetUser?.profile_image ? (
-                  <img src={targetUser.profile_image} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  targetUser?.name?.charAt(0) || 'U'
-                )}
-              </div>
-              <div>
-                <p className="text-orange-100 font-black uppercase text-[10px] tracking-widest mb-1 opacity-80">Supporting Your Journey</p>
-                <h1 className="text-2xl font-black tracking-tight leading-none">Donate to Voice Gurukul</h1>
-              </div>
-            </div>
-            <Heart className="absolute top-6 right-6 w-12 h-12 text-white/10" />
-            
-            {MOCK_MODE && step !== 4 && (
-              <div className="absolute bottom-2 right-4 flex items-center gap-1.5 px-3 py-1 bg-amber-400/20 backdrop-blur-sm rounded-full border border-amber-400/30">
-                <Zap className="w-3 h-3 text-amber-300" />
-                <span className="text-[8px] font-black uppercase tracking-tighter text-amber-100">Development Mock Mode</span>
-              </div>
-            )}
+          {/* Impact Stats - Single Row Centered */}
+          <div className="flex justify-center py-2">
+            <motion.div 
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: 0.2, duration: 0.5 }}
+               className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-full border border-white/20 flex flex-row items-center gap-3 shadow-[0_15px_40px_rgba(251,191,36,0.1)] transition-transform hover:scale-[1.02]"
+            >
+               <div className="bg-amber-400/20 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                 <Users className="w-4 h-4 text-amber-400" />
+               </div>
+               <div className="flex flex-row items-baseline gap-2">
+                 <span className="text-amber-400 text-2xl lg:text-3xl font-black tracking-tight leading-none">
+                    <Counter target={10000} suffix="+" />
+                 </span>
+                 <span className="text-blue-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 whitespace-nowrap align-baseline">Lives Transformed</span>
+               </div>
+            </motion.div>
           </div>
 
-          <div className="p-8">
-            <AnimatePresence mode="wait">
-              {step === 1 && (
-                <motion.div 
-                  key="step1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-6"
-                >
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Amount (INR)</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {['501', '1001', '2101', '5001', '10001'].map(amt => (
-                        <button
-                          key={amt}
-                          onClick={() => setFormData({...formData, amount: amt})}
-                          className={`p-4 rounded-2xl border-2 font-black text-sm transition-all ${
-                            formData.amount === amt ? 'bg-orange-50 border-orange-600 text-orange-600' : 'bg-white border-slate-100 text-slate-600 hover:border-orange-200'
-                          }`}
-                        >
-                          ₹{amt}
-                        </button>
-                      ))}
-                    </div>
+          {/* Pillars */}
+          <div className="space-y-4 text-left">
+            {[
+              { 
+                title: "Character", 
+                desc: "In the symphony of life, let your character play the melody of integrity and virtue.",
+                icon: <ShieldCheck className="w-6 h-6 text-emerald-400" />,
+                accent: "from-emerald-400 to-emerald-600"
+              },
+              { 
+                title: "Competence", 
+                desc: "Empower yourself with knowledge, skills, and dedication to thrive in every endeavor.",
+                icon: <Award className="w-6 h-6 text-amber-400" />,
+                accent: "from-amber-400 to-yellow-600"
+              },
+              { 
+                title: "Devotion", 
+                desc: "With a heart devoted to higher ideals, find purpose and joy in the service of others.",
+                icon: <Heart className="w-6 h-6 text-rose-400" />,
+                accent: "from-rose-400 to-rose-600"
+              },
+            ].map((item, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 + idx * 0.1 }}
+                className="bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 shadow-xl relative overflow-hidden group hover:bg-white/15 transition-all cursor-default"
+              >
+                <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${item.accent} opacity-90`} />
+                <div className="flex items-start gap-4 pl-2">
+                  <div className="shrink-0 pt-0.5 group-hover:scale-110 transition-transform duration-300">
+                    {item.icon}
                   </div>
-
-                  <div className="relative group">
-                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl font-black text-slate-300 group-focus-within:text-orange-500 transition-colors">₹</span>
-                    <input 
-                      type="number"
-                      placeholder="Other Amount"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      className="w-full pl-12 pr-6 py-5 bg-slate-50 border-none rounded-2xl text-lg font-black text-slate-700 focus:ring-4 focus:ring-orange-500/10 placeholder:text-slate-300 outline-none transition-all"
-                    />
-                  </div>
-
-                  <button 
-                    disabled={!formData.amount || parseFloat(formData.amount) <= 0}
-                    onClick={handleNext}
-                    className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-slate-800/20 hover:bg-slate-900 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-3"
-                  >
-                    Confirm Amount
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </motion.div>
-              )}
-
-              {step === 2 && (
-                <motion.div 
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="space-y-5"
-                >
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="relative group">
-                      <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-orange-600 transition-all" />
-                      <input 
-                        type="text"
-                        placeholder="Legal Name (Required)"
-                        value={formData.donorName}
-                        onChange={(e) => setFormData({...formData, donorName: e.target.value})}
-                        className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all shadow-sm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="relative group">
-                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-orange-600 transition-all" />
-                        <input 
-                          type="email"
-                          placeholder="Email ID (Required)"
-                          value={formData.donorEmail}
-                          onChange={(e) => setFormData({...formData, donorEmail: e.target.value})}
-                          className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all shadow-sm"
-                        />
-                      </div>
-                      <div className="relative group">
-                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-orange-600 transition-all" />
-                        <input 
-                          type="text"
-                          placeholder="Mobile (Required)"
-                          value={formData.donorMobile}
-                          onChange={(e) => setFormData({...formData, donorMobile: e.target.value})}
-                          className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all shadow-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="relative group">
-                      <MapPin className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-orange-600 transition-all" />
-                      <input 
-                        type="text"
-                        placeholder="Address (Optional)"
-                        value={formData.donorAddress}
-                        onChange={(e) => setFormData({...formData, donorAddress: e.target.value})}
-                        className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all shadow-sm"
-                      />
-                    </div>
-                    <div className="relative group">
-                      <Contact className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-orange-600 transition-all" />
-                      <input 
-                        type="text"
-                        placeholder="PAN Number (Optional)"
-                        value={formData.donorPan}
-                        onChange={(e) => setFormData({...formData, donorPan: e.target.value})}
-                        className="w-full pl-12 pr-6 py-4 bg-white border-2 border-slate-100 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-700 outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all shadow-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button 
-                      onClick={handlePrev}
-                      className="w-20 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black transition-all hover:bg-slate-200 flex items-center justify-center"
-                    >
-                      <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button 
-                      disabled={!formData.donorName || !formData.donorEmail || !formData.donorMobile}
-                      onClick={handleNext}
-                      className="flex-1 py-5 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-slate-800/20 hover:bg-slate-900 transition-all flex items-center justify-center gap-3"
-                    >
-                      Continue to Payment
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 3 && (
-                <motion.div 
-                  key="step3"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="space-y-6"
-                >
-                  <div className="p-6 bg-orange-50/50 rounded-3xl border border-orange-100 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-1">Total Contribution</p>
-                      <p className="text-3xl font-black text-orange-900 tracking-tight">₹{formData.amount}</p>
-                    </div>
-                    <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
-                      <Heart className="w-6 h-6 text-orange-500 fill-orange-500" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 px-2">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      <span>Donor</span>
-                      <span className="text-slate-700">{formData.donorName}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      <span>PAN</span>
-                      <span className="text-slate-700">{formData.donorPan || 'Not Provided'}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                      <span>Method</span>
-                      <span className="text-slate-700">
-                        {MOCK_MODE ? 'Simulated' : `${activeGateway.charAt(0).toUpperCase() + activeGateway.slice(1)} Secure`}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button 
-                      disabled={isProcessing}
-                      onClick={handlePrev}
-                      className="w-20 py-5 bg-slate-100 text-slate-400 rounded-2xl font-black transition-all hover:bg-slate-200 flex items-center justify-center disabled:opacity-50"
-                    >
-                      <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button 
-                      disabled={isProcessing}
-                      onClick={handlePayment}
-                      className="flex-1 py-5 bg-orange-600 text-white rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-orange-600/30 hover:bg-orange-700 transition-all flex items-center justify-center gap-3 relative overflow-hidden"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          Donate Now
-                          <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                      {isProcessing && (
-                        <motion.div 
-                          className="absolute bottom-0 left-0 h-1 bg-white/30"
-                          initial={{ width: 0 }}
-                          animate={{ width: '100%' }}
-                          transition={{ duration: 2.5 }}
-                        />
-                      )}
-                    </button>
-                  </div>
-                  
-                  <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                    Secure 256-bit Encrypted Transaction
-                  </p>
-                </motion.div>
-              )}
-
-              {step === 4 && (
-                <motion.div 
-                  key="success"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-6"
-                >
-                  <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-8 relative">
-                    <motion.div 
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: 'spring', damping: 10, stiffness: 100 }}
-                    >
-                      <CheckCircle2 className="w-12 h-12 text-emerald-600" />
-                    </motion.div>
-                    <motion.div 
-                      className="absolute inset-0 rounded-full border-4 border-emerald-500"
-                      initial={{ opacity: 1, scale: 0.8 }}
-                      animate={{ opacity: 0, scale: 1.5 }}
-                      transition={{ duration: 0.8, repeat: Infinity, repeatDelay: 1 }}
-                    />
-                  </div>
-                  
-                  <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-3">Donation Successful!</h2>
-                  <p className="text-slate-500 font-bold mb-8 leading-relaxed px-6">
-                    A big thank you to <span className="text-orange-600">{formData.donorName}</span>. 
-                    Your contribution of <span className="text-slate-800">₹{formData.amount}</span> has been received and tagged to {targetUser?.name}.
-                  </p>
-
-                  <div className="space-y-4">
-                    <button 
-                      onClick={() => router.push('/')}
-                      className="w-full py-5 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs tracking-widest transition-all"
-                    >
-                      Back to Community
-                    </button>
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                       Reference: {Date.now().toString().slice(-10)}
+                  <div>
+                    <h3 className="text-white font-bold text-[17px] mb-1 tracking-wide uppercase">
+                      {item.title}
+                    </h3>
+                    <p className="text-blue-50 text-[14px] leading-relaxed font-medium opacity-85">
+                      {item.desc}
                     </p>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
+              </motion.div>
+            ))}
           </div>
+
+          <motion.div
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             transition={{ delay: 1 }}
+             className="flex items-center gap-3 px-6 py-4 bg-amber-400/10 rounded-[2rem] border border-amber-400/20 w-fit mx-auto lg:mx-0"
+          >
+             <div className="flex -space-x-2">
+                {[1,2,3].map(i => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-blue-900 bg-blue-800 flex items-center justify-center text-[10px] font-bold">
+                    {String.fromCharCode(64 + i)}
+                  </div>
+                ))}
+             </div>
+             <p className="text-[13px] font-semibold text-amber-200 tracking-wide">
+               Real Impact, Real People, Real Change.
+             </p>
+          </motion.div>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-8 text-center space-y-4">
-          <div className="flex items-center justify-center gap-6">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-slate-400" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Verified Recipient</span>
+        {/* Right Side: Form */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
+          className="w-full max-w-[440px] z-10 relative shrink-0"
+        >
+          <div className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden flex flex-col rounded-[1.5rem]">
+
+            {/* Header Section */}
+            <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
+               {targetUser?.profile_image ? (
+                  <img src={targetUser.profile_image} alt="" className="w-12 h-12 rounded-full border-2 border-indigo-100 object-cover" />
+               ) : (
+                  <div className="w-12 h-12 rounded-full bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-indigo-400" />
+                  </div>
+               )}
+               <div>
+                  <h1 className="text-[17px] font-bold text-slate-900 tracking-tight">Payment Details</h1>
+                  <p className="text-slate-500 font-medium text-[12px] flex items-center gap-1">
+                    Supporting <span className="text-indigo-600 font-bold">{targetUser?.name || 'Voice Gurukul'}</span>
+                  </p>
+               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-slate-400" />
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Instant Receipt</span>
+
+            <div className="px-6 py-5 bg-white">
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mb-5 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[13px] font-medium flex gap-2.5 shadow-sm"
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                  <span className="leading-snug">{error}</span>
+                </motion.div>
+              )}
+
+              <div className="flex flex-col gap-4">
+                
+                {/* Amount */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Amount <span className="text-red-500">*</span></label>
+                  <div className="relative group">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-indigo-600 text-[14px]">₹</span>
+                    <input 
+                      type="number" 
+                      value={formData.amount}
+                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      placeholder="Enter amount to contribute"
+                      className="w-full pl-8 pr-3.5 h-12 bg-white border-2 border-slate-100 rounded-xl text-black text-[15px] font-semibold outline-none focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-300 placeholder:font-normal"
+                    />
+                  </div>
+                </div>
+
+                {/* Legal Name */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Legal Name <span className="text-red-500">*</span></label>
+                  <input 
+                    type="text" 
+                    value={formData.donorName}
+                    onChange={(e) => setFormData({...formData, donorName: e.target.value})}
+                    placeholder="Full Name as per PAN"
+                    className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  />
+                </div>
+
+                {/* Email & Phone Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Email <span className="text-red-500">*</span></label>
+                    <input 
+                      type="email" 
+                      value={formData.donorEmail}
+                      onChange={(e) => setFormData({...formData, donorEmail: e.target.value})}
+                      placeholder="your@email.com"
+                      className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone <span className="text-red-500">*</span></label>
+                    <div className="flex bg-slate-50/50 border border-slate-200 rounded-lg focus-within:bg-white focus-within:border-indigo-500 transition-all overflow-hidden h-11">
+                      <div className="bg-slate-100 px-3 text-slate-500 font-bold border-r border-slate-200 text-[11px] flex items-center shrink-0">
+                        +91
+                      </div>
+                      <input 
+                        type="tel" 
+                        value={formData.donorMobile}
+                        onChange={(e) => setFormData({...formData, donorMobile: e.target.value})}
+                        placeholder="Mobile"
+                        className="flex-1 px-3 text-[14px] text-black outline-none border-none min-w-0 bg-transparent placeholder:text-slate-400" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Address</label>
+                  <textarea 
+                    rows={1}
+                    value={formData.donorAddress}
+                    onChange={(e) => setFormData({...formData, donorAddress: e.target.value})}
+                    placeholder="Optional address details"
+                    className="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all resize-none placeholder:text-slate-400"
+                  />
+                </div>
+
+                {/* PAN */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">PAN Card Number</label>
+                  <input 
+                    type="text" 
+                    value={formData.donorPan}
+                    onChange={(e) => setFormData({...formData, donorPan: e.target.value})}
+                    placeholder="ABCDE1234F"
+                    className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all uppercase placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal"
+                  />
+                </div>
+
+              </div>
+            </div>
+
+            {/* Footer Area with Pay Button matching image layout */}
+            <div className="bg-slate-50 border-t border-slate-100 flex flex-col w-full relative z-10">
+              <div className="px-6 py-3 flex items-center justify-between gap-4 border-b border-slate-100">
+                  <div className="flex items-center gap-3 opacity-60 grayscale hover:grayscale-0 transition-all">
+                      <div className="font-black text-slate-600 italic text-[12px]">UPI</div>
+                      <div className="font-black text-[#1434CB] text-[13px] tracking-tight">VISA</div>
+                      <div className="relative flex items-center h-[12px] w-[20px]">
+                          <div className="absolute left-0 w-[12px] h-[12px] rounded-full bg-[#EB001B]"></div>
+                          <div className="absolute right-0 w-[12px] h-[12px] rounded-full bg-[#F79E1B]"></div>
+                      </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase">Secure</span>
+                  </div>
+              </div>
+
+              {/* Premium Pay Button */}
+              <div className="p-4">
+                <button 
+                    onClick={handlePayment} 
+                    disabled={!isFormValid || isProcessing}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-[16px] h-14 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-300 disabled:to-slate-300 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-[0.99]"
+                >
+                  {isProcessing ? (
+                    <>
+                       <Loader2 className="w-5 h-5 animate-spin" />
+                       Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-indigo-200" />
+                      <span>Proceed to Pay ₹{formData.amount || '0'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
-          <p className="text-[10px] font-bold text-slate-400/60 uppercase tracking-widest leading-relaxed">
-            ISKCON Sadhana Platform • Supporting Spiritual Growth Worldwide
-          </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
+
+       {/* Global Footer */}
+       <div className="absolute bottom-4 left-0 w-full text-center flex flex-col items-center">
+          <div className="flex flex-col items-center gap-1 opacity-60">
+            <div className="flex items-center gap-1.5 text-white">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">Support Excellence • Transform Lives</span>
+            </div>
+            <p className="text-[9px] text-white/50 font-medium uppercase tracking-widest">
+              ISKCON Sadhana Platform • Voice Gurukul
+            </p>
+          </div>
+       </div>
+
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
     </div>
   );
