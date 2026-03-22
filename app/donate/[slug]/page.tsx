@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  CheckCircle2, 
-  Loader2, 
+import {
+  CheckCircle2,
+  Loader2,
   ShieldCheck,
   Zap,
   Lock,
@@ -37,7 +37,7 @@ function Counter({ target, suffix = "" }: { target: number; suffix?: string }) {
     const end = target;
     const duration = 2000;
     const increment = end / (duration / 16);
-    
+
     const timer = setInterval(() => {
       start += increment;
       if (start >= end) {
@@ -66,6 +66,7 @@ export default function DonationPage() {
   const [error, setError] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
   const [activeGateway, setActiveGateway] = useState('razorpay');
+  const [imageError, setImageError] = useState(false);
 
   const [formData, setFormData] = useState({
     amount: '',
@@ -79,7 +80,7 @@ export default function DonationPage() {
   useEffect(() => {
     const fetchUser = async () => {
       if (!supabase) return;
-      
+
       try {
         const { data, error: fetchError } = await supabase
           .from('users')
@@ -97,7 +98,7 @@ export default function DonationPage() {
             .select('value')
             .eq('id', 'active_payment_gateway')
             .single();
-          
+
           if (settings?.value) {
             const normalized = String(settings.value).replace(/^["']|["']$/g, '');
             setActiveGateway(normalized);
@@ -116,7 +117,7 @@ export default function DonationPage() {
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
       const msg = params.get('message');
-      
+
       if (mode === 'success') {
         setIsSuccess(true);
       } else if (mode === 'error') {
@@ -138,7 +139,7 @@ export default function DonationPage() {
         if (!window.Razorpay) {
           throw new Error('Payment gateway failed to load. Please refresh.');
         }
-        
+
         if (!RAZORPAY_KEY_ID) {
           throw new Error('Payment configuration missing (Key ID). Please contact admin.');
         }
@@ -159,7 +160,7 @@ export default function DonationPage() {
           amount: orderData.amount,
           currency: "INR",
           name: "Voice Gurukul",
-          description: `Supporting ${targetUser.name}`,
+          description: "Supporting Voice Gurukul",
           image: targetUser.profile_image || "",
           order_id: orderData.orderId,
           handler: async function (response: any) {
@@ -175,11 +176,11 @@ export default function DonationPage() {
                 })
               });
               const verifyData = await verifyRes.json();
-              
+
               if (!verifyRes.ok || !verifyData.success) {
                 throw new Error("Payment verification failed.");
               }
-              
+
               setIsSuccess(true);
             } catch (err: any) {
               setError(err.message || "An error occurred verifying your payment.");
@@ -192,11 +193,21 @@ export default function DonationPage() {
             email: formData.donorEmail,
             contact: formData.donorMobile,
           },
+          notes: {
+            donor_name: formData.donorName,
+            donor_email: formData.donorEmail,
+            donor_phone: formData.donorMobile,
+            donor_address: formData.donorAddress,
+            donor_pan: formData.donorPan,
+            target_user_id: targetUser.id,
+            target_user_name: targetUser.name,
+            donation_slug: slug
+          },
           theme: {
             color: "#4f46e5", // indigo-600
           },
           modal: {
-            ondismiss: function() {
+            ondismiss: function () {
               setIsProcessing(false);
             }
           }
@@ -238,11 +249,11 @@ export default function DonationPage() {
   if (isSuccess) {
     return (
       <div className="min-h-screen relative flex items-center justify-center bg-gradient-to-br from-blue-900 via-blue-800 to-amber-600 p-4 font-sans overflow-hidden">
-         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-400/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 mix-blend-screen" />
-         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-400/30 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3 mix-blend-screen" />
-         <div className="absolute inset-0 bg-black/10 backdrop-blur-[30px] pointer-events-none" />
-        
-        <motion.div 
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-400/30 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/3 mix-blend-screen" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-amber-400/30 rounded-full blur-[100px] translate-y-1/3 -translate-x-1/3 mix-blend-screen" />
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-[30px] pointer-events-none" />
+
+        <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white p-8 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] w-full max-w-[400px] text-center border border-slate-100 relative z-10"
@@ -256,8 +267,8 @@ export default function DonationPage() {
           <p className="text-slate-500 mb-6 text-sm">
             Thank you! Your contribution of <strong className="text-slate-900">₹{formData.amount}</strong> was successful.
           </p>
-          <button 
-            onClick={() => router.push('/')} 
+          <button
+            onClick={() => router.push('/')}
             className="w-full py-2.5 bg-indigo-600 text-white font-medium text-sm rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
           >
             Back to Home
@@ -268,8 +279,8 @@ export default function DonationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-amber-600 py-6 sm:py-12 px-4 relative flex items-center justify-center font-sans overflow-x-hidden">
-      
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-amber-600 py-10 sm:py-20 px-4 relative flex flex-col items-center justify-center font-sans overflow-x-hidden">
+
       {/* Immersive Colorful Background Elements */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <div className="absolute top-[-10%] right-[-5%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] bg-blue-400/30 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDuration: '8s' }} />
@@ -277,67 +288,69 @@ export default function DonationPage() {
         <div className="absolute inset-0 bg-black/10 backdrop-blur-[30px]" />
       </div>
 
-      <div className="w-full max-w-[1050px] z-10 relative flex flex-col lg:flex-row items-center lg:items-start justify-center gap-10 lg:gap-16 lg:py-4">
-        
-        {/* Left Side: Inspiration */}
-        <div className="w-full lg:w-1/2 text-white space-y-8 max-w-lg mx-auto lg:max-w-none text-center lg:text-left">
-          
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-             <h2 className="text-4xl lg:text-6xl font-black tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400 pb-1">
-               A Purposeful Journey
-             </h2>
-             <p className="text-blue-100 text-lg leading-relaxed opacity-90 max-w-md hidden lg:block">
-               Your contribution directly empowers true growth, cultivating values that transform society at its core.
-             </p>
-          </motion.div>
+      <div className="w-full max-w-[1050px] z-10 relative grid grid-cols-1 lg:grid-cols-2 items-center lg:items-stretch gap-12 lg:gap-20 lg:py-4">
 
-          {/* Impact Stats - Single Row Centered */}
-          <div className="flex justify-center py-2">
-            <motion.div 
-               initial={{ opacity: 0, y: 10 }}
-               animate={{ opacity: 1, y: 0 }}
-               transition={{ delay: 0.2, duration: 0.5 }}
-               className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-full border border-white/20 flex flex-row items-center gap-3 shadow-[0_15px_40px_rgba(251,191,36,0.1)] transition-transform hover:scale-[1.02]"
+        {/* Left Side: Inspiration */}
+        <div className="w-full text-white flex flex-col justify-between self-stretch gap-10 max-w-lg mx-auto lg:max-w-none text-left lg:py-2">
+
+          <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
             >
-               <div className="bg-amber-400/20 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
-                 <Users className="w-4 h-4 text-amber-400" />
-               </div>
-               <div className="flex flex-row items-baseline gap-2">
-                 <span className="text-amber-400 text-2xl lg:text-3xl font-black tracking-tight leading-none">
-                    <Counter target={10000} suffix="+" />
-                 </span>
-                 <span className="text-blue-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 whitespace-nowrap align-baseline">Lives Transformed</span>
-               </div>
+              <h2 className="text-4xl lg:text-6xl font-black tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400 pb-1">
+                A Purposeful Journey
+              </h2>
+              <p className="text-blue-100 text-lg leading-relaxed opacity-90 max-w-md">
+                Your contribution directly empowers true growth, cultivating values that transform society at its core.
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Impact Stats - Single Row Left Aligned on Mobile */}
+          <div className="flex justify-start py-2">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="bg-white/10 backdrop-blur-xl px-6 py-3 rounded-full border border-white/20 flex flex-row items-center gap-3 shadow-[0_15px_40px_rgba(251,191,36,0.1)] transition-transform hover:scale-[1.02]"
+            >
+              <div className="bg-amber-400/20 w-8 h-8 rounded-full flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="flex flex-row items-baseline gap-2">
+                <span className="text-amber-400 text-2xl lg:text-3xl font-black tracking-tight leading-none">
+                  <Counter target={50000} suffix="+" />
+                </span>
+                <span className="text-blue-100 text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 whitespace-nowrap align-baseline">Lives Transformed</span>
+              </div>
             </motion.div>
           </div>
 
           {/* Pillars */}
           <div className="space-y-4 text-left">
             {[
-              { 
-                title: "Character", 
+              {
+                title: "Character",
                 desc: "In the symphony of life, let your character play the melody of integrity and virtue.",
                 icon: <ShieldCheck className="w-6 h-6 text-emerald-400" />,
                 accent: "from-emerald-400 to-emerald-600"
               },
-              { 
-                title: "Competence", 
+              {
+                title: "Competence",
                 desc: "Empower yourself with knowledge, skills, and dedication to thrive in every endeavor.",
                 icon: <Award className="w-6 h-6 text-amber-400" />,
                 accent: "from-amber-400 to-yellow-600"
               },
-              { 
-                title: "Devotion", 
+              {
+                title: "Devotion",
                 desc: "With a heart devoted to higher ideals, find purpose and joy in the service of others.",
                 icon: <Heart className="w-6 h-6 text-rose-400" />,
                 accent: "from-rose-400 to-rose-600"
               },
             ].map((item, idx) => (
-              <motion.div 
+              <motion.div
                 key={idx}
                 initial={{ opacity: 0, x: -30 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -363,53 +376,57 @@ export default function DonationPage() {
           </div>
 
           <motion.div
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             transition={{ delay: 1 }}
-             className="flex items-center gap-3 px-6 py-4 bg-amber-400/10 rounded-[2rem] border border-amber-400/20 w-fit mx-auto lg:mx-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="flex items-center gap-3 px-6 py-4 bg-amber-400/10 rounded-[2rem] border border-amber-400/20 w-fit mx-0"
           >
-             <div className="flex -space-x-2">
-                {[1,2,3].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-blue-900 bg-blue-800 flex items-center justify-center text-[10px] font-bold">
-                    {String.fromCharCode(64 + i)}
-                  </div>
-                ))}
-             </div>
-             <p className="text-[13px] font-semibold text-amber-200 tracking-wide">
-               Real Impact, Real People, Real Change.
-             </p>
+            <div className="flex -space-x-2">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="w-8 h-8 rounded-full border-2 border-blue-900 bg-blue-800 flex items-center justify-center text-[10px] font-bold">
+                  {String.fromCharCode(64 + i)}
+                </div>
+              ))}
+            </div>
+            <p className="text-[13px] font-semibold text-amber-200 tracking-wide">
+              Real Impact, Real People, Real Change.
+            </p>
           </motion.div>
         </div>
 
         {/* Right Side: Form */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, ease: "easeOut", delay: 0.2 }}
-          className="w-full max-w-[440px] z-10 relative shrink-0"
+          className="w-full max-w-[440px] z-10 relative shrink-0 lg:ml-auto"
         >
           <div className="bg-white shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-white/10 overflow-hidden flex flex-col rounded-[1.5rem]">
 
             {/* Header Section */}
             <div className="px-6 pt-6 pb-4 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
-               {targetUser?.profile_image ? (
-                  <img src={targetUser.profile_image} alt="" className="w-12 h-12 rounded-full border-2 border-indigo-100 object-cover" />
-               ) : (
-                  <div className="w-12 h-12 rounded-full bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-indigo-400" />
-                  </div>
-               )}
-               <div>
-                  <h1 className="text-[17px] font-bold text-slate-900 tracking-tight">Payment Details</h1>
-                  <p className="text-slate-500 font-medium text-[12px] flex items-center gap-1">
-                    Supporting <span className="text-indigo-600 font-bold">{targetUser?.name || 'Voice Gurukul'}</span>
-                  </p>
-               </div>
+              {(targetUser?.profile_image && !imageError) ? (
+                <img
+                  src={targetUser.profile_image}
+                  alt=""
+                  onError={() => setImageError(true)}
+                  className="w-12 h-12 rounded-full border-2 border-indigo-100 object-cover"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-indigo-50 border-2 border-indigo-100 flex items-center justify-center">
+                  <Users className="w-6 h-6 text-indigo-400" />
+                </div>
+              )}
+              <div>
+                <h1 className="text-[17px] font-bold text-slate-900 tracking-tight">Payment Details</h1>
+                <p className="text-slate-500 font-medium text-[12px] flex items-center gap-1">
+                  Supporting <span className="text-indigo-600 font-bold">Voice Gurukul</span>
+                </p>
+              </div>
             </div>
-
             <div className="px-6 py-5 bg-white">
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="mb-5 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-[13px] font-medium flex gap-2.5 shadow-sm"
@@ -418,18 +435,16 @@ export default function DonationPage() {
                   <span className="leading-snug">{error}</span>
                 </motion.div>
               )}
-
               <div className="flex flex-col gap-4">
-                
                 {/* Amount */}
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Amount <span className="text-red-500">*</span></label>
                   <div className="relative group">
                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-indigo-600 text-[14px]">₹</span>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                       placeholder="Enter amount to contribute"
                       className="w-full pl-8 pr-3.5 h-12 bg-white border-2 border-slate-100 rounded-xl text-black text-[15px] font-semibold outline-none focus:border-indigo-500 transition-all shadow-sm placeholder:text-slate-300 placeholder:font-normal"
                     />
@@ -439,51 +454,51 @@ export default function DonationPage() {
                 {/* Legal Name */}
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Legal Name <span className="text-red-500">*</span></label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={formData.donorName}
-                    onChange={(e) => setFormData({...formData, donorName: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, donorName: e.target.value })}
                     placeholder="Full Name as per PAN"
                     className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all placeholder:text-slate-400"
                   />
                 </div>
 
-                {/* Email & Phone Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Email <span className="text-red-500">*</span></label>
-                    <input 
-                      type="email" 
-                      value={formData.donorEmail}
-                      onChange={(e) => setFormData({...formData, donorEmail: e.target.value})}
-                      placeholder="your@email.com"
-                      className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                {/* Phone */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone <span className="text-red-500">*</span></label>
+                  <div className="flex bg-slate-50/50 border border-slate-200 rounded-lg focus-within:bg-white focus-within:border-indigo-500 transition-all overflow-hidden h-11">
+                    <div className="bg-slate-100 px-3 text-slate-500 font-bold border-r border-slate-200 text-[11px] flex items-center shrink-0">
+                      +91
+                    </div>
+                    <input
+                      type="tel"
+                      value={formData.donorMobile}
+                      onChange={(e) => setFormData({ ...formData, donorMobile: e.target.value })}
+                      placeholder="Mobile Number"
+                      className="flex-1 px-3 text-[14px] text-black outline-none border-none min-w-0 bg-transparent placeholder:text-slate-400"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Phone <span className="text-red-500">*</span></label>
-                    <div className="flex bg-slate-50/50 border border-slate-200 rounded-lg focus-within:bg-white focus-within:border-indigo-500 transition-all overflow-hidden h-11">
-                      <div className="bg-slate-100 px-3 text-slate-500 font-bold border-r border-slate-200 text-[11px] flex items-center shrink-0">
-                        +91
-                      </div>
-                      <input 
-                        type="tel" 
-                        value={formData.donorMobile}
-                        onChange={(e) => setFormData({...formData, donorMobile: e.target.value})}
-                        placeholder="Mobile"
-                        className="flex-1 px-3 text-[14px] text-black outline-none border-none min-w-0 bg-transparent placeholder:text-slate-400" 
-                      />
-                    </div>
-                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Email <span className="text-red-500">*</span></label>
+                  <input
+                    type="email"
+                    value={formData.donorEmail}
+                    onChange={(e) => setFormData({ ...formData, donorEmail: e.target.value })}
+                    placeholder="your@email.com"
+                    className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all placeholder:text-slate-400"
+                  />
                 </div>
 
                 {/* Address */}
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">Address</label>
-                  <textarea 
+                  <textarea
                     rows={1}
                     value={formData.donorAddress}
-                    onChange={(e) => setFormData({...formData, donorAddress: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, donorAddress: e.target.value })}
                     placeholder="Optional address details"
                     className="w-full px-4 py-2.5 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-medium outline-none focus:bg-white focus:border-indigo-500 transition-all resize-none placeholder:text-slate-400"
                   />
@@ -492,46 +507,45 @@ export default function DonationPage() {
                 {/* PAN */}
                 <div>
                   <label className="block text-[12px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 ml-1">PAN Card Number</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={formData.donorPan}
-                    onChange={(e) => setFormData({...formData, donorPan: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, donorPan: e.target.value })}
                     placeholder="ABCDE1234F"
                     className="w-full px-4 h-11 bg-slate-50/50 border border-slate-200 rounded-lg text-black text-[14px] font-bold outline-none focus:bg-white focus:border-indigo-500 transition-all uppercase placeholder:text-slate-400 placeholder:normal-case placeholder:font-normal"
                   />
                 </div>
-
               </div>
             </div>
 
             {/* Footer Area with Pay Button matching image layout */}
             <div className="bg-slate-50 border-t border-slate-100 flex flex-col w-full relative z-10">
               <div className="px-6 py-3 flex items-center justify-between gap-4 border-b border-slate-100">
-                  <div className="flex items-center gap-3 opacity-60 grayscale hover:grayscale-0 transition-all">
-                      <div className="font-black text-slate-600 italic text-[12px]">UPI</div>
-                      <div className="font-black text-[#1434CB] text-[13px] tracking-tight">VISA</div>
-                      <div className="relative flex items-center h-[12px] w-[20px]">
-                          <div className="absolute left-0 w-[12px] h-[12px] rounded-full bg-[#EB001B]"></div>
-                          <div className="absolute right-0 w-[12px] h-[12px] rounded-full bg-[#F79E1B]"></div>
-                      </div>
+                <div className="flex items-center gap-3 opacity-60 grayscale hover:grayscale-0 transition-all">
+                  <div className="font-black text-slate-600 italic text-[12px]">UPI</div>
+                  <div className="font-black text-[#1434CB] text-[13px] tracking-tight">VISA</div>
+                  <div className="relative flex items-center h-[12px] w-[20px]">
+                    <div className="absolute left-0 w-[12px] h-[12px] rounded-full bg-[#EB001B]"></div>
+                    <div className="absolute right-0 w-[12px] h-[12px] rounded-full bg-[#F79E1B]"></div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-400">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    <span className="text-[10px] font-bold uppercase">Secure</span>
-                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-slate-400">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-bold uppercase">Secure</span>
+                </div>
               </div>
 
               {/* Premium Pay Button */}
               <div className="p-4">
-                <button 
-                    onClick={handlePayment} 
-                    disabled={!isFormValid || isProcessing}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-[16px] h-14 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-300 disabled:to-slate-300 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-[0.99]"
+                <button
+                  onClick={handlePayment}
+                  disabled={!isFormValid || isProcessing}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-bold text-[16px] h-14 rounded-xl hover:from-indigo-700 hover:to-indigo-800 disabled:from-slate-300 disabled:to-slate-300 transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 active:scale-[0.99]"
                 >
                   {isProcessing ? (
                     <>
-                       <Loader2 className="w-5 h-5 animate-spin" />
-                       Processing...
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
                     </>
                   ) : (
                     <>
@@ -546,17 +560,17 @@ export default function DonationPage() {
         </motion.div>
       </div>
 
-       {/* Global Footer */}
-       <div className="absolute bottom-4 left-0 w-full text-center flex flex-col items-center">
-          <div className="flex flex-col items-center gap-1 opacity-60">
-            <div className="flex items-center gap-1.5 text-white">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">Support Excellence • Transform Lives</span>
-            </div>
-            <p className="text-[9px] text-white/50 font-medium uppercase tracking-widest">
-              ISKCON Sadhana Platform • Voice Gurukul
-            </p>
+      {/* Global Footer */}
+      <div className="mt-12 w-full text-center flex flex-col items-center relative z-20">
+        <div className="flex flex-col items-center gap-1 opacity-60">
+          <div className="flex items-center gap-1.5 text-white">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">Support Excellence • Transform Lives</span>
           </div>
-       </div>
+          <p className="text-[9px] text-white/50 font-medium uppercase tracking-widest">
+            ISKCON Sadhana Platform • Voice Gurukul
+          </p>
+        </div>
+      </div>
 
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
     </div>

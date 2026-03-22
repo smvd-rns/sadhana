@@ -24,7 +24,11 @@ export async function POST(req: Request) {
 
     // Easebuzz strict hash format: key|txnid|amount|productinfo|firstname|email|udf1|udf2|udf3|udf4|udf5|udf6|udf7|udf8|udf9|udf10|salt
     const formatAmount = parseFloat(amount).toFixed(2); // strictly requires 2 decimals
-    const hashString = `${easebuzzKey}|${txnid}|${formatAmount}|${productInfo}|${donorName}|${donorEmail}|||||||||||${easebuzzSalt}`;
+    const udf1 = donorAddress || "";
+    const udf2 = donorPan || "";
+    const udf3 = slug || "";
+    const udf4 = targetUserId || "";
+    const hashString = `${easebuzzKey}|${txnid}|${formatAmount}|${productInfo}|${donorName}|${donorEmail}|${udf1}|${udf2}|${udf3}|${udf4}|||||||${easebuzzSalt}`;
     const hash = crypto.createHash('sha512').update(hashString).digest('hex');
 
     // 1. Create Pending DB Record first
@@ -61,6 +65,10 @@ export async function POST(req: Request) {
     formData.append('surl', surl);
     formData.append('furl', furl);
     formData.append('hash', hash);
+    formData.append('udf1', udf1);
+    formData.append('udf2', udf2);
+    formData.append('udf3', udf3);
+    formData.append('udf4', udf4);
 
     const initRes = await fetch(endpoint, {
       method: 'POST',

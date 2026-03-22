@@ -20,7 +20,15 @@ export async function POST(req: Request) {
     const options = {
       amount: Math.round(parseFloat(amount) * 100), // convert to paise
       currency: "INR",
-      receipt: `RCPT_${Date.now()}_${targetUserId.substring(0,5)}`
+      receipt: `RCPT_${Date.now()}_${targetUserId.substring(0,5)}`,
+      notes: {
+        donor_name: donorName,
+        donor_email: donorEmail,
+        donor_mobile: donorMobile,
+        donor_address: donorAddress || "",
+        donor_pan: donorPan || "",
+        target_user_id: targetUserId
+      }
     };
     const order = await razorpay.orders.create(options);
 
