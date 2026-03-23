@@ -84,23 +84,29 @@ export default function DonationPage() {
       try {
         const { data, error: fetchError } = await supabase
           .from('users')
-          .select('id, name, profile_image, center, other_center, parent_temple, other_parent_temple')
+          .select('id, name, profile_image, current_center, other_center, current_temple, other_temple, center')
           .eq('donation_slug', slug)
           .single();
 
         if (fetchError || !data) {
           setError('This donation link is invalid or has expired.');
         } else {
-          // Resolve Center name (handle "Other")
-          const resolvedCenter = data.center === 'Other' ? data.other_center : data.center;
+          // Resolve Center name (priority: current_center -> center)
+          let resolvedCenter = data.current_center || data.center;
+          if (resolvedCenter === 'Other') {
+            resolvedCenter = data.other_center || 'Other Center';
+          }
           
-          // Resolve Temple name (handle "Other")
-          const resolvedTemple = data.parent_temple === 'Other' ? data.other_parent_temple : data.parent_temple;
+          // Resolve Temple name
+          let resolvedTemple = data.current_temple;
+          if (resolvedTemple === 'Other') {
+            resolvedTemple = data.other_temple || 'Other Temple';
+          }
 
           setTargetUser({
             ...data,
-            resolvedCenter,
-            resolvedTemple
+            resolvedCenter: resolvedCenter || 'General',
+            resolvedTemple: resolvedTemple || 'N/A'
           });
 
           const { data: settings } = await supabase
