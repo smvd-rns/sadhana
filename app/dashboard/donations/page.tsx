@@ -65,7 +65,8 @@ export default function MyDonationsPage() {
 
   const handleCopyLink = () => {
     if (!userSlug) return;
-    const url = `${window.location.origin}/donate/${userSlug}`;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const url = `${baseUrl}/donate/${userSlug}`;
     navigator.clipboard.writeText(url);
     setCopying(true);
     setTimeout(() => setCopying(false), 2000);

@@ -119,7 +119,8 @@ export default function PoliciesPage() {
     }, [searchParams, isLoading, policies]);
 
     const handleCopyLink = (policyId: string) => {
-        const url = `${window.location.origin}${window.location.pathname}?id=${policyId}`;
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        const url = `${baseUrl}${window.location.pathname}?id=${policyId}`;
         navigator.clipboard.writeText(url);
         toast.success('Link copied to clipboard!');
     };
