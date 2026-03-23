@@ -5,7 +5,7 @@ import { getSadhanaAdminClient } from '@/lib/supabase/sadhanaDb';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { amount, donorName, donorEmail, donorMobile, donorAddress, donorPan, targetUserId, center } = body;
+    const { amount, donorName, donorEmail, donorMobile, donorAddress, donorPan, targetUserId, center, temple } = body;
 
     if (!amount || !donorName || !donorEmail || !donorMobile || !targetUserId) {
       return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -27,7 +27,9 @@ export async function POST(req: Request) {
         donor_mobile: donorMobile,
         donor_address: donorAddress || "",
         donor_pan: donorPan || "",
-        target_user_id: targetUserId
+        target_user_id: targetUserId,
+        center: center || "",
+        temple: temple || ""
       }
     };
     const order = await razorpay.orders.create(options);
@@ -46,6 +48,7 @@ export async function POST(req: Request) {
       txnid: order.id, // Store Razorpay Order ID as our internal transaction ID
       tag_user_id: targetUserId,
       center: center || null,
+      temple: temple || null,
       metadata: {
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString(),

@@ -84,14 +84,24 @@ export default function DonationPage() {
       try {
         const { data, error: fetchError } = await supabase
           .from('users')
-          .select('id, name, profile_image, center')
+          .select('id, name, profile_image, center, other_center, parent_temple, other_parent_temple')
           .eq('donation_slug', slug)
           .single();
 
         if (fetchError || !data) {
           setError('This donation link is invalid or has expired.');
         } else {
-          setTargetUser(data);
+          // Resolve Center name (handle "Other")
+          const resolvedCenter = data.center === 'Other' ? data.other_center : data.center;
+          
+          // Resolve Temple name (handle "Other")
+          const resolvedTemple = data.parent_temple === 'Other' ? data.other_parent_temple : data.parent_temple;
+
+          setTargetUser({
+            ...data,
+            resolvedCenter,
+            resolvedTemple
+          });
 
           const { data: settings } = await supabase
             .from('platform_settings')
@@ -147,7 +157,12 @@ export default function DonationPage() {
         const orderRes = await fetch('/api/donations/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...formData, targetUserId: targetUser.id, center: targetUser.center })
+          body: JSON.stringify({ 
+            ...formData, 
+            targetUserId: targetUser.id, 
+            center: targetUser.resolvedCenter,
+            temple: targetUser.resolvedTemple 
+          })
         });
         const orderData = await orderRes.json();
 
@@ -201,7 +216,9 @@ export default function DonationPage() {
             donor_pan: formData.donorPan,
             target_user_id: targetUser.id,
             target_user_name: targetUser.name,
-            donation_slug: slug
+            donation_slug: slug,
+            center: targetUser.resolvedCenter,
+            temple: targetUser.resolvedTemple
           },
           theme: {
             color: "#4f46e5", // indigo-600
@@ -219,7 +236,13 @@ export default function DonationPage() {
         const orderRes = await fetch('/api/donations/easebuzz/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...formData, targetUserId: targetUser.id, slug, center: targetUser.center })
+          body: JSON.stringify({ 
+            ...formData, 
+            targetUserId: targetUser.id, 
+            slug, 
+            center: targetUser.resolvedCenter,
+            temple: targetUser.resolvedTemple
+          })
         });
         const orderData = await orderRes.json();
 

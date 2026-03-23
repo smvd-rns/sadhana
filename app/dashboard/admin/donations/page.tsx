@@ -522,7 +522,7 @@ export default function AdminDonationsPage() {
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/30">
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Center</th>
+                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Center / Temple</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collector</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Donor Details</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Amount</th>
@@ -538,9 +538,16 @@ export default function AdminDonationsPage() {
                 })().map((donation) => (
                   <tr key={donation.id} className="hover:bg-slate-800/30 transition-colors group">
                     <td className="px-8 py-6">
-                       <span className="text-emerald-500 font-black text-[10px] uppercase tracking-widest px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
-                          {donation.center || collectors[donation.tag_user_id]?.center || 'Global HQ'}
-                       </span>
+                       <div className="flex flex-col gap-1">
+                          <span className="text-emerald-500 font-black text-[10px] uppercase tracking-widest px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg w-fit">
+                             {donation.center || collectors[donation.tag_user_id]?.center || 'Global HQ'}
+                          </span>
+                          {donation.temple && (
+                            <span className="text-blue-400 font-black text-[9px] uppercase tracking-widest px-3 py-0.5 bg-blue-500/5 border border-blue-500/10 rounded-md w-fit">
+                               {donation.temple}
+                            </span>
+                          )}
+                       </div>
                     </td>
                     <td className="px-8 py-6">
                       <div className="flex items-center gap-3">
@@ -660,7 +667,12 @@ export default function AdminDonationsPage() {
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Collector</p>
                     <h3 className="text-white font-black tracking-tight">{collectors[donation.tag_user_id]?.name || 'System Executive'}</h3>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{collectors[donation.tag_user_id]?.center || 'Global HQ'}</p>
+                    <div className="flex flex-col gap-1 mt-1">
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{collectors[donation.tag_user_id]?.center || 'Global HQ'}</p>
+                      {donation.temple && (
+                        <p className="text-[9px] text-blue-500/80 font-black uppercase tracking-widest">{donation.temple}</p>
+                      )}
+                    </div>
                   </div>
                   <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700">
                     <IndianRupee className="w-5 h-5 text-emerald-500" />

@@ -5,7 +5,7 @@ import { getSadhanaAdminClient } from '@/lib/supabase/sadhanaDb';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { amount, donorName, donorEmail, donorMobile, donorAddress, donorPan, targetUserId, slug, center } = body;
+    const { amount, donorName, donorEmail, donorMobile, donorAddress, donorPan, targetUserId, slug, center, temple } = body;
 
     const easebuzzKey = process.env.EASEBUZZ_KEY;
     const easebuzzSalt = process.env.EASEBUZZ_SALT;
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
       txnid: txnid,
       tag_user_id: targetUserId,
       center: center || null,
+      temple: temple || null,
       metadata: { environment: env, created_at: new Date().toISOString() }
     }]);
 

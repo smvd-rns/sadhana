@@ -223,8 +223,9 @@ export default function MyDonationsPage() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/80 border-b border-slate-100">
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Patron Information</th>
-                      <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Transaction Security</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Donor</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Center / Temple</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Payment Info</th>
                       <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">Contact Identity</th>
                       <th className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest text-right">Settled Amount</th>
                     </tr>
@@ -243,6 +244,18 @@ export default function MyDonationsPage() {
                                 {new Date(d.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                               </p>
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-emerald-600 font-bold text-[10px] uppercase tracking-widest px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-md w-fit">
+                              {d.center || 'Main Center'}
+                            </span>
+                            {d.temple && (
+                              <span className="text-blue-500 font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 bg-blue-50 border border-blue-100 rounded-md w-fit">
+                                {d.temple}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4">
@@ -299,6 +312,11 @@ export default function MyDonationsPage() {
                           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
                             {new Date(d.created_at).toLocaleDateString()}
                           </p>
+                          {d.temple && (
+                            <p className="text-[9px] font-bold text-blue-500 uppercase tracking-widest mt-0.5">
+                              {d.temple}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
