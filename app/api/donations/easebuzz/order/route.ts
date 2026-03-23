@@ -70,6 +70,7 @@ export async function POST(req: Request) {
     formData.append('udf2', udf2);
     formData.append('udf3', udf3);
     formData.append('udf4', udf4);
+    formData.append('common_page_url', `${baseUrl}/api/webhooks/easebuzz`);
 
     const initRes = await fetch(endpoint, {
       method: 'POST',
