@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUserFromRequest } from '@/lib/supabase/admin';
 import { getAdminSadhanaSupabase } from '@/lib/supabase/sadhana';
-import { getAccessToken, findOrCreateFolder } from '@/lib/utils/drive';
+// import { getAccessToken, findOrCreateFolder } from '@/lib/utils/drive'; // DELETED
 import { getUserData } from '@/lib/supabase/auth';
 
 export async function POST(request: NextRequest) {
@@ -26,29 +26,26 @@ export async function POST(request: NextRequest) {
 
         // --- Google Drive Sync Section ---
         const profile = await getUserData(user.id);
-        const accessToken = await getAccessToken();
-        const mainFolderId = '1KhZ2l4wk3HXwBhX18JFb10zNvWJNMjHi';
-        let driveParentId = '';
+        const RENDER_SERVICE_URL = process.env.NEXT_PUBLIC_RENDER_INDEXER_URL || 'https://sadhana-ndn8.onrender.com';
+        
+        // Call Render Backend to handle Google Drive folder creation
+        const renderRes = await fetch(`${RENDER_SERVICE_URL}/folders/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                parentId: parentId === 'root' ? null : (parentId || null),
+                userId: user.id,
+                userName: profile?.name || profile?.email?.split('@')[0] || user.id.substring(0, 8)
+            })
+        });
 
-        if (!parentId || parentId === 'root') {
-            const userName = profile?.name || profile?.email?.split('@')[0] || user.id.substring(0, 8);
-            driveParentId = await findOrCreateFolder(accessToken, userName, mainFolderId);
-        } else {
-            const { data: parentFolder } = await sadhanaDbAdmin
-                .from('folders')
-                .select('google_drive_folder_id')
-                .eq('id', parentId)
-                .single();
-
-            if (parentFolder?.google_drive_folder_id) {
-                driveParentId = parentFolder.google_drive_folder_id;
-            } else {
-                const userName = profile?.name || profile?.email?.split('@')[0] || user.id.substring(0, 8);
-                driveParentId = await findOrCreateFolder(accessToken, userName, mainFolderId);
-            }
+        if (!renderRes.ok) {
+            const errorData = await renderRes.json();
+            throw new Error(errorData.error || 'Failed to sync folder with Google Drive via Render');
         }
 
-        const googleDriveId = await findOrCreateFolder(accessToken, name, driveParentId);
+        const { googleDriveId } = await renderRes.json();
         // --- End Drive Sync ---
 
         const { data, error } = await sadhanaDbAdmin

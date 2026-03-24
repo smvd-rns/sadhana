@@ -349,16 +349,13 @@ export default function DataCenterUploadPage() {
                 setFileStatuses(prev => ({ ...prev, [file.name]: 'uploading' }));
                 setUploadProgress(10);
 
-                // Try Render first, Fallback to Vercel
-                let tokenRes;
+                // Get token from Render Backend
                 let tokenData;
-
                 try {
-                    // 1. Try Render Backend
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout as requested
+                    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
-                    tokenRes = await fetch(`${RENDER_SERVICE_URL}/upload-token`, {
+                    const tokenRes = await fetch(`${RENDER_SERVICE_URL}/upload-token`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         signal: controller.signal,
@@ -372,32 +369,14 @@ export default function DataCenterUploadPage() {
                     });
                     clearTimeout(timeoutId);
 
-                    if (tokenRes.ok) {
-                        tokenData = await tokenRes.json();
-                    } else {
-                        throw new Error('Render bypass');
+                    if (!tokenRes.ok) {
+                        const errorData = await tokenRes.json();
+                        throw new Error(errorData.error || 'Failed to initialize upload via Render');
                     }
-                } catch (err) {
-                    // 2. Fallback to Internal Vercel API
-                    console.warn('Render backend unreachable, falling back to Vercel:', err);
-                    const internalRes = await fetch('/api/drive/upload-token', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                        },
-                        body: JSON.stringify({
-                            fileName: file.name,
-                            fileType: file.type || 'application/octet-stream',
-                            targetFolderId
-                        })
-                    });
-
-                    if (!internalRes.ok) {
-                        const errorData = await internalRes.json();
-                        throw new Error(errorData.error || `Failed to initialize upload for ${file.name}`);
-                    }
-                    tokenData = await internalRes.json();
+                    tokenData = await tokenRes.json();
+                } catch (err: any) {
+                    console.error('Render backend upload error:', err);
+                    throw new Error(`Upload failed: ${err.message}. Please wait for the engine to wake up.`);
                 }
 
                 setUploadProgress(20);

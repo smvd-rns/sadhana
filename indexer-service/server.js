@@ -156,6 +156,57 @@ app.post('/upload-token', async (req, res) => {
         console.error('[Upload Token Error]', error);
         res.status(500).json({ error: error.message || 'Failed to generate upload token' });
     }
+/**
+ * Create Folder Endpoint
+ * Creates a folder in Google Drive and returns the ID
+ */
+app.post('/folders/create', async (req, res) => {
+    try {
+        const { name, parentId, userId, userName } = req.body;
+
+        if (!name || !userId) {
+            return res.status(400).json({ error: 'Folder name and UserId are required' });
+        }
+
+        console.log(`[Folder Create] Request for "${name}" (User: ${userName || userId})`);
+
+        const accessToken = await getAccessToken();
+        const mainFolderId = '1KhZ2l4wk3HXwBhX18JFb10zNvWJNMjHi'; // Priority Root Folder
+        let driveParentId = '';
+
+        // 1. Resolve Parent Folder ID
+        if (!parentId || parentId === 'root') {
+            const safeUserName = userName || userId.substring(0, 8);
+            driveParentId = await findOrCreateFolder(accessToken, safeUserName, mainFolderId);
+        } else {
+            const { data: folderData, error } = await sadhanaDbAdmin
+                .from('folders')
+                .select('google_drive_folder_id')
+                .eq('id', parentId)
+                .single();
+
+            if (!error && folderData?.google_drive_folder_id) {
+                driveParentId = folderData.google_drive_folder_id;
+            } else {
+                const safeUserName = userName || userId.substring(0, 8);
+                driveParentId = await findOrCreateFolder(accessToken, safeUserName, mainFolderId);
+            }
+        }
+
+        // 2. Create the actual folder
+        const googleDriveId = await findOrCreateFolder(accessToken, name, driveParentId);
+
+        console.log(`[Folder Create] Success! Drive ID: ${googleDriveId}`);
+
+        res.status(200).json({
+            googleDriveId,
+            parentId: driveParentId
+        });
+
+    } catch (error) {
+        console.error('[Folder Create Error]', error);
+        res.status(500).json({ error: error.message || 'Failed to create folder in Google Drive' });
+    }
 });
 
 // Start Server
