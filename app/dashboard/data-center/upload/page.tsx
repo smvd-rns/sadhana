@@ -40,49 +40,54 @@ export default function DataCenterUploadPage() {
     const [recentScans, setRecentScans] = useState<any[]>([]);
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [scanError, setScanError] = useState('');
-    const [renderWorkerStatus, setRenderWorkerStatus] = useState<'sleeping' | 'waking' | 'awake' | 'error'>('sleeping');
+    const [renderWorkerStatus, setRenderWorkerStatus] = useState<'waking' | 'awake' | 'error'>('waking');
     const [wakeUpTimer, setWakeUpTimer] = useState(60);
 
-    const RENDER_SERVICE_URL = process.env.NEXT_PUBLIC_RENDER_INDEXER_URL || 'http://localhost:4000';
+    const RENDER_SERVICE_URL = process.env.NEXT_PUBLIC_RENDER_INDEXER_URL || 'https://sadhana-ndn8.onrender.com';
 
     // Wake up Render service when the page mounts
     useEffect(() => {
-        let interval: NodeJS.Timeout;
+        if (renderWorkerStatus === 'awake') return;
 
-        if (renderWorkerStatus === 'sleeping') {
-            const wakeUpWorker = async () => {
-                setRenderWorkerStatus('waking');
-                setWakeUpTimer(60);
-
-                // Start countdown
-                interval = setInterval(() => {
-                    setWakeUpTimer((prev) => (prev > 0 ? prev - 1 : 0));
-                }, 1000);
-
-                try {
-                    const res = await fetch(`${RENDER_SERVICE_URL}/health`, {
-                        method: 'GET',
-                        mode: 'cors',
-                        cache: 'no-store'
-                    });
-                    if (res.ok) {
-                        setRenderWorkerStatus('awake');
-                        clearInterval(interval);
-                    } else {
-                        setRenderWorkerStatus('error');
-                        clearInterval(interval);
-                    }
-                } catch (err) {
-                    console.warn('Render wake-up failed (might be offline/cold-starting):', err);
-                    // Don't set error immediately if it's just a timeout/refused during cold start
-                    // Let the timer run out or retry if we want, but for now we'll just wait
+        // 1. Initial health check immediately
+        const checkHealth = async () => {
+            try {
+                const res = await fetch(`${RENDER_SERVICE_URL}/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-store'
+                });
+                if (res.ok) {
+                    setRenderWorkerStatus('awake');
+                    return true;
                 }
-            };
-            wakeUpWorker();
-        }
+            } catch (err) {
+                console.warn('Render cold-starting or offline...');
+            }
+            return false;
+        };
 
-        return () => clearInterval(interval);
-    }, [renderWorkerStatus, RENDER_SERVICE_URL]);
+        checkHealth();
+
+        // 2. Start 1-second countdown timer
+        const timerInterval = setInterval(() => {
+            setWakeUpTimer((prev) => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+
+        // 3. Poll for health every 5 seconds until awake
+        const pollInterval = setInterval(async () => {
+            const isAwake = await checkHealth();
+            if (isAwake) {
+                clearInterval(pollInterval);
+                clearInterval(timerInterval);
+            }
+        }, 5000);
+
+        return () => {
+            clearInterval(timerInterval);
+            clearInterval(pollInterval);
+        };
+    }, [RENDER_SERVICE_URL, renderWorkerStatus]);
 
     const fetchRecentScans = useCallback(async () => {
         if (!user || !sadhanaDb) return;
@@ -792,20 +797,26 @@ export default function DataCenterUploadPage() {
                                                     </div>
                                                 )}
 
-                                                {!isUploading && selectedFiles.length > 0 && (
+                                                {selectedFiles.length > 0 && (
                                                     <button
                                                         onClick={performUpload}
-                                                        className="w-full px-8 py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        disabled={isUploading || selectedFiles.length === 0 || renderWorkerStatus !== 'awake'}
+                                                        className={`w-full px-8 py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
                                                     >
-                                                        {renderWorkerStatus === 'waking' ? (
+                                                        {renderWorkerStatus !== 'awake' ? (
                                                             <>
                                                                 <Loader2 className="w-5 h-5 animate-spin" />
-                                                                Waking Backend ({wakeUpTimer}s)...
+                                                                Engine Warming Up ({wakeUpTimer}s)
+                                                            </>
+                                                        ) : isUploading ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                                Processing...
                                                             </>
                                                         ) : (
                                                             <>
                                                                 <Upload className="w-5 h-5" />
-                                                                Finalize & Upload Batch
+                                                                Start Upload
                                                             </>
                                                         )}
                                                     </button>
@@ -924,18 +935,23 @@ export default function DataCenterUploadPage() {
                                             {scanStatus !== 'success' && (
                                                 <button
                                                     onClick={performScan}
-                                                    disabled={isScanning || !driveLink.trim()}
-                                                    className="w-full px-6 py-4 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-xl hover:shadow-orange-500/20 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group active:scale-95"
+                                                    disabled={isScanning || !driveLink.trim() || renderWorkerStatus !== 'awake'}
+                                                    className="w-full px-8 py-5 bg-slate-900 hover:bg-black text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-slate-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-slate-700 active:border-b-0"
                                                 >
-                                                    {isScanning ? (
+                                                    {renderWorkerStatus !== 'awake' ? (
                                                         <>
-                                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                                            Connecting to Drive...
+                                                            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                                                            Engine Warming Up ({wakeUpTimer}s)
+                                                        </>
+                                                    ) : isScanning ? (
+                                                        <>
+                                                            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                                                            Searching Directory...
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <FolderSearch className="w-5 h-5 group-hover:animate-pulse" />
-                                                            {renderWorkerStatus === 'waking' ? 'Waiting for Engine...' : 'Start Global Indexing'}
+                                                            <FolderSearch className="w-5 h-5 text-orange-500" />
+                                                            Start Scanning
                                                         </>
                                                     )}
                                                 </button>
