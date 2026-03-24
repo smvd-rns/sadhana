@@ -642,7 +642,7 @@ export default function ProfilePage() {
         setServices([{ name: '' }]);
       }
     }
-  }, [userData]);
+  }, [userData, pendingRequest]);
 
 
 
@@ -1900,7 +1900,7 @@ export default function ProfilePage() {
                       )}
                     </div>
                     {formData.introducedToKcIn && formData.introducedToKcIn.length === 4 && (
-                      <p className="mt-1 text-[10px] text-amber-600">Currently stored as Year. Use "Change to Date" to select a specific date.</p>
+                      <p className="mt-1 text-[10px] text-amber-600">Currently stored as Year. Use &quot;Change to Date&quot; to select a specific date.</p>
                     )}
                     {userData?.hierarchy?.introducedToKcIn && (
                       <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1">

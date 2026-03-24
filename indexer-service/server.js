@@ -156,6 +156,8 @@ app.post('/upload-token', async (req, res) => {
         console.error('[Upload Token Error]', error);
         res.status(500).json({ error: error.message || 'Failed to generate upload token' });
     }
+});
+
 /**
  * Create Folder Endpoint
  * Creates a folder in Google Drive and returns the ID

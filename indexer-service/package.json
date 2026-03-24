@@ -1,6 +1,7 @@
 {
     "name": "indexer-service",
     "version": "1.0.0",
+    "type": "module",
     "description": "Background worker for long-running Google Drive indexing jobs",
     "main": "server.js",
     "scripts": {
