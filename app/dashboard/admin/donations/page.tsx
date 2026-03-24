@@ -347,36 +347,36 @@ export default function AdminDonationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 p-8 pb-20">
+    <div className="min-h-screen bg-slate-950 p-4 sm:p-6 lg:p-8 pb-20">
       {/* Header & Stats Banner */}
-      <div className="bg-slate-900 rounded-[2.5rem] p-10 border border-slate-800 shadow-2xl relative overflow-hidden mb-8">
-        <div className="relative z-10 flex flex-col lg:flex-row justify-between lg:items-center gap-8">
-          <div className="space-y-4">
+      <div className="bg-slate-900 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl relative overflow-hidden mb-6 sm:mb-8">
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between lg:items-center gap-6 lg:gap-8">
+          <div className="space-y-3">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                <ShieldCheck className="w-8 h-8 text-emerald-500" />
+              <div className="p-2.5 sm:p-3 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
+                <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 text-emerald-500" />
               </div>
-              <h1 className="text-4xl font-black text-white tracking-tight">Global Donation Audit</h1>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">Global Donation Audit</h1>
             </div>
-            <p className="text-slate-400 font-bold max-w-sm">Centralized oversight of all platform contributions and user attribution</p>
+            <p className="text-slate-400 font-bold text-sm max-w-sm">Centralized oversight of all platform contributions and user attribution</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 min-w-[200px]">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-700/50 min-w-[140px] sm:min-w-[200px]">
               <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Total Collected</p>
               <div className="flex items-end gap-1">
-                <span className="text-3xl font-black text-white">₹{stats.totalAmount.toLocaleString()}</span>
+                <span className="text-2xl sm:text-3xl font-black text-white">₹{stats.totalAmount.toLocaleString()}</span>
               </div>
             </div>
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-3xl p-6 border border-slate-700/50 min-w-[150px]">
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-700/50 min-w-[110px] sm:min-w-[150px]">
               <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Unique Donors</p>
-              <span className="text-3xl font-black text-white">{stats.uniqueDonors}</span>
+              <span className="text-2xl sm:text-3xl font-black text-white">{stats.uniqueDonors}</span>
             </div>
             
             <div className="h-20 w-px bg-slate-800 mx-4 hidden lg:block" />
 
-            <div className="flex flex-col gap-2">
-              <div className="bg-slate-950/50 p-2 rounded-[2rem] border border-slate-800 flex items-center gap-2 relative">
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <div className="bg-slate-950/50 p-1.5 sm:p-2 rounded-[2rem] border border-slate-800 flex items-center gap-2 relative overflow-x-auto">
                 <button 
                   disabled={activeGateway === 'razorpay' || !!pendingGateway}
                   onClick={() => handleGatewayToggleRequest('razorpay')}
@@ -430,27 +430,27 @@ export default function AdminDonationsPage() {
       </div>
 
       {/* Primary Tab Switcher */}
-      <div className="flex items-center gap-1 mb-10 bg-slate-900/50 p-1.5 rounded-3xl border border-slate-800 w-fit backdrop-blur-md">
+      <div className="flex items-center gap-1 mb-6 sm:mb-10 bg-slate-900/50 p-1 sm:p-1.5 rounded-2xl sm:rounded-3xl border border-slate-800 w-full sm:w-fit backdrop-blur-md overflow-x-auto">
         <button
           onClick={() => setActiveTab('donations')}
-          className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 ${
+          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 sm:gap-3 whitespace-nowrap ${
             activeTab === 'donations' 
               ? 'bg-slate-800 text-emerald-500 shadow-xl border border-slate-700' 
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <CreditCard className="w-4 h-4" />
+          <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           Live Audit Log
         </button>
         <button
           onClick={() => setActiveTab('missing-links')}
-          className={`px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center gap-3 relative ${
+          className={`flex-1 sm:flex-none px-4 sm:px-8 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2 sm:gap-3 relative whitespace-nowrap ${
             activeTab === 'missing-links' 
               ? 'bg-slate-800 text-orange-500 shadow-xl border border-slate-700' 
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
-          <Users className="w-4 h-4" />
+          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           Collectors without Links
           {usersWithoutSlugs.length > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-600 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse">
@@ -460,7 +460,7 @@ export default function AdminDonationsPage() {
         </button>
       </div>
 
-      {activeTab === 'donations' ? (
+      {activeTab === 'donations' && (
         <>
           {error && (
             <div className="mb-8 p-6 bg-rose-500/10 border border-rose-500/20 rounded-[2rem] flex items-center gap-4">
@@ -470,350 +470,386 @@ export default function AdminDonationsPage() {
             </div>
           )}
 
-      {/* Main Content Actions */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-        <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-xl">
-          <button 
-            onClick={() => setView('grid')}
-            className={`p-2.5 rounded-xl transition-all ${view === 'grid' ? 'bg-slate-800 text-emerald-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            <LayoutGrid className="w-5 h-5" />
-          </button>
-          <button 
-            onClick={() => setView('table')}
-            className={`p-2.5 rounded-xl transition-all ${view === 'table' ? 'bg-slate-800 text-emerald-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            <List className="w-5 h-5" />
-          </button>
-        </div>
+          {/* Main Content Actions */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6 sm:mb-8">
+            <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 shadow-xl">
+              <button 
+                onClick={() => setView('grid')}
+                className={`p-2.5 rounded-xl transition-all ${view === 'grid' ? 'bg-slate-800 text-emerald-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <LayoutGrid className="w-5 h-5" />
+              </button>
+              <button 
+                onClick={() => setView('table')}
+                className={`p-2.5 rounded-xl transition-all ${view === 'table' ? 'bg-slate-800 text-emerald-500 shadow-inner' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-          {/* Main Search */}
-          <div className="relative flex-1 md:w-64 group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
-            <input 
-              type="text" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Donor or TRX ID..."
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl"
-            />
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="col-span-2 relative flex-1 sm:w-64 group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors" />
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Donor or TRX ID..."
+                  className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl"
+                />
+              </div>
+
+              <div className="relative group">
+                <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                <select
+                  value={selectedTemple}
+                  onChange={(e) => {
+                    setSelectedTemple(e.target.value);
+                    setSelectedCenter('all');
+                    setSelectedCollector('all');
+                  }}
+                  className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-xl appearance-none cursor-pointer"
+                >
+                  <option value="all">All Temples</option>
+                  {availableTemples.map(temple => (
+                    <option key={temple} value={temple}>{temple}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative group">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                <select
+                  value={selectedCenter}
+                  onChange={(e) => {
+                    setSelectedCenter(e.target.value);
+                    setSelectedCollector('all');
+                  }}
+                  className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-xl appearance-none cursor-pointer"
+                >
+                  <option value="all">All Centers</option>
+                  {availableCenters.map(center => (
+                    <option key={center} value={center}>{center}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative group">
+                <UserCheck className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                <select
+                  value={selectedCollector}
+                  onChange={(e) => setSelectedCollector(e.target.value)}
+                  className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-xl appearance-none cursor-pointer"
+                >
+                  <option value="all">All Collectors</option>
+                  {availableCollectors.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative group">
+                <CheckCircle2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-10 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500/30 transition-all shadow-xl appearance-none cursor-pointer"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="captured">Successful</option>
+                  <option value="pending">Pending</option>
+                  <option value="failed">Failed / Cancelled</option>
+                </select>
+              </div>
+
+              <button className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 px-5 py-3.5 bg-emerald-600 text-sm font-black text-white rounded-2xl hover:bg-emerald-500 active:scale-95 transition-all shadow-xl shadow-emerald-600/20">
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+            </div>
           </div>
 
-          {/* Temple Filter */}
-          <div className="relative md:w-56 group">
-            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-            <select
-              value={selectedTemple}
-              onChange={(e) => {
-                setSelectedTemple(e.target.value);
-                setSelectedCenter('all');
-                setSelectedCollector('all');
-              }}
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
-            >
-              <option value="all">All Temples</option>
-              {availableTemples.map(temple => (
-                <option key={temple} value={temple}>{temple}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Center Filter */}
-          <div className="relative md:w-56 group">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-            <select
-              value={selectedCenter}
-              onChange={(e) => {
-                setSelectedCenter(e.target.value);
-                setSelectedCollector('all');
-              }}
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
-            >
-              <option value="all">All Centers</option>
-              {availableCenters.map(center => (
-                <option key={center} value={center}>{center}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Collector Filter */}
-          <div className="relative md:w-56 group">
-            <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-            <select
-              value={selectedCollector}
-              onChange={(e) => setSelectedCollector(e.target.value)}
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
-            >
-              <option value="all">All Collectors</option>
-              {availableCollectors.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Status Filter */}
-          <div className="relative md:w-48 group">
-            <CheckCircle2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
-            >
-              <option value="all">All Statuses</option>
-              <option value="captured">Successful</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed / Cancelled</option>
-            </select>
-          </div>
-
-          <button className="flex items-center gap-2 px-6 py-4 bg-emerald-600 text-sm font-black text-white rounded-2xl hover:bg-emerald-500 active:scale-95 transition-all shadow-xl shadow-emerald-600/20">
-            <Download className="w-4 h-4" />
-            Export
-          </button>
-        </div>
-      </div>
-
-      {/* Audit View */}
-      {view === 'table' ? (
-        <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-950/30">
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Center / Temple</th>
-                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collector / Ashram</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Donor Details</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Amount</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Trx ID</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/50">
-                {(() => {
-                  const totalPages = Math.ceil(filteredDonations.length / pageSize);
-                  const paginated = filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-                  return paginated;
-                })().map((donation) => (
-                  <tr key={donation.id} className="hover:bg-slate-800/30 transition-colors group">
-                    <td className="px-8 py-6">
-                       <div className="flex flex-col gap-1">
-                          <span className="text-emerald-500 font-black text-[10px] uppercase tracking-widest px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg w-fit">
-                             {donation.center || collectors[donation.tag_user_id]?.center || 'Global HQ'}
-                          </span>
-                          {donation.temple && (
-                            <span className="text-blue-400 font-black text-[9px] uppercase tracking-widest px-3 py-0.5 bg-blue-500/5 border border-blue-500/10 rounded-md w-fit">
-                               {donation.temple}
-                            </span>
-                          )}
-                       </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2">
-                          <UserCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                          <span className="text-white font-black text-sm tracking-tight">
-                             {collectors[donation.tag_user_id]?.name || 'System Executive'}
-                          </span>
-                        </div>
-                        {donation.ashram && (
-                          <span className="text-[9px] font-black text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700 w-fit">
-                            {donation.ashram}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xs font-black text-emerald-500 border border-slate-700">
-                          {donation.donor_name.charAt(0)}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-slate-200 font-black text-sm truncate">{donation.donor_name}</span>
-                          <span className="text-[10px] font-bold text-slate-500 truncate flex items-center gap-1">
-                            <Mail className="w-3 h-3" />
-                            {donation.donor_email}
-                          </span>
-                          {(donation.donor_address || donation.donor_pan) && (
-                            <div className="flex flex-wrap gap-2 mt-1">
-                              {donation.donor_pan && (
-                                <span className="text-[9px] font-black bg-slate-800 text-amber-500 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
-                                  <ShieldCheck className="w-2.5 h-2.5" />
-                                  PAN: {donation.donor_pan}
+          {/* Audit View */}
+          {view === 'table' ? (
+            <div className="bg-slate-900 rounded-[2rem] border border-slate-800 shadow-2xl overflow-hidden flex flex-col">
+              {/* Desktop Table — hidden on mobile */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950/30">
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Center / Temple</th>
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Collector / Ashram</th>
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Donor Details</th>
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right whitespace-nowrap">Amount</th>
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Trx ID</th>
+                      <th className="px-6 lg:px-8 py-5 lg:py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest whitespace-nowrap">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((donation) => (
+                      <tr key={donation.id} className="hover:bg-slate-800/30 transition-colors group">
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                           <div className="flex flex-col gap-1">
+                              <span className="text-emerald-500 font-black text-[10px] uppercase tracking-widest px-3 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg w-fit whitespace-nowrap">
+                                 {donation.center || collectors[donation.tag_user_id]?.center || 'Global HQ'}
+                              </span>
+                              {donation.temple && (
+                                <span className="text-blue-400 font-black text-[9px] uppercase tracking-widest px-3 py-0.5 bg-blue-500/5 border border-blue-500/10 rounded-md w-fit whitespace-nowrap">
+                                   {donation.temple}
                                 </span>
                               )}
-                              {donation.donor_address && (
-                                <span className="text-[9px] font-black bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1 max-w-[150px] truncate">
-                                  <MapPin className="w-2.5 h-2.5" />
-                                  {donation.donor_address}
-                                </span>
+                           </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                          <div className="flex flex-col gap-1.5 min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <UserCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                              <span className="text-white font-black text-sm tracking-tight truncate">
+                                 {collectors[donation.tag_user_id]?.name || 'System Executive'}
+                              </span>
+                            </div>
+                            {donation.ashram && (
+                              <span className="text-[9px] font-black text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700 w-fit truncate">
+                                {donation.ashram}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xs font-black text-emerald-500 border border-slate-700 shrink-0">
+                              {donation.donor_name.charAt(0)}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-slate-200 font-black text-sm truncate">{donation.donor_name}</span>
+                              <span className="text-[10px] font-bold text-slate-500 truncate flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                {donation.donor_email}
+                              </span>
+                              {(donation.donor_address || donation.donor_pan) && (
+                                <div className="flex gap-2 mt-1">
+                                  {donation.donor_pan && (
+                                    <span className="text-[8px] font-black bg-slate-800 text-amber-500 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1 shrink-0">
+                                      PAN: {donation.donor_pan}
+                                    </span>
+                                  )}
+                                  {donation.donor_address && (
+                                    <span className="text-[8px] font-black bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1 truncate max-w-[80px]">
+                                      {donation.donor_address}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <div className="flex items-center gap-1 text-white font-black text-lg">
-                          <IndianRupee className="w-3.5 h-3.5" />
-                          {donation.amount.toLocaleString()}
-                        </div>
-                        <span className="text-[9px] font-black uppercase tracking-tighter text-slate-600">{donation.payment_method}</span>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-slate-400 font-black text-xs tracking-tight">{donation.txnid}</span>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-3 h-3 text-slate-600" />
-                          <span className="text-[10px] font-bold text-slate-600">
-                             {new Date(donation.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border w-fit ${
-                        donation.payment_status === 'captured' || donation.payment_status === 'success'
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                      }`}>
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{donation.payment_status}</span>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {filteredDonations.length === 0 && (
-              <div className="p-24 text-center space-y-4">
-                 <div className="w-20 h-20 bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto border border-slate-700 shadow-inner">
-                    <Search className="w-8 h-8 text-slate-600" />
-                 </div>
-                 <h3 className="text-white font-black text-xl tracking-tight">No collections found</h3>
-                 <p className="text-slate-500 font-bold text-sm">Try adjusting your filters or searching for something else.</p>
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                          <div className="flex flex-col items-end gap-0.5">
+                            <div className="flex items-center gap-1 text-white font-black text-lg">
+                              <IndianRupee className="w-3.5 h-3.5" />
+                              {donation.amount.toLocaleString()}
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-tighter text-slate-600">{donation.payment_method}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-slate-400 font-black text-[10px] tracking-tight truncate">{donation.txnid}</span>
+                            <div className="flex items-center gap-2">
+                              <Clock className="w-2.5 h-2.5 text-slate-600" />
+                              <span className="text-[9px] font-bold text-slate-600">
+                                 {new Date(donation.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 lg:px-8 py-5 lg:py-6">
+                           <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border w-fit ${
+                            donation.payment_status === 'captured' || donation.payment_status === 'success'
+                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                          }`}>
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">{donation.payment_status}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
 
-            {/* Pagination Controls */}
-            {(() => {
-              const totalPages = Math.ceil(filteredDonations.length / pageSize);
-              if (filteredDonations.length === 0) return null;
-              const filtered = filteredDonations;
-              return (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-8 py-5 border-t border-slate-800 bg-slate-950/20">
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-500 font-bold text-xs uppercase tracking-widest">Rows per page:</span>
+              {/* Mobile Card List — shown only on mobile */}
+              <div className="md:hidden divide-y divide-slate-800/50">
+                {filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((donation) => (
+                  <div key={donation.id} className="p-5 space-y-4 hover:bg-slate-800/20 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-sm font-black text-emerald-500 border border-slate-700 shrink-0 shadow-lg">
+                          {donation.donor_name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-slate-200 font-black text-sm truncate tracking-tight">{donation.donor_name}</p>
+                          <p className="text-[10px] text-slate-500 truncate flex items-center gap-1 font-bold">
+                            <Mail className="w-3 h-3" /> {donation.donor_email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-white font-black text-lg">₹{donation.amount.toLocaleString()}</p>
+                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[8px] font-black uppercase mt-1 ${
+                          donation.payment_status === 'captured' || donation.payment_status === 'success'
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                        }`}>
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          {donation.payment_status}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                       <span className="text-emerald-500 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 bg-emerald-500/5 border border-emerald-500/10 rounded-lg">
+                         {donation.center || collectors[donation.tag_user_id]?.center || 'Global HQ'}
+                       </span>
+                       {donation.temple && (
+                         <span className="text-blue-400 font-black text-[9px] uppercase tracking-widest px-2.5 py-1 bg-blue-500/5 border border-blue-500/10 rounded-lg">
+                           {donation.temple}
+                         </span>
+                       )}
+                       <span className="text-[9px] font-bold text-slate-500 bg-slate-900 border border-slate-800 px-2.5 py-1 rounded-lg flex items-center gap-1.5 ml-auto">
+                         <Clock className="w-3 h-3" /> {new Date(donation.created_at).toLocaleDateString()}
+                       </span>
+                    </div>
+                    <div className="pt-3 border-t border-slate-800/50 flex justify-between items-center bg-slate-950/20 -mx-5 px-5 py-2 mt-2">
+                       <p className="text-[9px] text-slate-600 font-black tracking-widest uppercase truncate max-w-[150px]">{donation.txnid}</p>
+                       <span className="text-[9px] text-slate-500 font-black uppercase tracking-tighter">{donation.payment_method}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredDonations.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((donation) => (
+                <div key={donation.id} className="bg-slate-900 rounded-[2.5rem] p-8 border border-slate-800 shadow-xl hover:border-emerald-500/30 transition-all group relative overflow-hidden flex flex-col">
+                   <div className="flex justify-between items-start mb-8">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 mb-2">
+                           <span className="text-emerald-500 font-black text-[9px] uppercase tracking-[0.2em] px-2 py-0.5 bg-emerald-500/5 border border-emerald-500/10 rounded">Collector</span>
+                        </div>
+                        <h3 className="text-white font-black text-lg tracking-tight">{collectors[donation.tag_user_id]?.name || 'System Executive'}</h3>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{collectors[donation.tag_user_id]?.center || 'Global HQ'}</p>
+                      </div>
+                      <div className="p-4 bg-slate-800 rounded-2xl border border-slate-700 shadow-inner group-hover:bg-emerald-500/10 group-hover:border-emerald-500/20 transition-all">
+                        <IndianRupee className="w-6 h-6 text-emerald-500" />
+                      </div>
+                   </div>
+                   
+                   <div className="space-y-6 flex-1">
+                      <div className="flex items-center gap-4 p-4 bg-slate-950/40 rounded-3xl border border-slate-800/50 hover:border-emerald-500/20 transition-all">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 flex items-center justify-center text-xl font-black text-emerald-500 border border-emerald-500/20 shadow-inner shrink-0">
+                           {donation.donor_name.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-slate-200 font-black truncate text-base">{donation.donor_name}</p>
+                            <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5 truncate">
+                               <Clock className="w-3.5 h-3.5" />
+                               {new Date(donation.created_at).toLocaleDateString()}
+                            </p>
+                            <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest truncate mt-1">{donation.txnid}</p>
+                        </div>
+                      </div>
+                   </div>
+
+                   <div className="flex items-center justify-between pt-8 mt-6 border-t border-slate-800">
+                      <div className="flex flex-col">
+                         <span className="text-2xl sm:text-3xl font-black text-white tracking-tighter">₹{donation.amount.toLocaleString()}</span>
+                         <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">{donation.payment_method}</span>
+                      </div>
+                      <div className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl border ${
+                         donation.payment_status === 'captured' || donation.payment_status === 'success'
+                           ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                           : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                       }`}>
+                         <CheckCircle2 className="w-4 h-4 shadow-sm" />
+                         <span className="text-[10px] font-black uppercase tracking-[0.15em]">{donation.payment_status}</span>
+                      </div>
+                   </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {filteredDonations.length === 0 && (
+            <div className="p-20 sm:p-32 text-center space-y-6 bg-slate-900/30 rounded-[3rem] border border-slate-800/50 mt-8">
+               <div className="w-24 h-24 bg-slate-800 rounded-full flex items-center justify-center mx-auto border border-slate-700 shadow-2xl relative overflow-hidden group">
+                  <Search className="w-10 h-10 text-slate-600 group-hover:scale-110 transition-transform" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+               </div>
+               <div className="space-y-2">
+                 <h3 className="text-white font-black text-2xl tracking-tight">No records discovered</h3>
+                 <p className="text-slate-500 font-bold text-sm max-w-sm mx-auto leading-relaxed">Adjust your filters or query parameters to broaden the search within our audit ledger.</p>
+               </div>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {(() => {
+            const totalPages = Math.ceil(filteredDonations.length / pageSize);
+            if (filteredDonations.length === 0) return null;
+            return (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6 px-6 sm:px-10 py-6 sm:py-8 border-t border-slate-800 bg-slate-950/20 mt-8 rounded-[2.5rem] border border-slate-800">
+                <div className="flex items-center gap-4 order-2 md:order-1">
+                  <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Page Size:</span>
+                  <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-2xl border border-slate-800 shadow-inner">
                     {[10, 20, 50].map(size => (
                       <button
                         key={size}
                         onClick={() => { setPageSize(size); setCurrentPage(1); }}
-                        className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${pageSize === size ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                        className={`w-10 h-10 rounded-xl text-xs font-black transition-all ${pageSize === size ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-slate-800 text-slate-400 hover:text-slate-300'}`}
                       >{size}</button>
                     ))}
                   </div>
+                </div>
+                <div className="flex items-center gap-3 order-1 md:order-2">
+                  <span className="text-slate-500 font-black text-[10px] uppercase tracking-widest mr-4">
+                    {((currentPage - 1) * pageSize) + 1} – {Math.min(currentPage * pageSize, filteredDonations.length)} <span className="text-slate-700 mx-1">/</span> {filteredDonations.length}
+                  </span>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-500 font-bold text-xs">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, filtered.length)} of {filtered.length}</span>
                     <button
                       disabled={currentPage === 1}
                       onClick={() => setCurrentPage(p => p - 1)}
-                      className="w-9 h-9 rounded-xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 transition-all font-black text-sm flex items-center justify-center"
+                      className="w-11 h-11 rounded-2xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 transition-all font-black text-lg flex items-center justify-center border border-slate-700 shadow-xl"
                     >‹</button>
-                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                      const page = totalPages <= 5 ? i + 1 : Math.max(1, currentPage - 2) + i;
-                      if (page > totalPages) return null;
-                      return (
-                        <button key={page} onClick={() => setCurrentPage(page)}
-                          className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${currentPage === page ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
-                        >{page}</button>
-                      );
-                    })}
+                    <div className="flex gap-1.5 px-2">
+                       {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        const page = totalPages <= 5 ? i + 1 : Math.max(1, Math.min(currentPage - 2, totalPages - 4)) + i;
+                        if (page > totalPages || page < 1) return null;
+                        return (
+                          <button 
+                            key={page} 
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-11 h-11 rounded-2xl text-[10px] font-black transition-all border ${currentPage === page ? 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/20 scale-110 z-10' : 'bg-slate-900 text-slate-500 border-slate-800 hover:border-slate-700'}`}
+                          >{page}</button>
+                        );
+                      })}
+                    </div>
                     <button
                       disabled={currentPage === totalPages}
                       onClick={() => setCurrentPage(p => p + 1)}
-                      className="w-9 h-9 rounded-xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 transition-all font-black text-sm flex items-center justify-center"
+                      className="w-11 h-11 rounded-2xl bg-slate-800 text-slate-400 hover:text-white disabled:opacity-30 transition-all font-black text-lg flex items-center justify-center border border-slate-700 shadow-xl"
                     >›</button>
                   </div>
                 </div>
-              );
-            })()}
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredDonations.map((donation) => (
-            <div key={donation.id} className="bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-xl hover:border-emerald-500/30 transition-all group relative overflow-hidden">
-               <div className="flex justify-between items-start mb-6">
-                  <div className="space-y-1">
-                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Collector</p>
-                    <h3 className="text-white font-black tracking-tight">{collectors[donation.tag_user_id]?.name || 'System Executive'}</h3>
-                     <div className="flex flex-col gap-1.5 mt-1">
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{collectors[donation.tag_user_id]?.center || 'Global HQ'}</p>
-                      {donation.temple && (
-                        <p className="text-[9px] text-blue-500/80 font-black uppercase tracking-widest">{donation.temple}</p>
-                      )}
-                      {donation.ashram && (
-                        <span className="text-[9px] font-black text-slate-400 bg-slate-950/40 px-2 py-0.5 rounded border border-slate-800/50 w-fit mt-1">
-                          {donation.ashram}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="p-3 bg-slate-800 rounded-2xl border border-slate-700">
-                    <IndianRupee className="w-5 h-5 text-emerald-500" />
-                  </div>
-               </div>
-               
-               <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 flex items-center justify-center text-lg font-black text-emerald-500 border border-emerald-500/20">
-                       {donation.donor_name.charAt(0)}
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-slate-200 font-black truncate">{donation.donor_name}</p>
-                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 truncate">
-                           <Clock className="w-3 h-3" />
-                           {new Date(donation.created_at).toLocaleDateString()}
-                        </p>
-                        {donation.donor_pan && (
-                          <p className="text-[9px] font-black text-amber-500 mt-1 flex items-center gap-1">
-                            <ShieldCheck className="w-3 h-3" />
-                            PAN: {donation.donor_pan}
-                          </p>
-                        )}
-                        {donation.donor_address && (
-                          <p className="text-[9px] font-bold text-slate-400 mt-0.5 flex items-start gap-1 line-clamp-2">
-                            <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
-                            {donation.donor_address}
-                          </p>
-                        )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-6 border-t border-slate-800">
-                     <span className="text-2xl font-black text-white">₹{donation.amount.toLocaleString()}</span>
-                     <div className={`flex items-center gap-2 px-4 py-2 rounded-2xl border ${
-                        donation.payment_status === 'captured' || donation.payment_status === 'success'
-                          ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                          : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                      }`}>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-xs font-black uppercase tracking-widest">{donation.payment_status}</span>
-                     </div>
-                  </div>
-               </div>
-            </div>
-          ))}
-        </div>
+              </div>
+            );
+          })()}
+        </>
       )}
 
-        </>
-      ) : (
+      {activeTab === 'missing-links' && (
         <div className="space-y-8 animate-in fade-in duration-500">
-          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden p-10">
+          <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 shadow-2xl overflow-hidden p-6 sm:p-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
               <div className="space-y-2">
                 <h2 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
