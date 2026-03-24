@@ -107,9 +107,11 @@ export async function POST(request: Request) {
             // A. Fetch current center data
             const { data: centerInfo } = await supabase
                 .from('centers')
-                .select('*')
+                .select('id, name, mentor_ids, mentor_names, frontliner_ids, frontliner_names')
                 .eq('id', centerId)
-                .single();
+                .single() as { data: any, error: any };
+
+
 
             const idsCol = targetCol.replace('_id', '_ids'); // mentor_ids / frontliner_ids
             const namesCol = targetCol.replace('_id', '_names'); // mentor_names / frontliner_names
@@ -171,7 +173,12 @@ export async function POST(request: Request) {
         // =========================================================
         const targetNameCol = targetCol.replace('_id', '_name');
 
-        const { data: centerInfo } = await supabase.from('centers').select('*').eq('id', centerId).single();
+        const { data: centerInfo } = await supabase.from('centers')
+            .select(`id, name, ${targetCol}`)
+            .eq('id', centerId)
+            .single() as { data: any, error: any };
+
+
         const currentHolderId = centerInfo?.[targetCol];
 
         console.log(`API: Structure Update - Role ${roleValue} at Center ${centerId}. Current: ${currentHolderId}, New: ${userId}`);

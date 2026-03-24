@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { validateCenterInput, sanitizeInput } from '@/lib/utils/validation';
 
@@ -247,6 +248,10 @@ export async function POST(request: Request) {
           .eq('city', trimmedCity)
           .eq('name', trimmedName)
           .single();
+        // Revalidate the centers cache
+        const { revalidateTag } = await import('next/cache');
+        revalidateTag('centers');
+
         return NextResponse.json({ success: true, id: existingCenter?.id });
       }
 
@@ -348,7 +353,11 @@ export async function POST(request: Request) {
       ]);
     }
 
+    // Revalidate the centers cache
+    revalidateTag('centers');
+
     return NextResponse.json({ success: true, id: newCenterId });
+
   } catch (error: any) {
     console.error('Error adding center to Supabase:', error);
 

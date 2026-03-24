@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
                 // 1. Fetch the request details
                 const { data: requestData, error: fetchError } = await supabase
                     .from('profile_update_requests')
-                    .select('*')
+                    .select('id, user_id, status, requested_changes')
                     .eq('id', id)
                     .single();
 

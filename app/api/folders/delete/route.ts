@@ -58,10 +58,13 @@ export async function POST(request: NextRequest) {
 
         // --- Recursive Deletion Logic ---
 
-        // 1. Fetch all folders once to build a tree in-memory (more efficient than recursive DB calls)
+        // 1. Fetch all folders for this user once to build a tree in-memory
+        const folderUserIds = isAdmin ? [targetFolder.user_id, user.id] : [user.id];
+        
         const { data: allFolders, error: allFoldersError } = await sadhanaDbAdmin
             .from('folders')
-            .select('id, parent_id, user_id');
+            .select('id, parent_id, user_id')
+            .in('user_id', folderUserIds);
 
         if (allFoldersError) throw allFoldersError;
 
@@ -90,15 +93,17 @@ export async function POST(request: NextRequest) {
         }
 
         // 4. Delete the folders themselves
-        const { error: foldersDeleteError } = await sadhanaDbAdmin
+        const { error: foldersDeleteError, count: deletedFoldersCount } = await sadhanaDbAdmin
             .from('folders')
-            .delete()
+            .delete({ count: 'exact' })
             .in('id', idsToDelete);
 
         if (foldersDeleteError) {
             console.error('Error deleting folders:', foldersDeleteError);
             return NextResponse.json({ error: foldersDeleteError.message }, { status: 500 });
         }
+
+        console.log(`[Folder Delete API] Successfully deleted ${deletedFoldersCount || 0} folders and their associated files.`);
 
         return NextResponse.json({
             success: true,

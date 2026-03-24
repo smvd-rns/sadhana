@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
-import { extractFolderId, processAndSaveFiles } from './utils/drive.js';
+import { extractFolderId, processAndSaveFiles, getAccessToken, findOrCreateFolder, getFileCategory } from './utils/drive.js';
 
 dotenv.config();
 
@@ -102,6 +102,59 @@ app.post('/scan', async (req, res) => {
     } catch (error) {
         console.error('[Express Scan Route Error]', error);
         res.status(500).json({ error: error.message || 'Internal Server Error' });
+    }
+});
+
+/**
+ * Get Upload Token Endpoint
+ * Returns a fresh access token and resolves the target folder ID for direct uploads
+ */
+app.post('/upload-token', async (req, res) => {
+    try {
+        const { fileName, fileType, targetFolderId, userId, userName } = req.body;
+
+        if (!fileName || !fileType || !userId) {
+            return res.status(400).json({ error: 'FileName, FileType, and UserId are required' });
+        }
+
+        console.log(`[Upload Token] Request for ${fileName} (User: ${userName || userId})`);
+
+        const accessToken = await getAccessToken();
+        const mainFolderId = '1KhZ2l4wk3HXwBhX18JFb10zNvWJNMjHi'; // Priority Root Folder
+        let finalFolderId = '';
+
+        // 1. Resolve Target Folder from DB if provided
+        if (targetFolderId && targetFolderId !== 'root') {
+            const { data: folderData, error } = await sadhanaDbAdmin
+                .from('folders')
+                .select('google_drive_folder_id')
+                .eq('id', targetFolderId)
+                .single();
+
+            if (!error && folderData?.google_drive_folder_id) {
+                finalFolderId = folderData.google_drive_folder_id;
+            }
+        }
+
+        // 2. Fallback to Category-based Organization
+        if (!finalFolderId) {
+            const safeUserName = userName || userId.substring(0, 8);
+            const userFolderId = await findOrCreateFolder(accessToken, safeUserName, mainFolderId);
+            const fileCategory = getFileCategory(fileName, fileType);
+            finalFolderId = await findOrCreateFolder(accessToken, fileCategory, userFolderId);
+        }
+
+        console.log(`[Upload Token] Success! Folder: ${finalFolderId}`);
+
+        res.status(200).json({
+            accessToken,
+            folderId: finalFolderId,
+            userId: userId
+        });
+
+    } catch (error) {
+        console.error('[Upload Token Error]', error);
+        res.status(500).json({ error: error.message || 'Failed to generate upload token' });
     }
 });
 

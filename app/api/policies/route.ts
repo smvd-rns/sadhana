@@ -44,7 +44,10 @@ export async function GET(request: Request) {
         // Roles 8, 9, 10 see all policies
         const seesAll = numericRoles.some(r => [8, 9, 10].includes(r)) || roles.includes('super_admin');
 
-        let query = supabase.from('policies').select('*').order('applicable_date', { ascending: false });
+        let query = supabase.from('policies')
+            .select('id, title, applicable_date, file_name, file_url, file_id, file_type, target_roles')
+            .order('applicable_date', { ascending: false });
+
 
         if (!seesAll) {
             if (numericRoles.length > 0) {

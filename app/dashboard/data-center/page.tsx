@@ -706,36 +706,67 @@ export default function DataCenterPage() {
 
         setIsDeleting(true);
         try {
-            // Use the new secure API endpoint that has Service Role permissions
             const { data: sessionData } = await (supabase as any).auth.getSession();
             const token = sessionData?.session?.access_token;
 
-            const res = await fetch('/api/drive/delete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                },
-                body: JSON.stringify({ ids: idsToDelete })
-            });
+            // Separate folder IDs and file IDs
+            const folderIds = idsToDelete.filter(id => allFolders.some(f => f.id === id));
+            const fileIds = idsToDelete.filter(id => !folderIds.includes(id));
 
-            const result = await res.json();
+            console.log(`[Bulk Delete] User ${user.id} deleting ${fileIds.length} files and ${folderIds.length} folders`);
 
-            if (!res.ok) throw new Error(result.error || 'Failed to delete files');
+            const deletePromises: Promise<any>[] = [];
 
-            console.log(`Successfully deleted ${result.deletedCount || 0} files via API`);
-
-            if ((result.deletedCount || 0) === 0) {
-                alert('No files were removed. This usually means you are not the owner of these files.');
+            // 1. Delete Files
+            if (fileIds.length > 0) {
+                deletePromises.push(
+                    fetch('/api/drive/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ ids: fileIds })
+                    }).then(async res => {
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.error || 'Failed to delete files');
+                        return result;
+                    })
+                );
             }
+
+            // 2. Delete Folders (Recursive)
+            for (const folderId of folderIds) {
+                deletePromises.push(
+                    fetch('/api/folders/delete', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({ id: folderId })
+                    }).then(async res => {
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.error || 'Failed to delete folder');
+                        return result;
+                    })
+                );
+            }
+
+            const results = await Promise.all(deletePromises);
+            console.log('Bulk delete completed successfully', results);
 
             // Update UI
             setFiles(prev => prev.filter(f => !idsToDelete.includes(f.id)));
+            setFolders(prev => prev.filter(f => !idsToDelete.includes(f.id)));
             setSelectedIds(new Set());
             setFileToDelete(null);
             setShowBulkDeleteConfirm(false);
 
             await fetchFiles();
+            await fetchAllFolders();
+
+            showToast('Selected items removed successfully', 'success');
 
             // Wait slightly for DB to settle and then refresh stats
             setTimeout(() => {
@@ -743,7 +774,7 @@ export default function DataCenterPage() {
             }, 1000);
         } catch (err: any) {
             console.error('Delete error:', err);
-            alert(`Delete failed: ${err.message}`);
+            showToast(`Delete failed: ${err.message}`, 'error');
         } finally {
             setIsDeleting(false);
         }
@@ -1027,48 +1058,37 @@ export default function DataCenterPage() {
         return (
             <div className="select-none">
                 <div
-                    className={`flex items-center gap-1 py-1 px-2 hover:bg-blue-50/50 cursor-pointer rounded-lg transition-colors group ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}
-                    style={{ paddingLeft: `${level * 12 + 8}px` }}
+                    className={`flex items-center gap-1 py-0.5 px-2 hover:bg-blue-50/50 cursor-pointer rounded-lg transition-colors group ${isSelected ? 'bg-blue-50 text-blue-700' : 'text-gray-600'}`}
+                    style={{ paddingLeft: `${level * 8 + 4}px` }}
                     onClick={() => navigateToFolder(folder, globalUser?.id)}
                 >
                     <div
-                        className={`w-4 h-4 flex items-center justify-center ${isSelected ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                        className={`w-3.5 h-3.5 flex items-center justify-center ${isSelected ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             toggleFolderExpansion(id);
                         }}
                     >
                         {(hasChildren || foldersWithFiles.has(id)) ? (
-                            isExpanded ? <MinusSquare className="w-3.5 h-3.5" /> : <PlusSquare className="w-3.5 h-3.5" />
+                            isExpanded ? <MinusSquare className="w-3 h-3" /> : <PlusSquare className="w-3 h-3" />
                         ) : (
-                            <div className="w-3.5" />
+                            <div className="w-3" />
                         )}
                     </div>
 
                     <button
                         onClick={(e) => { e.stopPropagation(); toggleSelect(id); }}
-                        className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${selectedIds.has(id) ? 'bg-blue-600 border-blue-700 text-white' : 'bg-white border-slate-300 hover:border-blue-500'}`}
+                        className={`w-3.5 h-3.5 rounded border transition-all flex items-center justify-center shrink-0 ${selectedIds.has(id) ? 'bg-blue-600 border-blue-700 text-white' : 'bg-white border-slate-300 hover:border-blue-500'}`}
                     >
-                        {selectedIds.has(id) && <CheckCircle2 className="w-2.5 h-2.5 fill-white text-blue-600" />}
+                        {selectedIds.has(id) && <CheckCircle2 className="w-2 h-2 fill-white text-blue-600" />}
                     </button>
 
-                    <Folder className={`w-4 h-4 ${isSelected ? 'fill-blue-200 text-blue-600' : 'fill-blue-100 text-blue-500'} group-hover:scale-110 transition-transform`} />
-                    <span className={`text-[13px] whitespace-nowrap overflow-hidden text-overflow-ellipsis font-medium flex-1`}>
+                    <Folder className={`w-3.5 h-3.5 ${isSelected ? 'fill-blue-200 text-blue-600' : 'fill-blue-100 text-blue-500'} group-hover:scale-110 transition-transform`} />
+                    <span className={`text-[11px] whitespace-nowrap overflow-hidden text-overflow-ellipsis font-bold flex-1`}>
                         {name}
                     </span>
 
-                    {/* Delete Icon for folders user owns - Logic: only if activeTab is 'my' AND user owns it */}
-                    {activeTab === 'my' && isOwner && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setFolderToDelete(folder);
-                            }}
-                            className="hidden group-hover:flex items-center justify-center p-1 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-all ml-auto"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                    )}
+                    {/* Individual delete removed in favor of bulk delete at bottom */}
                 </div>
                 {isExpanded && (
                     <>
@@ -1078,8 +1098,8 @@ export default function DataCenterPage() {
                         {folderFiles.map(file => (
                             <div
                                 key={file.id}
-                                className={`flex items-center gap-2 py-1 px-2 hover:bg-blue-50/30 cursor-pointer rounded-lg transition-colors group ${selectedFile?.id === file.id ? 'bg-blue-50/50 text-blue-700 font-bold' : 'text-gray-500'}`}
-                                style={{ paddingLeft: `${(level + 1) * 12 + 8}px` }}
+                                className={`flex items-center gap-2 py-0.5 px-2 hover:bg-blue-50/30 cursor-pointer rounded-lg transition-colors group ${selectedFile?.id === file.id ? 'bg-blue-50/50 text-blue-700 font-bold' : 'text-gray-500'}`}
+                                style={{ paddingLeft: `${(level + 1) * 8 + 4}px` }}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedFile(file);
@@ -1087,14 +1107,14 @@ export default function DataCenterPage() {
                             >
                                 <button
                                     onClick={(e) => { e.stopPropagation(); toggleSelect(file.id); }}
-                                    className={`w-4 h-4 rounded border transition-all flex items-center justify-center shrink-0 ${selectedIds.has(file.id) ? 'bg-blue-600 border-blue-700 text-white' : 'bg-white border-slate-300 hover:border-blue-500'}`}
+                                    className={`w-3.5 h-3.5 rounded border transition-all flex items-center justify-center shrink-0 ${selectedIds.has(file.id) ? 'bg-blue-600 border-blue-700 text-white' : 'bg-white border-slate-300 hover:border-blue-500'}`}
                                 >
-                                    {selectedIds.has(file.id) && <CheckCircle2 className="w-2.5 h-2.5 fill-white text-blue-600" />}
+                                    {selectedIds.has(file.id) && <CheckCircle2 className="w-2 h-2 fill-white text-blue-600" />}
                                 </button>
-                                <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                                <div className="w-3.5 h-3.5 flex items-center justify-center shrink-0">
                                     {getFileIcon(file.category)}
                                 </div>
-                                <span className="text-[12px] whitespace-nowrap overflow-hidden text-overflow-ellipsis flex-1">
+                                <span className="text-[10.5px] whitespace-nowrap overflow-hidden text-overflow-ellipsis flex-1 font-medium">
                                     {file.file_name}
                                 </span>
                             </div>
@@ -2178,22 +2198,12 @@ export default function DataCenterPage() {
                                     )}
                                 </div>
                             </div>
-                            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex gap-3">
-                                {selectedIds.size > 0 && (
-                                    <button
-                                        onClick={handleBulkDownloadConfirm}
-                                        disabled={isDownloadingBulk}
-                                        className="flex-1 py-3 bg-gradient-to-br from-indigo-500 via-purple-600 to-violet-700 text-white font-black text-[11px] uppercase tracking-widest rounded-xl shadow-[0_8px_25px_-5px_rgba(99,102,241,0.5)] border-2 border-indigo-400/30 active:scale-95 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {isDownloadingBulk ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                                        Download
-                                    </button>
-                                )}
+                            <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-end">
                                 <button
                                     onClick={() => setIsMobileSidebarOpen(false)}
-                                    className="flex-1 py-3 bg-white text-slate-600 font-bold text-sm rounded-xl border-2 border-slate-100 shadow-sm active:scale-95 transition-all"
+                                    className="px-8 py-2.5 bg-white text-slate-600 font-bold text-xs rounded-xl border-2 border-slate-100 shadow-sm active:scale-95 transition-all"
                                 >
-                                    Close Explorer
+                                    Close
                                 </button>
                             </div>
                         </motion.div>
@@ -2275,7 +2285,7 @@ export default function DataCenterPage() {
                         initial={{ opacity: 0, y: 100 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 100 }}
-                        className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-2xl border-2 border-blue-100 p-2 sm:p-3 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.2)] hidden lg:flex items-center gap-2.5 sm:gap-6 z-[1000] w-[calc(100%-1.5rem)] max-w-[500px]"
+                        className="fixed bottom-0 sm:bottom-6 left-0 sm:left-1/2 sm:-translate-x-1/2 bg-white sm:bg-white/95 backdrop-blur-2xl border-t sm:border-2 border-blue-100 p-3 sm:p-3 sm:rounded-[2rem] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] sm:shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center gap-3 sm:gap-6 z-[1000] w-full sm:w-[calc(100%-1.5rem)] max-w-none sm:max-w-[550px]"
                     >
                         {/* Selected count badge - compact on mobile */}
                         <div className="flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-xl font-black text-[10px] sm:text-[11px] uppercase tracking-widest shrink-0 shadow-lg shadow-blue-500/20">
@@ -2294,6 +2304,18 @@ export default function DataCenterPage() {
                                 <X className="w-4 h-4 sm:hidden" />
                                 <span className="hidden sm:inline">Cancel</span>
                             </button>
+
+                            {/* Delete — only in My Space */}
+                            {activeTab === 'my' && (
+                                <button
+                                    onClick={() => setShowBulkDeleteConfirm(true)}
+                                    className="px-4 py-2.5 sm:px-6 bg-red-500 text-white rounded-xl font-black shadow-lg hover:bg-red-600 active:scale-95 text-[10px] sm:text-[11px] uppercase tracking-widest flex items-center gap-1.5 transition-all border-b-4 border-red-700"
+                                >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span className="hidden min-[350px]:inline">Delete</span>
+                                    <span className="min-[350px]:hidden">Del</span>
+                                </button>
+                            )}
 
                             {/* Download — icon+text on all sizes, but compact padding on mobile */}
                             <button

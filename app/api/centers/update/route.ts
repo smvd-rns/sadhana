@@ -303,7 +303,12 @@ export async function POST(request: Request) {
 
         await Promise.all(tasks);
 
+        // Revalidate the centers cache
+        const { revalidateTag } = await import('next/cache');
+        revalidateTag('centers');
+
         return NextResponse.json({ success: true });
+
 
     } catch (error: any) {
         console.error('Error updating center:', error);

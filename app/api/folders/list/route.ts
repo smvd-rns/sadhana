@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
         const parentId = searchParams.get('parentId');
         const activeTab = searchParams.get('activeTab') || 'global';
 
-        let query = sadhanaDbAdmin.from('folders').select('*');
+        let query = sadhanaDbAdmin.from('folders')
+            .select('id, name, parent_id, user_id');
+
 
         if (parentId && parentId !== 'root') {
             query = query.eq('parent_id', parentId);

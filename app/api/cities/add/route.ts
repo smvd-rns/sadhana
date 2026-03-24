@@ -112,8 +112,13 @@ export async function POST(request: Request) {
     }
 
     if (existing) {
+      // Revalidate the cities cache
+      const { revalidateTag } = await import('next/cache');
+      revalidateTag('cities');
+
       return NextResponse.json({ success: true });
     }
+
 
     // Insert new city
     const { error } = await authenticatedClient
@@ -141,7 +146,12 @@ export async function POST(request: Request) {
       throw new Error(error.message || `Failed to insert city: ${error.code || 'Unknown error'}`);
     }
 
+    // Revalidate the cities cache
+    const { revalidateTag } = await import('next/cache');
+    revalidateTag('cities');
+
     return NextResponse.json({ success: true });
+
   } catch (error: any) {
     console.error('Error adding city to Supabase:', error);
 

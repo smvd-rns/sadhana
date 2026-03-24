@@ -41,14 +41,24 @@ export default function DataCenterUploadPage() {
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [scanError, setScanError] = useState('');
     const [renderWorkerStatus, setRenderWorkerStatus] = useState<'sleeping' | 'waking' | 'awake' | 'error'>('sleeping');
+    const [wakeUpTimer, setWakeUpTimer] = useState(60);
 
     const RENDER_SERVICE_URL = process.env.NEXT_PUBLIC_RENDER_INDEXER_URL || 'http://localhost:4000';
 
-    // Wake up Render service when the page mounts or fetch tab is active
+    // Wake up Render service when the page mounts
     useEffect(() => {
-        if (activeTab === 'fetch' && renderWorkerStatus === 'sleeping') {
+        let interval: NodeJS.Timeout;
+
+        if (renderWorkerStatus === 'sleeping') {
             const wakeUpWorker = async () => {
                 setRenderWorkerStatus('waking');
+                setWakeUpTimer(60);
+
+                // Start countdown
+                interval = setInterval(() => {
+                    setWakeUpTimer((prev) => (prev > 0 ? prev - 1 : 0));
+                }, 1000);
+
                 try {
                     const res = await fetch(`${RENDER_SERVICE_URL}/health`, {
                         method: 'GET',
@@ -57,17 +67,22 @@ export default function DataCenterUploadPage() {
                     });
                     if (res.ok) {
                         setRenderWorkerStatus('awake');
+                        clearInterval(interval);
                     } else {
                         setRenderWorkerStatus('error');
+                        clearInterval(interval);
                     }
                 } catch (err) {
                     console.warn('Render wake-up failed (might be offline/cold-starting):', err);
-                    setRenderWorkerStatus('error');
+                    // Don't set error immediately if it's just a timeout/refused during cold start
+                    // Let the timer run out or retry if we want, but for now we'll just wait
                 }
             };
             wakeUpWorker();
         }
-    }, [activeTab, renderWorkerStatus, RENDER_SERVICE_URL]);
+
+        return () => clearInterval(interval);
+    }, [renderWorkerStatus, RENDER_SERVICE_URL]);
 
     const fetchRecentScans = useCallback(async () => {
         if (!user || !sadhanaDb) return;
@@ -270,6 +285,36 @@ export default function DataCenterUploadPage() {
         setUploadStatus('idle');
         setUploadError('');
 
+        // Helper for XMLHttpRequest based upload to track progress
+        const uploadFileWithProgress = (url: string, file: File, onProgress: (pct: number) => void): Promise<any> => {
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('PUT', url);
+                
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = Math.round((e.loaded / e.total) * 100);
+                        onProgress(percentComplete);
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            resolve(JSON.parse(xhr.responseText));
+                        } catch (e) {
+                            resolve({ id: 'unknown' }); // Fallback if not JSON
+                        }
+                    } else {
+                        reject(new Error(`Upload failed with status ${xhr.status}`));
+                    }
+                };
+
+                xhr.onerror = () => reject(new Error('Network error during upload'));
+                xhr.send(file);
+            });
+        };
+
         try {
             const session = await supabase?.auth.getSession();
             const token = session?.data.session?.access_token;
@@ -304,23 +349,58 @@ export default function DataCenterUploadPage() {
                 setFileStatuses(prev => ({ ...prev, [file.name]: 'uploading' }));
                 setUploadProgress(10);
 
-                const tokenRes = await fetch('/api/drive/upload-token', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: JSON.stringify({
-                        fileName: file.name,
-                        fileType: file.type || 'application/octet-stream',
-                        targetFolderId
-                    })
-                });
+                // Try Render first, Fallback to Vercel
+                let tokenRes;
+                let tokenData;
 
-                const tokenData = await tokenRes.json();
-                if (!tokenRes.ok) throw new Error(tokenData.error || `Failed to initialize upload for ${file.name}`);
+                try {
+                    // 1. Try Render Backend
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout as requested
 
-                setUploadProgress(30);
+                    tokenRes = await fetch(`${RENDER_SERVICE_URL}/upload-token`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        signal: controller.signal,
+                        body: JSON.stringify({
+                            fileName: file.name,
+                            fileType: file.type || 'application/octet-stream',
+                            targetFolderId,
+                            userId: user.id,
+                            userName: userData?.name || user.email?.split('@')[0] || user.id.substring(0, 8)
+                        })
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (tokenRes.ok) {
+                        tokenData = await tokenRes.json();
+                    } else {
+                        throw new Error('Render bypass');
+                    }
+                } catch (err) {
+                    // 2. Fallback to Internal Vercel API
+                    console.warn('Render backend unreachable, falling back to Vercel:', err);
+                    const internalRes = await fetch('/api/drive/upload-token', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                        },
+                        body: JSON.stringify({
+                            fileName: file.name,
+                            fileType: file.type || 'application/octet-stream',
+                            targetFolderId
+                        })
+                    });
+
+                    if (!internalRes.ok) {
+                        const errorData = await internalRes.json();
+                        throw new Error(errorData.error || `Failed to initialize upload for ${file.name}`);
+                    }
+                    tokenData = await internalRes.json();
+                }
+
+                setUploadProgress(20);
 
                 const metadata = {
                     name: file.name,
@@ -343,16 +423,12 @@ export default function DataCenterUploadPage() {
                 const location = sessionRes.headers.get('Location');
                 if (!location) throw new Error('No upload location received from Google Drive');
 
-                const uploadRes = await fetch(location, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': file.type || 'application/octet-stream',
-                    },
-                    body: file
+                // Real-time progress upload
+                const driveData = await uploadFileWithProgress(location, file, (percent) => {
+                    // Map 0-100% of file to 20-90% of overall progress
+                    const mappedProgress = 20 + Math.round(percent * 0.7);
+                    setUploadProgress(mappedProgress);
                 });
-
-                if (!uploadRes.ok) throw new Error(`Failed to upload file content for ${file.name}`);
-                let driveData = await uploadRes.json();
 
                 if (!driveData.thumbnailLink || !driveData.webViewLink) {
                     const extraRes = await fetch(`https://www.googleapis.com/drive/v3/files/${driveData.id}?fields=id,name,mimeType,size,thumbnailLink,webViewLink`, {
@@ -362,11 +438,11 @@ export default function DataCenterUploadPage() {
                     });
                     if (extraRes.ok) {
                         const extraData = await extraRes.json();
-                        driveData = { ...driveData, ...extraData };
+                        Object.assign(driveData, extraData);
                     }
                 }
 
-                setUploadProgress(80);
+                setUploadProgress(95);
 
                 const mimeType = driveData.mimeType || '';
                 const extension = file.name.split('.').pop()?.toLowerCase() || '';
@@ -742,8 +818,17 @@ export default function DataCenterUploadPage() {
                                                         onClick={performUpload}
                                                         className="w-full px-8 py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                                     >
-                                                        <Upload className="w-5 h-5" />
-                                                        Finalize & Upload Batch
+                                                        {renderWorkerStatus === 'waking' ? (
+                                                            <>
+                                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                                Waking Backend ({wakeUpTimer}s)...
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Upload className="w-5 h-5" />
+                                                                Finalize & Upload Batch
+                                                            </>
+                                                        )}
                                                     </button>
                                                 )}
                                             </div>
@@ -763,7 +848,7 @@ export default function DataCenterUploadPage() {
                                                 {renderWorkerStatus === 'waking' && (
                                                     <span className="flex items-center gap-2 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-orange-200 shadow-sm animate-pulse">
                                                         <Loader2 className="w-3 h-3 animate-spin" />
-                                                        Waking Engine...
+                                                        Waking Engine ({wakeUpTimer}s)...
                                                     </span>
                                                 )}
                                                 {renderWorkerStatus === 'awake' && (

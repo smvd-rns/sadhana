@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
         // Fetch all broadcast messages sent by this user
         const { data: messages, error } = await supabaseAdmin
             .from('messages')
-            .select('*')
+            .select('id, subject, content, priority, category, created_at, recipient_ids, read_by')
             .eq('sender_id', user.id)
             .eq('is_broadcast', true)
             .order('created_at', { ascending: false });

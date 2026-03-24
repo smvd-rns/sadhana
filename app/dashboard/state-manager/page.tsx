@@ -512,6 +512,7 @@ export default function StateManagerPage() {
                                                 width={64}
                                                 height={64}
                                                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-orange-200"
+                                                unoptimized={true}
                                             />
                                         ) : (
                                             <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">

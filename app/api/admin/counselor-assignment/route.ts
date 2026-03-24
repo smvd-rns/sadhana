@@ -57,15 +57,17 @@ export async function POST(request: Request) {
 
         // Check target user in one go if scoping applies
         let targetUser = null;
+        const requiredUserFields = 'id, name, email, phone, city, ashram, role, hierarchy, current_temple';
+
         if (isManagingDirector && !isSuperAdmin) {
             const { data: targetData, error: targetError } = await supabase
                 .from('users')
-                .select('*')
+                .select(requiredUserFields)
                 .eq('id', userId)
                 .single();
 
             if (targetError || !targetData) {
-                return NextResponse.json({ error: 'User not found' }, { status: 404 });
+                return NextResponse.json({ error: 'User found' }, { status: 404 });
             }
             targetUser = targetData;
 
@@ -93,12 +95,12 @@ export async function POST(request: Request) {
             // Just fetch target user
             const { data, error: fetchError } = await supabase
                 .from('users')
-                .select('*')
+                .select(requiredUserFields)
                 .eq('id', userId)
                 .single();
 
             if (fetchError || !data) {
-                return NextResponse.json({ error: 'User not found' }, { status: 404 });
+                return NextResponse.json({ error: 'User found' }, { status: 404 });
             }
             targetUser = data;
         }

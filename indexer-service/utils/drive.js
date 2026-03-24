@@ -22,6 +22,22 @@ export function extractFolderId(driveLink) {
     return null;
 }
 
+// Helper to determine file category based on MIME type and extension
+export function getFileCategory(fileName, mimeType) {
+    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+
+    if (mimeType.includes('presentation') || ['ppt', 'pptx'].includes(extension)) return 'ppt';
+    if (mimeType.includes('pdf') || extension === 'pdf') return 'pdf';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || ['xls', 'xlsx', 'csv', 'ods'].includes(extension)) return 'excel';
+    if (mimeType.includes('video') || ['mp4', 'avi', 'mov', 'mkv', 'webm', 'flv', 'wmv', 'mpeg', 'mpg'].includes(extension)) return 'video';
+    if (mimeType.includes('audio') || ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma'].includes(extension)) return 'audio';
+    if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text') || ['doc', 'docx', 'txt', 'rtf', 'odt'].includes(extension)) return 'doc';
+    if (mimeType.includes('zip') || mimeType.includes('compressed') || mimeType.includes('archive') || ['zip', 'rar', '7z', 'tar', 'gz', 'bz2'].includes(extension)) return 'zip';
+    if (mimeType.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico', 'tiff'].includes(extension)) return 'images';
+
+    return 'other';
+}
+
 export async function getAccessToken() {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -68,7 +84,68 @@ async function isScanCancelled(sadhanaDbAdmin, scanId) {
     }
 }
 
-async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folderMap, localFolderCache) {
+// Helper to find or create a folder in Google Drive with Robust Race Condition Handling
+export async function findOrCreateFolder(accessToken, folderName, parentFolderId) {
+    const maxRetries = 3;
+    let retryCount = 0;
+    const fields = 'files(id, name, createdTime)';
+
+    while (retryCount < maxRetries) {
+        const escapedFolderName = folderName
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"');
+
+        const query = `name='${escapedFolderName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&orderBy=createdTime asc`;
+
+        const searchRes = await fetch(searchUrl, {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData.files && searchData.files.length > 0) {
+                const exactMatches = searchData.files.filter(f => f.name === folderName);
+                if (exactMatches.length > 0) {
+                    return exactMatches[0].id;
+                }
+            }
+        }
+
+        const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: folderName,
+                mimeType: 'application/vnd.google-apps.folder',
+                parents: [parentFolderId]
+            })
+        });
+
+        if (createRes.ok) {
+            const newFolder = await createRes.json();
+            return newFolder.id;
+        }
+
+        const errorData = await createRes.json().catch(() => ({ error: { message: 'Unknown error' } }));
+        if (createRes.status === 409 || errorData.error?.message?.toLowerCase().includes('duplicate')) {
+            retryCount++;
+            await new Promise(resolve => setTimeout(resolve, 300 * retryCount));
+            continue;
+        }
+        retryCount++;
+    }
+    throw new Error(`Failed to find or create folder "${folderName}" after ${maxRetries} attempts`);
+}
+
+async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folderMap, localFolderCache, pathDriveIdMap) {
     if (!path) return rootFolderId;
     if (folderMap.has(path)) return folderMap.get(path);
 
@@ -104,13 +181,20 @@ async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folde
             currentParentId = existing.id;
             localFolderCache.set(cacheKey, { id: currentParentId });
         } else {
+            const payload = {
+                name: segment,
+                parent_id: currentParentId === 'root' || !currentParentId ? null : currentParentId,
+                user_id: userId
+            };
+
+            // Add Google Drive ID if we have it from the scan
+            if (pathDriveIdMap && pathDriveIdMap.has(currentPath)) {
+                payload.google_drive_folder_id = pathDriveIdMap.get(currentPath);
+            }
+
             const { data: created, error } = await sadhanaDbAdmin
                 .from('folders')
-                .insert({
-                    name: segment,
-                    parent_id: currentParentId === 'root' || !currentParentId ? null : currentParentId,
-                    user_id: userId
-                })
+                .insert(payload)
                 .select()
                 .single();
 
@@ -130,12 +214,14 @@ async function resolveFolderId(sadhanaDbAdmin, rootFolderId, path, userId, folde
 
 export async function scanFolderRecursively(folderId, accessToken, onProgress) {
     const allFiles = [];
+    const folderIdMap = new Map(); // path -> driveId
     const processedFolders = new Set();
     let totalFoldersFound = 0;
 
     async function scanFolder(currentFolderId, currentPath = '') {
         if (processedFolders.has(currentFolderId)) return;
         processedFolders.add(currentFolderId);
+        if (currentPath) folderIdMap.set(currentPath, currentFolderId);
         totalFoldersFound++;
 
         let pageToken = null;
@@ -217,7 +303,7 @@ export async function scanFolderRecursively(folderId, accessToken, onProgress) {
     }
 
     await scanFolder(folderId);
-    return { files: allFiles, foldersFound: totalFoldersFound };
+    return { files: allFiles, foldersFound: totalFoldersFound, pathDriveIdMap: folderIdMap };
 }
 
 export async function processAndSaveFiles({
@@ -273,6 +359,7 @@ export async function processAndSaveFiles({
         const files = scanResult.files;
         filesFound = files.length;
         foldersFound = scanResult.foldersFound;
+        const pathDriveIdMap = scanResult.pathDriveIdMap;
 
         const BATCH_SIZE = 200; // Increased BATCH_SIZE for Render microservice
         const currentTime = new Date().toISOString();
@@ -295,31 +382,31 @@ export async function processAndSaveFiles({
 
         let rootFolderIdForScan = null;
         if (displayName) {
-            rootFolderIdForScan = await resolveFolderId(sadhanaDbAdmin, null, displayName, userId, folderIdMap, localFolderCache);
+            rootFolderIdForScan = await resolveFolderId(sadhanaDbAdmin, null, displayName, userId, folderIdMap, localFolderCache, pathDriveIdMap);
         }
 
         for (let i = 0; i < files.length; i += BATCH_SIZE) {
             if (await isScanCancelled(sadhanaDbAdmin, scanId)) break;
 
             const batch = files.slice(i, i + BATCH_SIZE);
-            const batchFileNames = batch.map(f => f.name);
+            const batchDriveIds = batch.map(f => f.id);
 
             try {
                 const { data: existingFiles } = await sadhanaDbAdmin
                     .from('files')
-                    .select('file_name')
-                    .in('file_name', batchFileNames)
+                    .select('google_drive_id')
+                    .in('google_drive_id', batchDriveIds)
                     .eq('user_id', userId);
 
-                const existingNameSet = new Set(existingFiles?.map(f => f.file_name) || []);
-                const newFilesData = batch.filter(f => !existingNameSet.has(f.name));
+                const existingIdSet = new Set(existingFiles?.map(f => f.google_drive_id) || []);
+                const newFilesData = batch.filter(f => !existingIdSet.has(f.id));
                 filesSkipped += (batch.length - newFilesData.length);
 
                 if (newFilesData.length > 0) {
                     const filesToInsert = [];
 
                     for (const file of newFilesData) {
-                        const targetFolderId = await resolveFolderId(sadhanaDbAdmin, rootFolderIdForScan, file.folderPath || '', userId, folderIdMap, localFolderCache);
+                        const targetFolderId = await resolveFolderId(sadhanaDbAdmin, rootFolderIdForScan, file.folderPath || '', userId, folderIdMap, localFolderCache, pathDriveIdMap);
 
                         const mimeType = file.mimeType || '';
                         const extension = file.name.split('.').pop()?.toLowerCase() || '';

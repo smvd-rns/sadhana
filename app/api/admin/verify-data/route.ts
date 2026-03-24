@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { revalidateTag } from 'next/cache';
 
 export async function POST(request: Request) {
     try {
@@ -204,6 +205,9 @@ export async function POST(request: Request) {
                     .in('id', targetIds);
 
                 if (error) throw error;
+                
+                if (tableName === 'centers') revalidateTag('centers');
+                if (tableName === 'cities') revalidateTag('cities');
             } else if (action === 'reject') {
                 const { error } = await supabase
                     .from(tableName)
@@ -211,6 +215,9 @@ export async function POST(request: Request) {
                     .in('id', targetIds);
 
                 if (error) throw error;
+
+                if (tableName === 'centers') revalidateTag('centers');
+                if (tableName === 'cities') revalidateTag('cities');
             } else {
                 return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
             }

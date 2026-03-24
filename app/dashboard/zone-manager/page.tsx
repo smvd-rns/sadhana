@@ -589,6 +589,7 @@ export default function ZoneManagerPage() {
                                                 width={64}
                                                 height={64}
                                                 className="w-14 h-14 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-orange-200"
+                                                unoptimized={true}
                                             />
                                         ) : (
                                             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
