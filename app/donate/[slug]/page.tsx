@@ -84,7 +84,7 @@ export default function DonationPage() {
       try {
         const { data, error: fetchError } = await supabase
           .from('users')
-          .select('id, name, profile_image, current_center, other_center, current_temple, other_temple, center')
+          .select('id, name, profile_image, current_center, other_center, current_temple, other_temple, center, ashram')
           .eq('donation_slug', slug)
           .single();
 
@@ -106,7 +106,8 @@ export default function DonationPage() {
           setTargetUser({
             ...data,
             resolvedCenter: resolvedCenter || 'General',
-            resolvedTemple: resolvedTemple || 'N/A'
+            resolvedTemple: resolvedTemple || 'N/A',
+            ashram: data.ashram || 'N/A'
           });
 
           const { data: settings } = await supabase
@@ -167,7 +168,8 @@ export default function DonationPage() {
             ...formData, 
             targetUserId: targetUser.id, 
             center: targetUser.resolvedCenter,
-            temple: targetUser.resolvedTemple 
+            temple: targetUser.resolvedTemple,
+            ashram: targetUser.ashram
           })
         });
         const orderData = await orderRes.json();
@@ -224,7 +226,8 @@ export default function DonationPage() {
             target_user_name: targetUser.name,
             donation_slug: slug,
             center: targetUser.resolvedCenter,
-            temple: targetUser.resolvedTemple
+            temple: targetUser.resolvedTemple,
+            ashram: targetUser.ashram
           },
           theme: {
             color: "#4f46e5", // indigo-600
@@ -247,7 +250,8 @@ export default function DonationPage() {
             targetUserId: targetUser.id, 
             slug, 
             center: targetUser.resolvedCenter,
-            temple: targetUser.resolvedTemple
+            temple: targetUser.resolvedTemple,
+            ashram: targetUser.ashram
           })
         });
         const orderData = await orderRes.json();

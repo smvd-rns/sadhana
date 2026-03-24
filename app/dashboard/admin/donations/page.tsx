@@ -108,10 +108,42 @@ export default function AdminDonationsPage() {
   const [selectedCollector, setSelectedCollector] = useState('all');
   const [selectedCenter, setSelectedCenter] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('captured');
+  const [selectedTemple, setSelectedTemple] = useState('all');
+  const [templeList, setTempleList] = useState<string[]>([]);
 
   // Pagination State
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Dynamic Filter Options
+  const availableTemples = useMemo(() => {
+    const ts = new Set<string>();
+    donations.forEach(d => { if (d.temple) ts.add(d.temple); });
+    return Array.from(ts).sort();
+  }, [donations]);
+
+  const availableCenters = useMemo(() => {
+    const cs = new Set<string>();
+    donations.forEach(d => {
+      const matchesTemple = selectedTemple === 'all' || d.temple === selectedTemple;
+      if (matchesTemple && d.center) cs.add(d.center);
+    });
+    // Also include centers from collectors if no temple filter is active
+    if (selectedTemple === 'all') {
+      Object.values(collectors).forEach(c => { if (c.center) cs.add(c.center); });
+    }
+    return Array.from(cs).sort();
+  }, [donations, selectedTemple, collectors]);
+
+  const availableCollectors = useMemo(() => {
+    const ids = new Set<string>();
+    donations.forEach(d => {
+      const matchesTemple = selectedTemple === 'all' || d.temple === selectedTemple;
+      const matchesCenter = selectedCenter === 'all' || d.center === selectedCenter || (d.center === null && collectors[d.tag_user_id]?.center === selectedCenter);
+      if (matchesTemple && matchesCenter && d.tag_user_id) ids.add(d.tag_user_id);
+    });
+    return Array.from(ids).map(id => ({ id, name: collectors[id]?.name || 'Unknown' })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [donations, selectedTemple, selectedCenter, collectors]);
 
   const filteredDonations = useMemo(() => {
     return donations.filter(d => {
@@ -121,15 +153,16 @@ export default function AdminDonationsPage() {
       const tx = (d.txnid || '').toLowerCase();
       const matchesSearch = name.includes(search) || email.includes(search) || tx.includes(search);
       const matchesCollector = selectedCollector === 'all' || d.tag_user_id === selectedCollector;
-      const matchesCenter = selectedCenter === 'all' || collectors[d.tag_user_id]?.center === selectedCenter;
+      const matchesCenter = selectedCenter === 'all' || d.center === selectedCenter || (d.center === null && collectors[d.tag_user_id]?.center === selectedCenter);
+      const matchesTemple = selectedTemple === 'all' || d.temple === selectedTemple;
       const matchesStatus = selectedStatus === 'all' 
         ? true 
         : selectedStatus === 'captured' 
           ? (d.payment_status === 'captured' || d.payment_status === 'success')
           : d.payment_status === selectedStatus;
-      return matchesSearch && matchesCollector && matchesCenter && matchesStatus;
+      return matchesSearch && matchesCollector && matchesCenter && matchesStatus && matchesTemple;
     });
-  }, [donations, searchTerm, selectedCollector, selectedCenter, selectedStatus, collectors]);
+  }, [donations, searchTerm, selectedCollector, selectedCenter, selectedStatus, selectedTemple, collectors]);
 
   const stats = useMemo(() => {
     const total = filteredDonations.reduce((acc, curr) => acc + curr.amount, 0);
@@ -223,6 +256,10 @@ export default function AdminDonationsPage() {
 
       setCollectors(userMap);
       setCenters(Array.from(centerList).sort());
+
+      // 4. Identify unique temples from donations
+      const uniqueTemples = Array.from(new Set(rawDonations.map((d: any) => d.temple).filter(Boolean))) as string[];
+      setTempleList(uniqueTemples.sort());
 
     } catch (err: any) {
       console.error('Fetch error:', err);
@@ -463,6 +500,43 @@ export default function AdminDonationsPage() {
             />
           </div>
 
+          {/* Temple Filter */}
+          <div className="relative md:w-56 group">
+            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+            <select
+              value={selectedTemple}
+              onChange={(e) => {
+                setSelectedTemple(e.target.value);
+                setSelectedCenter('all');
+                setSelectedCollector('all');
+              }}
+              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
+            >
+              <option value="all">All Temples</option>
+              {availableTemples.map(temple => (
+                <option key={temple} value={temple}>{temple}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Center Filter */}
+          <div className="relative md:w-56 group">
+            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
+            <select
+              value={selectedCenter}
+              onChange={(e) => {
+                setSelectedCenter(e.target.value);
+                setSelectedCollector('all');
+              }}
+              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
+            >
+              <option value="all">All Centers</option>
+              {availableCenters.map(center => (
+                <option key={center} value={center}>{center}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Collector Filter */}
           <div className="relative md:w-56 group">
             <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
@@ -472,8 +546,8 @@ export default function AdminDonationsPage() {
               className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
             >
               <option value="all">All Collectors</option>
-              {Object.entries(collectors).map(([id, info]) => (
-                <option key={id} value={id}>{info.name}</option>
+              {availableCollectors.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>
           </div>
@@ -493,21 +567,6 @@ export default function AdminDonationsPage() {
             </select>
           </div>
 
-          {/* Center Filter */}
-          <div className="relative md:w-56 group">
-            <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
-            <select
-              value={selectedCenter}
-              onChange={(e) => setSelectedCenter(e.target.value)}
-              className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold text-white outline-none focus:border-emerald-500/30 focus:ring-4 focus:ring-emerald-500/5 transition-all shadow-xl appearance-none cursor-pointer"
-            >
-              <option value="all">All Centers</option>
-              {centers.map(center => (
-                <option key={center} value={center}>{center}</option>
-              ))}
-            </select>
-          </div>
-
           <button className="flex items-center gap-2 px-6 py-4 bg-emerald-600 text-sm font-black text-white rounded-2xl hover:bg-emerald-500 active:scale-95 transition-all shadow-xl shadow-emerald-600/20">
             <Download className="w-4 h-4" />
             Export
@@ -523,7 +582,7 @@ export default function AdminDonationsPage() {
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950/30">
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Center / Temple</th>
-                  <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collector</th>
+                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Collector / Ashram</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Donor Details</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Amount</th>
                   <th className="px-8 py-6 text-[10px] font-black text-slate-500 uppercase tracking-widest">Trx ID</th>
@@ -550,13 +609,18 @@ export default function AdminDonationsPage() {
                        </div>
                     </td>
                     <td className="px-8 py-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center text-[10px] font-black text-orange-500 border border-orange-500/20">
-                          <UserCheck className="w-4 h-4" />
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <UserCheck className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+                          <span className="text-white font-black text-sm tracking-tight">
+                             {collectors[donation.tag_user_id]?.name || 'System Executive'}
+                          </span>
                         </div>
-                        <span className="text-white font-black text-sm tracking-tight">
-                           {collectors[donation.tag_user_id]?.name || 'System Executive'}
-                        </span>
+                        {donation.ashram && (
+                          <span className="text-[9px] font-black text-slate-400 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700 w-fit">
+                            {donation.ashram}
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-8 py-6">
@@ -564,9 +628,28 @@ export default function AdminDonationsPage() {
                         <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-xs font-black text-emerald-500 border border-slate-700">
                           {donation.donor_name.charAt(0)}
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-slate-200 font-black text-sm">{donation.donor_name}</span>
-                          <span className="text-[10px] font-bold text-slate-500">{donation.donor_email}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-slate-200 font-black text-sm truncate">{donation.donor_name}</span>
+                          <span className="text-[10px] font-bold text-slate-500 truncate flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {donation.donor_email}
+                          </span>
+                          {(donation.donor_address || donation.donor_pan) && (
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {donation.donor_pan && (
+                                <span className="text-[9px] font-black bg-slate-800 text-amber-500 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                                  <ShieldCheck className="w-2.5 h-2.5" />
+                                  PAN: {donation.donor_pan}
+                                </span>
+                              )}
+                              {donation.donor_address && (
+                                <span className="text-[9px] font-black bg-slate-800 text-sky-400 px-1.5 py-0.5 rounded border border-slate-700 flex items-center gap-1 max-w-[150px] truncate">
+                                  <MapPin className="w-2.5 h-2.5" />
+                                  {donation.donor_address}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -667,10 +750,15 @@ export default function AdminDonationsPage() {
                   <div className="space-y-1">
                     <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Collector</p>
                     <h3 className="text-white font-black tracking-tight">{collectors[donation.tag_user_id]?.name || 'System Executive'}</h3>
-                    <div className="flex flex-col gap-1 mt-1">
+                     <div className="flex flex-col gap-1.5 mt-1">
                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{collectors[donation.tag_user_id]?.center || 'Global HQ'}</p>
                       {donation.temple && (
                         <p className="text-[9px] text-blue-500/80 font-black uppercase tracking-widest">{donation.temple}</p>
+                      )}
+                      {donation.ashram && (
+                        <span className="text-[9px] font-black text-slate-400 bg-slate-950/40 px-2 py-0.5 rounded border border-slate-800/50 w-fit mt-1">
+                          {donation.ashram}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -684,12 +772,24 @@ export default function AdminDonationsPage() {
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/5 flex items-center justify-center text-lg font-black text-emerald-500 border border-emerald-500/20">
                        {donation.donor_name.charAt(0)}
                     </div>
-                    <div>
-                        <p className="text-slate-200 font-black">{donation.donor_name}</p>
-                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5">
+                    <div className="min-w-0">
+                        <p className="text-slate-200 font-black truncate">{donation.donor_name}</p>
+                        <p className="text-[10px] font-bold text-slate-500 flex items-center gap-1.5 truncate">
                            <Clock className="w-3 h-3" />
                            {new Date(donation.created_at).toLocaleDateString()}
                         </p>
+                        {donation.donor_pan && (
+                          <p className="text-[9px] font-black text-amber-500 mt-1 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3" />
+                            PAN: {donation.donor_pan}
+                          </p>
+                        )}
+                        {donation.donor_address && (
+                          <p className="text-[9px] font-bold text-slate-400 mt-0.5 flex items-start gap-1 line-clamp-2">
+                            <MapPin className="w-3 h-3 shrink-0 mt-0.5" />
+                            {donation.donor_address}
+                          </p>
+                        )}
                     </div>
                   </div>
 

@@ -497,37 +497,39 @@ export default function ProfilePage() {
   // Load initial data
   useEffect(() => {
     if (userData) {
-      setFormData({
+      const baseHierarchy = userData.hierarchy || {};
+      
+      // Basic fields from userData
+      const baseData: any = {
         name: userData.name || '',
         email: userData.email || '',
         phone: userData.phone || '',
         birthDate: userData.birthDate || '',
-        state: userData.hierarchy?.state || '',
-        city: userData.hierarchy?.city || '',
-        center: (userData.hierarchy?.center === 'Other' && userData.hierarchy?.otherCenter)
-          ? userData.hierarchy.otherCenter
-          : (userData.hierarchy?.center || ''),
-        centerId: userData.hierarchy?.centerId || '', // Load centerId from database if available
+        state: baseHierarchy.state || '',
+        city: baseHierarchy.city || '',
+        center: (baseHierarchy.center === 'Other' && baseHierarchy.otherCenter)
+          ? baseHierarchy.otherCenter
+          : (baseHierarchy.center || ''),
+        centerId: baseHierarchy.centerId || '',
+        
         // Spiritual fields
-        initiationStatus: (userData.hierarchy?.initiationStatus || '') as 'initiated' | 'aspiring' | '',
-        initiatedName: userData.hierarchy?.initiatedName || '',
-        spiritualMasterName: userData.hierarchy?.spiritualMasterName || '',
-        aspiringSpiritualMasterName: userData.hierarchy?.aspiringSpiritualMasterName || '',
-
-
-        introducedToKcIn: userData.hierarchy?.introducedToKcIn || '',
-        rounds: userData.hierarchy?.rounds ? userData.hierarchy.rounds.toString() : '',
-        parentTemple: userData.hierarchy?.parentTemple || '',
-        otherParentTemple: userData.hierarchy?.otherParentTemple || '',
-        parentCenter: userData.hierarchy?.parentCenter || '',
-        currentTemple: userData.hierarchy?.currentTemple || '',
-        currentCenter: userData.hierarchy?.currentCenter || userData.hierarchy?.center || '',
-        counselor: userData.hierarchy?.counselor || userData.hierarchy?.brahmachariCounselor || userData.hierarchy?.grihasthaCounselor || '',
-        counselorId: userData.hierarchy?.counselorId || '',
-        otherCounselor: userData.hierarchy?.otherCounselor || '',
-        ashram: userData.hierarchy?.ashram || '',
-        otherCenter: userData.hierarchy?.otherCenter || '',
-        otherParentCenter: userData.hierarchy?.otherParentCenter || '',
+        initiationStatus: (baseHierarchy.initiationStatus || '') as 'initiated' | 'aspiring' | '',
+        initiatedName: baseHierarchy.initiatedName || '',
+        spiritualMasterName: baseHierarchy.spiritualMasterName || '',
+        aspiringSpiritualMasterName: baseHierarchy.aspiringSpiritualMasterName || '',
+        introducedToKcIn: baseHierarchy.introducedToKcIn || '',
+        rounds: baseHierarchy.rounds ? baseHierarchy.rounds.toString() : '',
+        parentTemple: baseHierarchy.parentTemple || '',
+        otherParentTemple: baseHierarchy.otherParentTemple || '',
+        parentCenter: baseHierarchy.parentCenter || '',
+        currentTemple: baseHierarchy.currentTemple || '',
+        currentCenter: baseHierarchy.currentCenter || baseHierarchy.center || '',
+        counselor: baseHierarchy.counselor || baseHierarchy.brahmachariCounselor || baseHierarchy.grihasthaCounselor || '',
+        counselorId: baseHierarchy.counselorId || '',
+        otherCounselor: baseHierarchy.otherCounselor || '',
+        ashram: baseHierarchy.ashram || '',
+        otherCenter: baseHierarchy.otherCenter || '',
+        otherParentCenter: baseHierarchy.otherParentCenter || '',
 
         // Relative contact info
         relative1Name: userData.relative1Name || '',
@@ -539,11 +541,12 @@ export default function ProfilePage() {
         relative3Name: userData.relative3Name || '',
         relative3Relationship: userData.relative3Relationship || '',
         relative3Phone: userData.relative3Phone || '',
+        
         // Health info
         healthChronicDisease: userData.healthChronicDisease || '',
 
         // Camp completion fields
-        campDys: userData.campDys || userData.hierarchy?.campDys || false,
+        campDys: userData.campDys || baseHierarchy.campDys || false,
         campSankalpa: userData.campSankalpa || false,
         campSphurti: userData.campSphurti || false,
         campUtkarsh: userData.campUtkarsh || false,
@@ -551,7 +554,8 @@ export default function ProfilePage() {
         campSrcgdWorkshop: userData.campSrcgdWorkshop || false,
         campNistha: userData.campNistha || false,
         campAshray: userData.campAshray || false,
-        // SP Books Study Course fields (Third Semester)
+        
+        // SP Books Study Course fields
         spbookThirdSsr15: userData.spbookThirdSsr15 || false,
         spbookThirdComingBack: userData.spbookThirdComingBack || false,
         spbookThirdPqpa: userData.spbookThirdPqpa || false,
@@ -560,7 +564,6 @@ export default function ProfilePage() {
         spbookThirdElevationKc: userData.spbookThirdElevationKc || false,
         spbookThirdBeyondBirthDeath: userData.spbookThirdBeyondBirthDeath || false,
         spbookThirdKrishnaReservoir: userData.spbookThirdKrishnaReservoir || false,
-        // SP Books Study Course fields (Fourth Semester)
         spbookFourthSsr68: userData.spbookFourthSsr68 || false,
         spbookFourthLawsOfNature: userData.spbookFourthLawsOfNature || false,
         spbookFourthDharma: userData.spbookFourthDharma || false,
@@ -569,7 +572,6 @@ export default function ProfilePage() {
         spbookFourthQueenKuntiVideo: userData.spbookFourthQueenKuntiVideo || false,
         spbookFourthEnlightenmentNatural: userData.spbookFourthEnlightenmentNatural || false,
         spbookFourthKrishnaBook121: userData.spbookFourthKrishnaBook121 || false,
-        // SP Books Study Course fields (Fifth Semester)
         spbookFifthLifeFromLife: userData.spbookFifthLifeFromLife || false,
         spbookFifthPrahladTeachings: userData.spbookFifthPrahladTeachings || false,
         spbookFifthJourneySelfDiscovery: userData.spbookFifthJourneySelfDiscovery || false,
@@ -578,7 +580,6 @@ export default function ProfilePage() {
         spbookFifthNectar16: userData.spbookFifthNectar16 || false,
         spbookFifthGita16: userData.spbookFifthGita16 || false,
         spbookFifthKrishnaBook2428: userData.spbookFifthKrishnaBook2428 || false,
-        // SP Books Study Course fields (Sixth Semester)
         spbookSixthNectar711: userData.spbookSixthNectar711 || false,
         spbookSixthPathPerfection: userData.spbookSixthPathPerfection || false,
         spbookSixthCivilisationTranscendence: userData.spbookSixthCivilisationTranscendence || false,
@@ -586,14 +587,23 @@ export default function ProfilePage() {
         spbookSixthGita712: userData.spbookSixthGita712 || false,
         spbookSixthSb1stCanto16: userData.spbookSixthSb1stCanto16 || false,
         spbookSixthKrishnaBook3559: userData.spbookSixthKrishnaBook3559 || false,
-        // SP Books Study Course fields (Seventh Semester)
         spbookSeventhGita1318: userData.spbookSeventhGita1318 || false,
         spbookSeventhSb1stCanto713: userData.spbookSeventhSb1stCanto713 || false,
         spbookSeventhKrishnaBook6378: userData.spbookSeventhKrishnaBook6378 || false,
-        // SP Books Study Course fields (Eighth Semester)
         spbookEighthSb1stCanto1419: userData.spbookEighthSb1stCanto1419 || false,
         spbookEighthKrishnaBook7889: userData.spbookEighthKrishnaBook7889 || false,
-      });
+      };
+
+      // Apply pending changes if any (to show user what they've requested)
+      if (pendingRequest?.status === 'pending' && pendingRequest.requested_changes) {
+        Object.entries(pendingRequest.requested_changes).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            baseData[key] = value;
+          }
+        });
+      }
+
+      setFormData(baseData);
       // Set counselor search values from spiritual fields
 
       // Set profile image from userData (Google Drive URL)
@@ -1806,9 +1816,18 @@ export default function ProfilePage() {
                     <select
                       id="ashram"
                       value={formData.ashram}
-                      onChange={(e) => setFormData({ ...formData, ashram: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const updates: any = { ashram: val };
+                        if (val === 'Brahmachari' || val === 'Grihastha') {
+                          updates.currentCenter = '';
+                          updates.otherCenter = '';
+                          updates.center = '';
+                        }
+                        setFormData({ ...formData, ...updates });
+                      }}
                       required
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTYgOUwxMiAxNUwxOCA5IiBzdHJva2U9IiM5Q0EzQUYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGlub2pvaW49InJvdW5kIi8+Cjwvc3ZnPg==')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik02IDlMMTIgMTVMMTggOSIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
                     >
                       <option value="">Select Ashram</option>
                       <option value="Student">Student</option>
@@ -1826,35 +1845,69 @@ export default function ProfilePage() {
 
                   {/* Introduced to KC */}
                   <div>
-                    <label htmlFor="introducedToKcIn" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                      Introduced to KC on (Date)
-                    </label>
-                    <input
-                      id="introducedToKcIn"
-                      type="date"
-                      value={formData.introducedToKcIn}
-                      onChange={(e) => {
-                        const selectedDate = e.target.value;
-                        const today = new Date().toISOString().split('T')[0];
-                        if (selectedDate > today) {
-                          setFieldErrors(prev => ({ ...prev, introducedToKcIn: 'Future dates are not allowed' }));
-                          return;
-                        }
-                        setFormData({ ...formData, introducedToKcIn: selectedDate });
-                        if (fieldErrors.introducedToKcIn) {
-                          setFieldErrors(prev => {
-                            const newErrors = { ...prev };
-                            delete newErrors.introducedToKcIn;
-                            return newErrors;
-                          });
-                        }
-                      }}
-                      max={new Date().toISOString().split('T')[0]}
-                      className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors.introducedToKcIn
-                        ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
-                        : 'border-amber-100 focus:ring-amber-500 focus:border-amber-500'
-                        }`}
-                    />
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="introducedToKcIn" className="block text-xs sm:text-sm font-semibold text-gray-700">
+                        Introduced to KC on (Date)
+                      </label>
+                      {pendingRequest?.status === 'pending' && pendingRequest.requested_changes?.introducedToKcIn && (
+                        <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Pending approval
+                        </span>
+                      )}
+                    </div>
+                    <div className="relative group">
+                      <input
+                        id="introducedToKcIn"
+                        type={(formData.introducedToKcIn && formData.introducedToKcIn.length === 4) ? 'text' : 'date'}
+                        value={formData.introducedToKcIn}
+                        disabled={!!userData?.hierarchy?.introducedToKcIn}
+                        onChange={(e) => {
+                          const selectedDate = e.target.value;
+                          const today = new Date().toISOString().split('T')[0];
+                          if (selectedDate.length > 4 && selectedDate > today) {
+                            setFieldErrors(prev => ({ ...prev, introducedToKcIn: 'Future dates are not allowed' }));
+                            return;
+                          }
+                          setFormData({ ...formData, introducedToKcIn: selectedDate });
+                          if (fieldErrors.introducedToKcIn) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors.introducedToKcIn;
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        max={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${userData?.hierarchy?.introducedToKcIn ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''} ${fieldErrors.introducedToKcIn
+                          ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
+                          : 'border-amber-100 focus:ring-amber-500 focus:border-amber-500'
+                          }`}
+                      />
+                      {userData?.hierarchy?.introducedToKcIn && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-amber-600">
+                          <Save className="w-4 h-4" />
+                        </div>
+                      )}
+                      {formData.introducedToKcIn && formData.introducedToKcIn.length === 4 && !userData?.hierarchy?.introducedToKcIn && (
+                        <button 
+                          type="button"
+                          onClick={() => setFormData({...formData, introducedToKcIn: ''})}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-600 hover:text-amber-700"
+                        >
+                          Change to Date
+                        </button>
+                      )}
+                    </div>
+                    {formData.introducedToKcIn && formData.introducedToKcIn.length === 4 && (
+                      <p className="mt-1 text-[10px] text-amber-600">Currently stored as Year. Use "Change to Date" to select a specific date.</p>
+                    )}
+                    {userData?.hierarchy?.introducedToKcIn && (
+                      <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1">
+                        <Info className="w-3 h-3" />
+                        This field is locked. Contact admin to change.
+                      </p>
+                    )}
                     {fieldErrors.introducedToKcIn && (
                       <p className="mt-1 text-xs text-red-600 flex items-center gap-1 animate-fadeIn">
                         <X className="h-3 w-3" />
@@ -1958,36 +2011,40 @@ export default function ProfilePage() {
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="currentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                      Current Center
-                    </label>
-                    <SearchableSelect
-                      options={[
-                        ...centers.map(c => ({ id: c.name, name: c.name })),
-                        { id: 'Other', name: 'Other' }
-                      ]}
-                      value={formData.currentCenter}
-                      onChange={(value) => setFormData({ ...formData, currentCenter: value, center: value })}
-                      placeholder="Select Current Center"
-                      disabled={loadingCenters || !formData.currentTemple || formData.currentTemple === 'None'}
-                    />
-                  </div>
+                  {formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && (
+                    <>
+                      <div>
+                        <label htmlFor="currentCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                          Current Center
+                        </label>
+                        <SearchableSelect
+                          options={[
+                            ...centers.map(c => ({ id: c.name, name: c.name })),
+                            { id: 'Other', name: 'Other' }
+                          ]}
+                          value={formData.currentCenter}
+                          onChange={(value) => setFormData({ ...formData, currentCenter: value, center: value })}
+                          placeholder="Select Current Center"
+                          disabled={loadingCenters || !formData.currentTemple || formData.currentTemple === 'None'}
+                        />
+                      </div>
 
-                  {formData.currentCenter === 'Other' && (
-                    <div className="animate-fadeIn">
-                      <label htmlFor="otherCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
-                        Other Center Name
-                      </label>
-                      <input
-                        id="otherCenter"
-                        type="text"
-                        value={formData.otherCenter}
-                        onChange={(e) => setFormData({ ...formData, otherCenter: e.target.value })}
-                        placeholder="Enter center name"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-sky-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-sky-500 focus:border-sky-500 text-gray-900 bg-sky-50/50 hover:bg-sky-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
-                      />
-                    </div>
+                      {formData.currentCenter === 'Other' && (
+                        <div className="animate-fadeIn">
+                          <label htmlFor="otherCenter" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
+                            Other Center Name
+                          </label>
+                          <input
+                            id="otherCenter"
+                            type="text"
+                            value={formData.otherCenter}
+                            onChange={(e) => setFormData({ ...formData, otherCenter: e.target.value })}
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-xs sm:text-sm p-3 border"
+                            placeholder="Type center name"
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -2011,8 +2068,14 @@ export default function ProfilePage() {
                       value={formData.parentTemple}
                       onChange={(value) => setFormData({ ...formData, parentTemple: value })}
                       placeholder="Select Parent Temple"
-                      disabled={loadingTemples}
+                      disabled={loadingTemples || !!userData?.hierarchy?.parentTemple}
                     />
+                    {userData?.hierarchy?.parentTemple && (
+                      <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1 px-1">
+                        <Info className="w-3 h-3" />
+                        Locked. Contact admin to change.
+                      </p>
+                    )}
                   </div>
 
                   {formData.parentTemple === 'Other' && (
@@ -2024,10 +2087,17 @@ export default function ProfilePage() {
                         id="otherParentTemple"
                         type="text"
                         value={formData.otherParentTemple}
+                        disabled={!!userData?.hierarchy?.otherParentTemple}
                         onChange={(e) => setFormData({ ...formData, otherParentTemple: e.target.value })}
                         placeholder="Enter temple name"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${userData?.hierarchy?.otherParentTemple ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
                       />
+                      {userData?.hierarchy?.otherParentTemple && (
+                        <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1 px-1">
+                          <Info className="w-3 h-3" />
+                          Locked. Contact admin to change.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -2043,8 +2113,14 @@ export default function ProfilePage() {
                       value={formData.parentCenter}
                       onChange={(value) => setFormData({ ...formData, parentCenter: value })}
                       placeholder="Select Parent Center"
-                      disabled={loadingParentCenters || !formData.parentTemple}
+                      disabled={loadingParentCenters || !formData.parentTemple || !!userData?.hierarchy?.parentCenter}
                     />
+                    {userData?.hierarchy?.parentCenter && (
+                      <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1 px-1">
+                        <Info className="w-3 h-3" />
+                        Locked. Contact admin to change.
+                      </p>
+                    )}
                   </div>
 
                   {formData.parentCenter === 'Other' && (
@@ -2056,10 +2132,17 @@ export default function ProfilePage() {
                         id="otherParentCenter"
                         type="text"
                         value={formData.otherParentCenter}
+                        disabled={!!userData?.hierarchy?.otherParentCenter}
                         onChange={(e) => setFormData({ ...formData, otherParentCenter: e.target.value })}
                         placeholder="Enter center name"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md"
+                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-fuchsia-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-900 bg-fuchsia-50/50 hover:bg-fuchsia-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${userData?.hierarchy?.otherParentCenter ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
                       />
+                      {userData?.hierarchy?.otherParentCenter && (
+                        <p className="mt-1 text-[10px] text-gray-500 flex items-center gap-1 px-1">
+                          <Info className="w-3 h-3" />
+                          Locked. Contact admin to change.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
