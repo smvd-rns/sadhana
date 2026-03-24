@@ -41,20 +41,21 @@ export default function DataCenterUploadPage() {
     const [scanStatus, setScanStatus] = useState<'idle' | 'success' | 'error'>('idle');
     const [scanError, setScanError] = useState('');
     const [renderWorkerStatus, setRenderWorkerStatus] = useState<'waking' | 'awake' | 'error'>('waking');
-    const [wakeUpTimer, setWakeUpTimer] = useState(60);
+    const [wakeUpTimer, setWakeUpTimer] = useState(90);
 
     const RENDER_SERVICE_URL = process.env.NEXT_PUBLIC_RENDER_INDEXER_URL || 'https://sadhana-ndn8.onrender.com';
 
     // Wake up Render service when the page mounts
     useEffect(() => {
         if (renderWorkerStatus === 'awake') return;
+        if (renderWorkerStatus === 'error') return; // Don't restart unless user clicks Retry
 
         // 1. Initial health check immediately
         const checkHealth = async () => {
             try {
                 const res = await fetch(`${RENDER_SERVICE_URL}/health`, {
                     method: 'GET',
-                    mode: 'cors',
+                    signal: AbortSignal.timeout(8000), // 8s per attempt
                     cache: 'no-store'
                 });
                 if (res.ok) {
@@ -71,7 +72,14 @@ export default function DataCenterUploadPage() {
 
         // 2. Start 1-second countdown timer
         const timerInterval = setInterval(() => {
-            setWakeUpTimer((prev) => (prev > 0 ? prev - 1 : 0));
+            setWakeUpTimer((prev) => {
+                if (prev <= 1) {
+                    // Timer expired — flip to error so user can retry
+                    setRenderWorkerStatus('error');
+                    return 0;
+                }
+                return prev - 1;
+            });
         }, 1000);
 
         // 3. Poll for health every 5 seconds until awake
@@ -88,6 +96,12 @@ export default function DataCenterUploadPage() {
             clearInterval(pollInterval);
         };
     }, [RENDER_SERVICE_URL, renderWorkerStatus]);
+
+    // Retry handler: reset state to re-trigger the useEffect
+    const retryWakeUp = () => {
+        setWakeUpTimer(90);
+        setRenderWorkerStatus('waking');
+    };
 
     const fetchRecentScans = useCallback(async () => {
         if (!user || !sadhanaDb) return;
@@ -798,28 +812,41 @@ export default function DataCenterUploadPage() {
                                                 )}
 
                                                 {selectedFiles.length > 0 && (
-                                                    <button
-                                                        onClick={performUpload}
-                                                        disabled={isUploading || selectedFiles.length === 0 || renderWorkerStatus !== 'awake'}
-                                                        className={`w-full px-8 py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
-                                                    >
-                                                        {renderWorkerStatus !== 'awake' ? (
-                                                            <>
-                                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                                Engine Warming Up ({wakeUpTimer}s)
-                                                            </>
-                                                        ) : isUploading ? (
-                                                            <>
-                                                                <Loader2 className="w-5 h-5 animate-spin" />
-                                                                Processing...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Upload className="w-5 h-5" />
-                                                                Start Upload
-                                                            </>
+                                                    <>
+                                                        {renderWorkerStatus === 'error' && (
+                                                            <button
+                                                                onClick={retryWakeUp}
+                                                                className="w-full px-8 py-5 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 transition-all"
+                                                            >
+                                                                <Loader2 className="w-5 h-5" />
+                                                                Engine Offline — Retry Connection
+                                                            </button>
                                                         )}
-                                                    </button>
+                                                        {renderWorkerStatus !== 'error' && (
+                                                            <button
+                                                                onClick={performUpload}
+                                                                disabled={isUploading || selectedFiles.length === 0 || renderWorkerStatus !== 'awake'}
+                                                                className={`w-full px-8 py-5 bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-orange-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                            >
+                                                                {renderWorkerStatus === 'waking' ? (
+                                                                    <>
+                                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                                        Engine Warming Up ({wakeUpTimer}s)
+                                                                    </>
+                                                                ) : isUploading ? (
+                                                                    <>
+                                                                        <Loader2 className="w-5 h-5 animate-spin" />
+                                                                        Processing...
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <Upload className="w-5 h-5" />
+                                                                        Start Upload
+                                                                    </>
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         )}
@@ -848,10 +875,13 @@ export default function DataCenterUploadPage() {
                                                     </span>
                                                 )}
                                                 {renderWorkerStatus === 'error' && (
-                                                    <span className="flex items-center gap-1.5 bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-rose-200">
+                                                    <button
+                                                        onClick={retryWakeUp}
+                                                        className="flex items-center gap-1.5 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-rose-200 transition-all"
+                                                    >
                                                         <AlertCircle className="w-3 h-3" />
-                                                        Engine Offline
-                                                    </span>
+                                                        Engine Offline — Tap to Retry
+                                                    </button>
                                                 )}
                                             </div>
                                             <p className="text-slate-500 text-sm mt-2 font-medium">Provide a public folder link to index into your repository without timeouts.</p>
@@ -933,28 +963,41 @@ export default function DataCenterUploadPage() {
                                             )}
 
                                             {scanStatus !== 'success' && (
-                                                <button
-                                                    onClick={performScan}
-                                                    disabled={isScanning || !driveLink.trim() || renderWorkerStatus !== 'awake'}
-                                                    className="w-full px-8 py-5 bg-slate-900 hover:bg-black text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-slate-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-slate-700 active:border-b-0"
-                                                >
-                                                    {renderWorkerStatus !== 'awake' ? (
-                                                        <>
-                                                            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-                                                            Engine Warming Up ({wakeUpTimer}s)
-                                                        </>
-                                                    ) : isScanning ? (
-                                                        <>
-                                                            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
-                                                            Searching Directory...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <FolderSearch className="w-5 h-5 text-orange-500" />
-                                                            Start Scanning
-                                                        </>
+                                                <>
+                                                    {renderWorkerStatus === 'error' && (
+                                                        <button
+                                                            onClick={retryWakeUp}
+                                                            className="w-full px-8 py-5 bg-rose-600 hover:bg-rose-700 text-white font-black text-sm uppercase tracking-widest rounded-2xl flex items-center justify-center gap-3 transition-all"
+                                                        >
+                                                            <AlertCircle className="w-5 h-5" />
+                                                            Backend Offline — Retry Connection
+                                                        </button>
                                                     )}
-                                                </button>
+                                                    {renderWorkerStatus !== 'error' && (
+                                                        <button
+                                                            onClick={performScan}
+                                                            disabled={isScanning || !driveLink.trim() || renderWorkerStatus !== 'awake'}
+                                                            className="w-full px-8 py-5 bg-slate-900 hover:bg-black text-white font-black text-sm uppercase tracking-widest rounded-2xl hover:shadow-2xl hover:shadow-slate-500/30 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed border-b-4 border-slate-700 active:border-b-0"
+                                                        >
+                                                            {renderWorkerStatus === 'waking' ? (
+                                                                <>
+                                                                    <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                                                                    Engine Warming Up ({wakeUpTimer}s)
+                                                                </>
+                                                            ) : isScanning ? (
+                                                                <>
+                                                                    <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                                                                    Searching Directory...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <FolderSearch className="w-5 h-5 text-orange-500" />
+                                                                    Start Scanning
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
 
