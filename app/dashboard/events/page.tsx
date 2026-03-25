@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Plus, Calendar, Users, BarChart3, ChevronRight, MessageSquare, Paperclip, Check, X, Info } from 'lucide-react';
 import { getEventsForUser, getEventStats, submitEventResponse, getRecentResponses } from '@/lib/actions/events';
@@ -21,13 +21,17 @@ import { toggleEventPin } from '@/lib/actions/events';
 function EventsPageContent() {
     const { userData } = useAuth();
     const searchParams = useSearchParams();
+    const router = useRouter();
+    const pathname = usePathname();
     const tabParam = searchParams?.get('tab');
+    const urlEventId = searchParams?.get('eventId');
+    
     const [events, setEvents] = useState<ManagedEvent[]>([]);
     const [globalLogs, setGlobalLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [loadingLogs, setLoadingLogs] = useState(false);
-    const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-    const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(false);
+    const [selectedEventId, setSelectedEventId] = useState<string | null>(urlEventId);
+    const [isMobileDetailOpen, setIsMobileDetailOpen] = useState(!!urlEventId);
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState<'all' | '7days' | '30days'>('all');
 
@@ -141,6 +145,29 @@ function EventsPageContent() {
     useEffect(() => {
         fetchEvents();
     }, [userData, isAdmin, activeTab, fetchEvents]);
+
+    // Handle initial event selection from URL or default to first unread
+    useEffect(() => {
+        if (!loading && events.length > 0) {
+            if (urlEventId && events.some(e => e.id === urlEventId)) {
+                setSelectedEventId(urlEventId);
+                setIsMobileDetailOpen(true);
+            } else if (!selectedEventId) {
+                // If no event selected and no valid URL param, we could auto-select the first one on desktop
+                // But let's stay conservative for now
+            }
+        }
+    }, [loading, events, urlEventId, selectedEventId]);
+
+    // Update URL when selection changes
+    const handleEventSelect = (eventId: string) => {
+        setSelectedEventId(eventId);
+        setIsMobileDetailOpen(true);
+        
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        params.set('eventId', eventId);
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    };
 
     // Handle marking events as 'seen' only when selected
     useEffect(() => {
@@ -397,10 +424,7 @@ function EventsPageContent() {
                                                 key={event.id}
                                                 event={event}
                                                 isActive={selectedEventId === event.id}
-                                                onClick={() => {
-                                                    setSelectedEventId(event.id);
-                                                    setIsMobileDetailOpen(true);
-                                                }}
+                                                onClick={() => handleEventSelect(event.id)}
                                                 onPinToggle={(pinned) => handlePinToggle(event.id, pinned)}
                                             />
                                         ))}

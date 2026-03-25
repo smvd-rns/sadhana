@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ManagedEvent, ManagedEventAttachment } from '@/types';
-import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage } from 'lucide-react';
+import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage, Share2 } from 'lucide-react';
 import NextImage from 'next/image';
 import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
@@ -68,6 +68,13 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         year: 'numeric'
     });
 
+    const handleShare = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('eventId', event.id);
+        navigator.clipboard.writeText(url.toString());
+        toast.success('Link copied to clipboard!');
+    };
+
     return (
         <div className="bg-white h-full flex flex-col animate-in fade-in duration-500">
             {/* Header */}
@@ -89,6 +96,14 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                             {event.title}
                         </h2>
                     </div>
+
+                    <button
+                        onClick={handleShare}
+                        className="p-3 bg-white hover:bg-orange-50 text-gray-400 hover:text-orange-600 rounded-2xl border-2 border-gray-100 hover:border-orange-100 transition-all shadow-sm active:scale-95 group"
+                        title="Share Event"
+                    >
+                        <Share2 className="h-5 w-5 transition-transform group-hover:rotate-12" />
+                    </button>
                 </div>
 
                 <div className="flex flex-wrap gap-x-8 gap-y-3 text-gray-500">
