@@ -54,13 +54,25 @@ export async function sendRegistrationNotification(
                             <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${newUser.phone || 'N/A'}</td>
                         </tr>
                         <tr>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;"><strong>Counselor:</strong></td>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
+                                ${newUser.hierarchy?.counselor === 'Other' ? (newUser.hierarchy?.otherCounselor || 'Other') : (newUser.hierarchy?.counselor || 'N/A')}
+                            </td>
+                        </tr>
+                        <tr>
                             <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;"><strong>Role / Ashram:</strong></td>
                             <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: 500;">${newUser.hierarchy?.ashram || 'N/A'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 10px 0; color: #6b7280;"><strong>Center/Temple:</strong></td>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280;"><strong>Temple:</strong></td>
+                            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
+                                ${newUser.hierarchy?.currentTemple === 'Other' ? (newUser.hierarchy?.otherTemple || 'Other') : (newUser.hierarchy?.currentTemple || 'N/A')}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px 0; color: #6b7280;"><strong>Center:</strong></td>
                             <td style="padding: 10px 0; font-weight: 500;">
-                                ${newUser.hierarchy?.currentCenter || newUser.hierarchy?.currentTemple || 'N/A'}
+                                ${newUser.hierarchy?.currentCenter === 'Other' ? (newUser.hierarchy?.otherCenter || 'Other') : (newUser.hierarchy?.currentCenter || 'N/A')}
                             </td>
                         </tr>
                     </table>
@@ -132,6 +144,56 @@ export async function sendApprovalNotification(userEmail: string, userName: stri
         return true;
     } catch (error) {
         console.error('Failed to send approval email:', error);
+        return false;
+    }
+}
+
+/**
+ * Sends a rejection notification to the user.
+ */
+export async function sendRejectionNotification(userEmail: string, userName: string, rejectionReason: string) {
+    if (!process.env.SMTP_USER) {
+        console.warn(`[Mock Email] Would send Rejection Mail to ${userEmail} for user ${userName}`);
+        console.warn(`Reason: ${rejectionReason}`);
+        return true;
+    }
+
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; background-color: #f3f4f6; padding: 40px 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background-color: #dc2626; padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 24px;">Application Status Update</h1>
+                </div>
+                <div style="padding: 30px; color: #333333; line-height: 1.6;">
+                    <p style="margin-top: 0; font-size: 16px;">Hare Krishna <strong>${userName}</strong>,</p>
+                    <p style="font-size: 16px;">Thank you for your interest in VOICE Gurukul. After reviewing your registration, we are unable to approve your application at this time.</p>
+                    
+                    <div style="background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; padding: 20px; margin: 25px 0;">
+                        <h4 style="margin: 0 0 10px 0; color: #991b1b; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em;">Reason for Rejection:</h4>
+                        <p style="margin: 0; color: #7f1d1d; font-style: italic;">&ldquo;${rejectionReason}&rdquo;</p>
+                    </div>
+
+                    <p style="font-size: 16px;">Don't worry! You can log in to your account to update your details and resubmit your application for review.</p>
+                    
+                    <div style="text-align: center; font-size: 14px; color: #6b7280; margin-top: 30px; font-style: italic; line-height: 1.8;">
+                        Hare Krishna Hare Krishna Krishna Krishna Hare Hare<br/>
+                        Hare Rama Hare Rama Rama Rama Hare Hare
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    try {
+        await transporter.sendMail({
+            from: SENDER_EMAIL,
+            to: userEmail,
+            subject: 'Update Regarding Your Registration',
+            html: htmlContent,
+        });
+        return true;
+    } catch (error) {
+        console.error('Failed to send rejection email:', error);
         return false;
     }
 }

@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { Clock, CheckCircle, Home, LogOut, CheckCircle2 } from 'lucide-react';
+import { Clock, CheckCircle, Home, LogOut, CheckCircle2, XCircle, AlertCircle, Edit3 } from 'lucide-react';
 
 export default function PendingApprovalPage() {
     const { user, userData, loading, signOut } = useAuth();
     const router = useRouter();
     const [isAlreadyApproved, setIsAlreadyApproved] = useState(false);
+
+    const isRejected = userData?.verificationStatus === 'rejected';
 
     useEffect(() => {
         // If user is not logged in, redirect to login
@@ -54,15 +56,15 @@ export default function PendingApprovalPage() {
                     <div className="mb-6 flex justify-center">
                         <div className="relative">
                             <div className="absolute inset-0 bg-orange-200 rounded-full animate-ping opacity-75"></div>
-                            <div className="relative bg-gradient-to-br from-orange-500 to-amber-500 rounded-full p-6">
-                                <Clock className="w-12 h-12 text-white" />
+                            <div className={`relative rounded-full p-6 ${isRejected ? 'bg-gradient-to-br from-red-500 to-rose-500' : 'bg-gradient-to-br from-orange-500 to-amber-500'}`}>
+                                {isRejected ? <XCircle className="w-12 h-12 text-white" /> : <Clock className="w-12 h-12 text-white" />}
                             </div>
                         </div>
                     </div>
 
                     {/* Title */}
                     <h1 className="text-3xl font-bold text-gray-800 mb-4">
-                        {isAlreadyApproved ? 'Account Approved!' : 'Approval Pending'}
+                        {isAlreadyApproved ? 'Account Approved!' : isRejected ? 'Application Rejected' : 'Approval Pending'}
                     </h1>
 
                     {/* Message */}
@@ -74,6 +76,26 @@ export default function PendingApprovalPage() {
                                 </p>
                                 <p className="text-gray-600 font-medium">
                                     Your account has been already approved and activated. You now have full access to the platform.
+                                </p>
+                            </>
+                        ) : isRejected ? (
+                            <>
+                                <div className="space-y-2">
+                                    <p className="text-gray-600 text-lg">
+                                        Hare Krishna, <span className="font-semibold text-orange-600">{userData?.name || user?.email}</span>
+                                    </p>
+                                    <p className="text-red-600 font-semibold bg-red-50 py-2 px-4 rounded-lg inline-block border border-red-100">
+                                        Your application was not approved.
+                                    </p>
+                                </div>
+                                {userData?.rejectionReason && (
+                                    <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 text-left">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Reason for Rejection:</p>
+                                        <p className="text-gray-700 italic font-medium">&ldquo;{userData.rejectionReason}&rdquo;</p>
+                                    </div>
+                                )}
+                                <p className="text-gray-500 text-sm mt-4">
+                                    Please review the reason and update your registration details to resubmit for approval.
                                 </p>
                             </>
                         ) : (
@@ -88,7 +110,7 @@ export default function PendingApprovalPage() {
                         )}
 
                         {/* Info Box */}
-                        <div className={`${isAlreadyApproved ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mt-4 text-left`}>
+                        <div className={`${isAlreadyApproved ? 'bg-green-50 border-green-200' : isRejected ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'} border rounded-lg p-4 mt-4 text-left`}>
                             {isAlreadyApproved ? (
                                 <div className="flex items-start gap-3">
                                     <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
@@ -97,6 +119,18 @@ export default function PendingApprovalPage() {
                                         <p className="text-sm text-green-700">
                                             You can now access your dashboard to track your sadhana, view events, and connect with your mentors.
                                         </p>
+                                    </div>
+                                </div>
+                            ) : isRejected ? (
+                                <div className="flex items-start gap-3">
+                                    <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm font-semibold text-red-800 mb-1">How to fix this?</p>
+                                        <ul className="text-sm text-red-700 space-y-1">
+                                            <li>• Click on &quot;Update Registration&quot; below</li>
+                                            <li>• Fix the details mentioned in the reason</li>
+                                            <li>• Resubmit your application</li>
+                                        </ul>
                                     </div>
                                 </div>
                             ) : (
@@ -116,22 +150,27 @@ export default function PendingApprovalPage() {
                     </div>
 
                     {/* Status Badge */}
-                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 ${isAlreadyApproved ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {isAlreadyApproved ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
-                        Status: {isAlreadyApproved ? 'Approved' : 'Pending Approval'}
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-6 ${isAlreadyApproved ? 'bg-green-100 text-green-800' : isRejected ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        {isAlreadyApproved ? <CheckCircle2 className="w-4 h-4" /> : isRejected ? <XCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                        Status: {isAlreadyApproved ? 'Approved' : isRejected ? 'Rejected' : 'Pending Approval'}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="space-y-3">
                         {/* Primary Button */}
                         <button
-                            onClick={() => router.push(isAlreadyApproved ? '/dashboard' : '/')}
-                            className="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white py-3 rounded-lg font-semibold hover:from-orange-600 hover:to-amber-600 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                            onClick={() => router.push(isAlreadyApproved ? '/dashboard' : isRejected ? '/auth/complete-registration' : '/')}
+                            className={`w-full text-white py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl ${isRejected ? 'bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600' : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'}`}
                         >
                             {isAlreadyApproved ? (
                                 <>
                                     <Home className="w-5 h-5" />
                                     Go to Dashboard
+                                </>
+                            ) : isRejected ? (
+                                <>
+                                    <Edit3 className="w-5 h-5" />
+                                    Update Registration
                                 </>
                             ) : (
                                 <>

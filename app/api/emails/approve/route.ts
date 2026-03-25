@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import crypto from 'crypto';
+import { sendApprovalNotification } from '@/lib/utils/email';
 
 export async function GET(request: Request) {
     try {
@@ -79,12 +80,16 @@ export async function GET(request: Request) {
             return new NextResponse('Failed to approve user', { status: 500 });
         }
 
-        // Trigger the approval notification POST endpoint (do this asynchronously)
-        fetch(`${baseUrl}/api/emails/approved`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId })
-        }).catch(err => console.error('Failed to trigger approved email:', err));
+        // Trigger the approval notification directly
+        const { data: userData } = await supabase
+            .from('users')
+            .select('email, name')
+            .eq('id', userId)
+            .single();
+
+        if (userData?.email) {
+            await sendApprovalNotification(userData.email, userData.name || 'Devotee', `${baseUrl}/dashboard`);
+        }
 
         const html = `
             <!DOCTYPE html>

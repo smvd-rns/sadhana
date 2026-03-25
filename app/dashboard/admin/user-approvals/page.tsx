@@ -77,13 +77,15 @@ export default function UserApprovalsPage() {
                 return newSet;
             });
 
-            // Trigger approval emails silently
+            // Trigger approval emails
             userIdsToApprove.forEach(id => {
                 fetch('/api/emails/approved', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId: id })
-                }).catch(err => console.error('Failed to send approval email:', err));
+                }).then(res => {
+                    if (!res.ok) console.error(`Failed to send approval email for ${id}:`, res.statusText);
+                }).catch(err => console.error(`Failed to send approval email for ${id}:`, err));
             });
         } catch (error) {
             console.error('Failed to approve user(s):', error);
@@ -120,6 +122,20 @@ export default function UserApprovalsPage() {
                 const newSet = new Set(prev);
                 userIdsToReject.forEach(id => newSet.delete(id));
                 return newSet;
+            });
+
+            // Trigger rejection emails
+            userIdsToReject.forEach(id => {
+                fetch('/api/emails/rejected', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        userId: id,
+                        rejectionReason: rejectionReason.trim()
+                    })
+                }).then(res => {
+                    if (!res.ok) console.error(`Failed to send rejection email for ${id}:`, res.statusText);
+                }).catch(err => console.error(`Failed to send rejection email for ${id}:`, err));
             });
         } catch (error) {
             console.error('Failed to reject user(s):', error);
