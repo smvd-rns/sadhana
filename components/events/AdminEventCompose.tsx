@@ -23,6 +23,7 @@ interface AdminEventComposeProps {
 export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps) {
     const { userData } = useAuth();
     const [title, setTitle] = useState('');
+    const [type, setType] = useState<'event' | 'announcement'>('announcement');
     const [message, setMessage] = useState('');
     const [attachments, setAttachments] = useState<ManagedEventAttachment[]>([]);
     const [pendingImages, setPendingImages] = useState<Map<string, File>>(new Map());
@@ -369,23 +370,45 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                     materials.push(att);
                 }
             }
-
-            // 4. Submit the final event data
-            let parsedRsvpDeadline: Date | undefined = undefined;
-            if (rsvpDeadlineDate && rsvpDeadlineTime) {
-                parsedRsvpDeadline = new Date(`${rsvpDeadlineDate}T${rsvpDeadlineTime}`);
-            }
+ 
+             // 4. Handle targeting scope for non-super admins.
+             // If a non-super admin leaves filters empty, it means "all in their scope", 
+             // but '[]' in DB means "Global". We must explicitly populate to their allowed scope.
+             let finalTargetTemples = targetTemples;
+             let finalTargetCenters = targetCenters;
+ 
+             if (!userPermissions.isSuperAdmin) {
+                 if (finalTargetTemples.length === 0 && finalTargetCenters.length === 0) {
+                     // If no filters selected, target based on their primary administrative level
+                     if (userPermissions.isTempleAdmin) {
+                         finalTargetTemples = temples.map(t => t.name);
+                     } else if (userPermissions.isCenterAdmin) {
+                         finalTargetCenters = centers.map(c => c.name);
+                     } else {
+                         // Fallback for other roles (e.g. Event Admin) - populate both to be safe
+                         finalTargetTemples = temples.map(t => t.name);
+                         finalTargetCenters = centers.map(c => c.name);
+                     }
+                 }
+             }
+ 
+             // 5. Submit the final event data
+             let parsedRsvpDeadline: Date | undefined = undefined;
+             if (rsvpDeadlineDate && rsvpDeadlineTime) {
+                 parsedRsvpDeadline = new Date(`${rsvpDeadlineDate}T${rsvpDeadlineTime}`);
+             }
 
             await createEvent({
                 createdBy: userData?.id || '',
                 title,
-                eventDate: new Date(eventDate),
+                type,
+                eventDate: type === 'event' ? new Date(eventDate) : undefined,
                 message: updatedMessage,
                 attachments: materials, // This will be stored in the regular 'attachments' field AND used for 'event_materials' table
                 targetAshrams,
                 targetRoles,
-                targetTemples,
-                targetCenters,
+                targetTemples: finalTargetTemples,
+                targetCenters: finalTargetCenters,
                 targetCamps,
                 excludedUserIds: Array.from(excludedUserIds),
                 reachedCount: activeRecipientCount,
@@ -415,6 +438,7 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
         });
 
         setTitle('');
+        setType('announcement');
         setEventDate(new Date().toISOString().split('T')[0]);
         setRsvpDeadlineDate('');
         setRsvpDeadlineTime('');
@@ -488,44 +512,74 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Event Date</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <input
-                                    type="date"
-                                    value={eventDate}
-                                    onChange={(e) => setEventDate(e.target.value)}
-                                    className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
-                                />
+                            <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Update Type</label>
+                            <div className="grid grid-cols-2 gap-3 p-1.5 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem]">
+                                <button
+                                    type="button"
+                                    onClick={() => setType('announcement')}
+                                    className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'announcement'
+                                        ? 'bg-blue-600 text-white shadow-md'
+                                        : 'text-gray-400 hover:text-gray-600'
+                                        }`}
+                                >
+                                    Announcement
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setType('event')}
+                                    className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${type === 'event'
+                                        ? 'bg-orange-600 text-white shadow-md'
+                                        : 'text-gray-400 hover:text-gray-600'
+                                        }`}
+                                >
+                                    Event (RSVP)
+                                </button>
                             </div>
                         </div>
 
-                        <div className="space-y-2 col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {type === 'event' && (
                             <div className="space-y-2">
-                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Date (Count Lock)</label>
+                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Event Date</label>
                                 <div className="relative">
                                     <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <input
                                         type="date"
-                                        value={rsvpDeadlineDate}
-                                        onChange={(e) => setRsvpDeadlineDate(e.target.value)}
+                                        value={eventDate}
+                                        onChange={(e) => setEventDate(e.target.value)}
                                         className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
                                     />
                                 </div>
                             </div>
-                            <div className="space-y-2">
-                                <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Time</label>
-                                <div className="relative">
-                                    <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="time"
-                                        value={rsvpDeadlineTime}
-                                        onChange={(e) => setRsvpDeadlineTime(e.target.value)}
-                                        className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
-                                    />
+                        )}
+
+                        {type === 'event' && (
+                            <div className="space-y-2 col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300">
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Date (Count Lock)</label>
+                                    <div className="relative">
+                                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                        <input
+                                            type="date"
+                                            value={rsvpDeadlineDate}
+                                            onChange={(e) => setRsvpDeadlineDate(e.target.value)}
+                                            className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-gray-900 uppercase tracking-widest ml-1">Deadline Time</label>
+                                    <div className="relative">
+                                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                        <input
+                                            type="time"
+                                            value={rsvpDeadlineTime}
+                                            onChange={(e) => setRsvpDeadlineTime(e.target.value)}
+                                            className="w-full pl-12 pr-6 py-4 bg-gray-50 border-2 border-gray-200 rounded-[1.25rem] focus:bg-white focus:border-purple-500 transition-all font-bold text-gray-900 outline-none shadow-sm"
+                                        />
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border-2 border-amber-100/50 cursor-pointer transition-all hover:bg-amber-100/50" onClick={() => setIsImportant(!isImportant)}>
                             <div className={`p-2 rounded-lg transition-all ${isImportant ? 'bg-amber-500 text-white' : 'bg-white text-gray-400'}`}>
@@ -670,7 +724,7 @@ export default function AdminEventCompose({ onSuccess }: AdminEventComposeProps)
                         className="w-full py-5 bg-gray-900 text-white rounded-[1.5rem] font-black text-xs uppercase tracking-widest shadow-2xl shadow-gray-300 hover:bg-purple-700 hover:shadow-purple-200 transition-all flex items-center justify-center gap-3 active:scale-95"
                     >
                         {isSubmitting ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-                        {isSubmitting ? 'Transmitting...' : 'Send Announcement Now'}
+                        {isSubmitting ? 'Transmitting...' : 'Send Now'}
                     </button>
                 </div>
             </div>

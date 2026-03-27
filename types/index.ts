@@ -370,11 +370,12 @@ export interface ManagedEventAttachment {
 
 export interface ManagedEvent {
   id: string;
+  type?: 'event' | 'announcement';
   createdAt: Date;
   createdBy: string;
   createdByName?: string;
   title: string;
-  eventDate: Date;
+  eventDate?: Date;
   message?: string;
   attachments: ManagedEventAttachment[];
   targetAshrams: string[];
@@ -386,7 +387,10 @@ export interface ManagedEvent {
   reachedUsers?: number;
   reachedCount?: number;
   comingCount?: number;
+  seenCount?: number;
+  understoodCount?: number;
   isImportant?: boolean;
+  isImportantDismissed?: boolean;
   isPinned?: boolean;
   rsvpDeadline?: Date;
   userResponse?: ManagedEventResponse;
@@ -398,9 +402,11 @@ export interface ManagedEventResponse {
   id: string;
   eventId: string;
   userId: string;
-  status: 'seen' | 'coming' | 'not_coming';
+  status: 'seen' | 'coming' | 'not_coming' | 'understood';
   reason?: string;
   isBulk: boolean;
+  isPinned?: boolean;
+  isImportantDismissed?: boolean;
   bulkAddedBy?: string;
   createdAt: Date;
   updatedAt: Date;

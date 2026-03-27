@@ -7,7 +7,7 @@ export const ashramOptions = [
     { id: 'Nityananda Sabha', name: 'Nityananda Sabha' },
     { id: 'Brahmachari', name: 'Brahmachari Ashram' },
     { id: 'Grihastha', name: 'Grihastha Ashram' },
-    { id: 'Staying Single (Not planing to Marry)', name: 'Staying Single (Not planning to Marry)' }
+    { id: 'Staying Single (Not planning to Marry)', name: 'Staying Single (Not planning to Marry)' }
 ];
 
 export const roleOptions = Array.from({ length: 30 }, (_, i) => i + 1).map(num => ({

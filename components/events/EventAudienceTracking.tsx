@@ -23,7 +23,7 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
     const [targetedUsers, setTargetedUsers] = useState<any[]>([]);
     const [responses, setResponses] = useState<ManagedEventResponse[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'no_reply'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'understood' | 'no_reply'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
 
@@ -104,6 +104,7 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
             if (filterStatus === 'coming') matchesStatus = response?.status === 'coming';
             else if (filterStatus === 'not_coming') matchesStatus = response?.status === 'not_coming';
             else if (filterStatus === 'seen') matchesStatus = response?.status === 'seen';
+            else if (filterStatus === 'understood') matchesStatus = response?.status === 'understood';
             else if (filterStatus === 'no_reply') matchesStatus = !response;
 
             return (nameMatch || emailMatch) && matchesStatus;
@@ -150,7 +151,9 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                         <Users className="h-4 w-4" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-black text-gray-900 tracking-tight">Audience Confirmation</h3>
+                        <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                            {event.type === 'event' ? 'Audience Confirmation' : 'Acknowledgement Tracking'}
+                        </h3>
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
                             {isSuperAdmin ? 'Full System View' : `Manager: ${userData?.hierarchy?.center || userData?.currentCenter || 'Restricted View'}`}
                         </p>
@@ -158,7 +161,10 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-[10px] font-black text-orange-600 uppercase tracking-tight">
-                        {responses.filter(r => r.status === 'coming').length} Confirmations
+                        {event.type === 'event' 
+                            ? `${responses.filter(r => r.status === 'coming').length} Confirmations`
+                            : `${responses.filter(r => r.status === 'understood').length} Understood • ${responses.filter(r => r.status === 'seen').length} Seen`
+                        }
                     </span>
                     <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest leading-none">
                         Out of {targetedUsers.length} targeted
@@ -179,23 +185,23 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                     />
                 </div>
                 <div className="flex gap-2 overflow-x-auto pb-1">
-                    {(['all', 'coming', 'no_reply'] as const).map(s => (
+                    {(event.type === 'event' ? ['all', 'coming', 'no_reply'] : ['all', 'understood', 'seen', 'no_reply']).map(s => (
                         <button
                             key={s}
-                            onClick={() => setFilterStatus(s)}
+                            onClick={() => setFilterStatus(s as any)}
                             className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all shrink-0 border-2 ${filterStatus === s
                                 ? 'bg-slate-900 border-slate-900 text-white shadow-md'
                                 : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
                                 }`}
                         >
-                            {s === 'no_reply' ? 'Pending' : s}
+                            {s === 'no_reply' ? 'Pending' : s === 'seen' ? 'Seen' : s === 'understood' ? 'Understood' : s}
                         </button>
                     ))}
                 </div>
             </div>
 
             {/* Bulk Actions */}
-            {selectedUserIds.length > 0 && (
+            {event.type === 'event' && selectedUserIds.length > 0 && (
                 <div className="p-3 bg-orange-600 rounded-xl text-white flex items-center justify-between gap-4 shadow-xl shadow-orange-100 animate-in zoom-in-95">
                     <div className="flex items-center gap-2 pl-2">
                         <CheckCircle2 className="h-3.5 w-3.5" />
@@ -222,19 +228,21 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                     <thead className="bg-gray-50/50 border-b border-gray-100">
                         <tr>
                             <th className="p-4 w-10">
-                                <input
-                                    type="checkbox"
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            const pageIds = paginatedUsers.map(u => u.id);
-                                            setSelectedUserIds(prev => Array.from(new Set([...prev, ...pageIds])));
-                                        } else {
-                                            const pageIds = new Set(paginatedUsers.map(u => u.id));
-                                            setSelectedUserIds(prev => prev.filter(id => !pageIds.has(id)));
-                                        }
-                                    }}
-                                    className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                                />
+                                {event.type === 'event' && (
+                                    <input
+                                        type="checkbox"
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                const pageIds = paginatedUsers.map(u => u.id);
+                                                setSelectedUserIds(prev => Array.from(new Set([...prev, ...pageIds])));
+                                            } else {
+                                                const pageIds = new Set(paginatedUsers.map(u => u.id));
+                                                setSelectedUserIds(prev => prev.filter(id => !pageIds.has(id)));
+                                            }
+                                        }}
+                                        className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                    />
+                                )}
                             </th>
                             <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">User</th>
                             <th className="p-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Status</th>
@@ -250,15 +258,17 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                             return (
                                 <tr key={user.id} className={`group ${isSelected ? 'bg-orange-50/30' : 'hover:bg-gray-50/50'} transition-colors`}>
                                     <td className="p-4">
-                                        <input
-                                            type="checkbox"
-                                            checked={isSelected}
-                                            onChange={() => {
-                                                if (isSelected) setSelectedUserIds(prev => prev.filter(id => id !== user.id));
-                                                else setSelectedUserIds(prev => [...prev, user.id]);
-                                            }}
-                                            className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
-                                        />
+                                        {event.type === 'event' && (
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => {
+                                                    if (isSelected) setSelectedUserIds(prev => prev.filter(id => id !== user.id));
+                                                    else setSelectedUserIds(prev => [...prev, user.id]);
+                                                }}
+                                                className="rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                            />
+                                        )}
                                     </td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
@@ -273,12 +283,14 @@ export default function EventAudienceTracking({ event }: EventAudienceTrackingPr
                                     </td>
                                     <td className="p-4">
                                         {response ? (
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight ${response.status === 'coming' ? 'bg-emerald-50 text-emerald-700' :
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight ${response.status === 'coming' || response.status === 'understood' ? 'bg-emerald-50 text-emerald-700' :
                                                 response.status === 'not_coming' ? 'bg-rose-50 text-rose-700' : 'bg-sky-50 text-sky-700'
                                                 }`}>
-                                                {response.status === 'coming' ? <CheckCircle className="h-3 w-3" /> :
-                                                    response.status === 'not_coming' ? <XCircle className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                                                {response.status.replace('_', ' ')}
+                                                {response.status === 'coming' && <CheckCircle className="h-3 w-3" />}
+                                                {response.status === 'not_coming' && <XCircle className="h-3 w-3" />}
+                                                {response.status === 'understood' && <CheckCircle2 className="h-3 w-3" />}
+                                                {response.status === 'seen' && <Eye className="h-3 w-3" />}
+                                                {response.status === 'understood' ? 'Understood' : response.status.replace('_', ' ')}
                                             </span>
                                         ) : (
                                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tight bg-gray-100 text-gray-300">

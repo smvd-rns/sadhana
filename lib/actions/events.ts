@@ -16,9 +16,10 @@ export async function createEvent(eventData: Omit<ManagedEvent, 'id' | 'createdA
     const { data: event, error: eventError } = await supabase
         .from('events')
         .insert({
+            type: eventData.type || 'event',
             created_by: eventData.createdBy,
             title: eventData.title,
-            event_date: eventData.eventDate,
+            event_date: eventData.type === 'event' ? eventData.eventDate : null,
             message: eventData.message,
             attachments: eventData.attachments,
             target_ashrams: eventData.targetAshrams,
@@ -216,11 +217,13 @@ export async function getEventsForUser(userParams: {
     // 2. Fetch user responses if userId is provided
     let responsesMap = new Map<string, any>();
     let comingCountsMap = new Map<string, number>();
+    let seenCountsMap = new Map<string, number>();
+    let understoodCountsMap = new Map<string, number>();
 
     if (userParams.userId) {
         const { data: respData } = await supabase
             .from('event_responses')
-            .select('*')
+            .select('event_id, id, user_id, status, reason, is_bulk, bulk_added_by, created_at, updated_at, is_pinned, is_important_dismissed')
             .eq('user_id', userParams.userId);
 
         if (respData) {
@@ -238,6 +241,28 @@ export async function getEventsForUser(userParams: {
         if (comingStats) {
             comingStats.forEach(r => {
                 comingCountsMap.set(r.event_id, (comingCountsMap.get(r.event_id) || 0) + 1);
+            });
+        }
+
+        const { data: seenStats } = await supabase
+            .from('event_responses')
+            .select('event_id')
+            .eq('status', 'seen');
+
+        if (seenStats) {
+            seenStats.forEach(r => {
+                seenCountsMap.set(r.event_id, (seenCountsMap.get(r.event_id) || 0) + 1);
+            });
+        }
+
+        const { data: understoodStats } = await supabase
+            .from('event_responses')
+            .select('event_id')
+            .eq('status', 'understood');
+
+        if (understoodStats) {
+            understoodStats.forEach(r => {
+                understoodCountsMap.set(r.event_id, (understoodCountsMap.get(r.event_id) || 0) + 1);
             });
         }
     }
@@ -290,14 +315,18 @@ export async function getEventsForUser(userParams: {
             };
             // PERSONAL PIN OVERRIDE: If the user has a response, their pin status WINS
             managed.isPinned = userResp.is_pinned;
+            managed.isImportantDismissed = userResp.is_important_dismissed || false;
         } else {
             // Default to Global Admin Pin if no personal interaction yet
             managed.isPinned = event.is_pinned || false;
+            managed.isImportantDismissed = false;
         }
 
         // Attach aggregate stats for admin
         if (isTargetingEmpty) {
             managed.comingCount = comingCountsMap.get(event.id) || 0;
+            managed.seenCount = seenCountsMap.get(event.id) || 0;
+            managed.understoodCount = understoodCountsMap.get(event.id) || 0;
         }
         return managed;
     });
@@ -309,10 +338,11 @@ export async function getEventsForUser(userParams: {
 export async function submitEventResponse(response: {
     eventId: string;
     userId: string;
-    status: 'coming' | 'not_coming' | 'seen';
+    status: 'coming' | 'not_coming' | 'seen' | 'understood';
     reason?: string;
     isBulk?: boolean;
     isPinned?: boolean;
+    isImportantDismissed?: boolean;
 }) {
     const supabase = getActiveSadhanaSupabase();
     if (!supabase) throw new Error('Sadhana Supabase not initialized');
@@ -340,7 +370,8 @@ export async function submitEventResponse(response: {
             status: response.status,
             reason: response.reason,
             is_bulk: response.isBulk || false,
-            is_pinned: response.isPinned
+            is_pinned: response.isPinned,
+            is_important_dismissed: response.isImportantDismissed
         }, { onConflict: 'event_id,user_id' });
 
     if (error) {
@@ -367,6 +398,28 @@ export async function toggleEventPin(eventId: string, userId: string, isPinned: 
 
     if (error) {
         console.error('Error toggling pin:', error);
+        throw error;
+    }
+}
+
+/**
+ * Toggle personal importance dismissal for an event
+ */
+export async function toggleEventImportance(eventId: string, userId: string, dismissed: boolean) {
+    const supabase = getActiveSadhanaSupabase();
+    if (!supabase) throw new Error('Sadhana Supabase not initialized');
+
+    const { error } = await supabase
+        .from('event_responses')
+        .upsert({
+            event_id: eventId,
+            user_id: userId,
+            is_important_dismissed: dismissed,
+            status: 'seen' 
+        }, { onConflict: 'event_id,user_id' });
+
+    if (error) {
+        console.error('Error toggling importance dismissal:', error);
         throw error;
     }
 }
@@ -441,6 +494,7 @@ export async function getEventStats(eventId: string) {
         totalSeen: data.filter(r => r.status === 'seen').length,
         totalComing: data.filter(r => r.status === 'coming').length,
         totalNotComing: data.filter(r => r.status === 'not_coming').length,
+        totalUnderstood: data.filter(r => r.status === 'understood').length,
         totalResponses: data.length
     };
 
@@ -508,52 +562,79 @@ export async function getEventTargetedUsers(eventId: string, filters?: { temple?
 
     if (eventError || !event) return [];
 
-    // 2. Build User Query for main database
-    const { supabase: mainSupabase } = await import('@/lib/supabase/config');
-    if (!mainSupabase) return [];
+    // 2. Build User Query for main database using Admin Client to bypass RLS
+    // and ensure we see the exact same audience that received the notification
+    const { getAdminClient } = await import('@/lib/supabase/admin');
+    const adminSupabase = getAdminClient();
+    if (!adminSupabase) return [];
 
-    let userQuery = mainSupabase
+    let userQuery = adminSupabase
         .from('users')
-        .select('*');
+        .select('id, name, email, ashram, role, state, city, center, current_center, parent_center, current_temple, parent_temple, hierarchy');
 
-    // Apply strict filters from the event itself to reduce payload
-    if (event.target_ashrams?.length) {
-        userQuery = userQuery.in('ashram', event.target_ashrams);
-    }
-
-    // Apply specific admin filters (Center/Temple)
-    if (filters?.temple && filters.temple !== 'all') {
-        userQuery = userQuery.or(`current_temple.eq."${filters.temple}",parent_temple.eq."${filters.temple}",hierarchy->>temple.eq."${filters.temple}"`);
-    }
-    if (filters?.center && filters.center !== 'all') {
-        userQuery = userQuery.or(`current_center.eq."${filters.center}",center.eq."${filters.center}",hierarchy->>center.eq."${filters.center}"`);
-    }
+    // We do NOT apply the ashram filter here in SQL because composer uses hierarchy->>ashram
+    // We will do all filtering in JS for absolute consistency with triggerPushNotificationsForEvent
 
     const { data: users, error: usersError } = await userQuery;
-    if (usersError || !users) return [];
+    if (usersError || !users) {
+        console.error('[getEventTargetedUsers] Error fetching users:', usersError);
+        return [];
+    }
 
     // 3. Final JS filtering for complex hierarchy/role logic that SQL can't do easily
     return users.filter(user => {
+        // 1. Ashram Check (Sync with AdminEventCompose hierarchy check)
+        const userAshram = user.ashram || user.hierarchy?.ashram;
+        const matchesAshram = !event.target_ashrams?.length || 
+            event.target_ashrams.includes(userAshram);
+        
+        if (!matchesAshram) return false;
+
         const userRoles = Array.isArray(user.role) ? user.role.map(String) : [String(user.role)];
         const matchesRole = !event.target_roles?.length || event.target_roles.some((r: any) => userRoles.includes(String(r)));
+        
+        if (!matchesRole) return false;
 
-        // Detailed Location Checks (already partially done in SQL, but double check for robustness)
-        const userTemple = user.current_temple || user.parent_temple || user.hierarchy?.temple || user.hierarchy?.currentTemple;
-        const userCenter = user.center || user.current_center || user.hierarchy?.center || user.hierarchy?.currentCenter;
+        // Detailed Location Checks (Sync with Notification filtering logic)
+        const userLocations = [
+            user.current_temple, 
+            user.parent_temple, 
+            user.hierarchy?.temple, 
+            user.hierarchy?.currentTemple
+        ].map(l => String(l || '').trim().toLowerCase());
 
-        const matchesTemple = !event.target_temples?.length || event.target_temples.includes(userTemple);
-        const matchesCenter = !event.target_centers?.length || event.target_centers.includes(userCenter);
+        const matchesTemple = !event.target_temples?.length || 
+            event.target_temples.some((t: string) => userLocations.includes(String(t).trim().toLowerCase()));
+
+        const userCenters = [
+            user.center,
+            user.current_center,
+            user.parent_center,
+            user.hierarchy?.center,
+            user.hierarchy?.currentCenter
+        ].map(l => String(l || '').trim().toLowerCase());
+
+        const matchesCenter = !event.target_centers?.length || 
+            event.target_centers.some((c: string) => userCenters.includes(String(c).trim().toLowerCase()));
 
         // Camp checks
         const matchesCamps = !event.target_camps?.length || event.target_camps.some((c: string) => {
             const campField = `camp${c.charAt(0).toUpperCase()}${c.slice(1)}`;
-            return user[campField] === true;
+            return (user as any)[campField] === true;
         });
 
         // Exclusions
         const isExcluded = event.excluded_user_ids?.includes(user.id);
 
-        return matchesRole && matchesTemple && matchesCenter && matchesCamps && !isExcluded;
+        // Administrative isolation filters (if applied from Dashboard UI)
+        if (filters?.temple && filters.temple !== 'all') {
+            if (!userLocations.includes(filters.temple.trim().toLowerCase())) return false;
+        }
+        if (filters?.center && filters.center !== 'all') {
+            if (!userCenters.includes(filters.center.trim().toLowerCase())) return false;
+        }
+
+        return matchesAshram && matchesRole && matchesTemple && matchesCenter && matchesCamps && !isExcluded;
     });
 }
 
@@ -644,11 +725,12 @@ export async function updateEventDeadline(eventId: string, rsvpDeadline: Date | 
 function mapDbEventToManagedEvent(dbEvent: any, creatorName?: string): ManagedEvent {
     return {
         id: dbEvent.id,
+        type: dbEvent.type || 'event',
         createdAt: new Date(dbEvent.created_at),
         createdBy: dbEvent.created_by,
         createdByName: creatorName,
         title: dbEvent.title,
-        eventDate: new Date(dbEvent.event_date),
+        eventDate: dbEvent.event_date ? new Date(dbEvent.event_date) : undefined,
         message: dbEvent.message,
         attachments: (dbEvent.attachments || []) as ManagedEventAttachment[],
         targetAshrams: dbEvent.target_ashrams || [],

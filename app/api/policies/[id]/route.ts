@@ -37,10 +37,11 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         }
 
         const body = await request.json();
-        const { title, applicable_date, target_roles } = body;
+        const { title, description, applicable_date, target_roles } = body;
 
         const updateData: any = { updated_at: new Date().toISOString() };
         if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
         if (applicable_date !== undefined) updateData.applicable_date = applicable_date;
         if (target_roles !== undefined) updateData.target_roles = target_roles;
 

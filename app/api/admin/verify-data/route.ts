@@ -192,6 +192,37 @@ export async function POST(request: Request) {
 
             if (error) throw error;
 
+            // NEW: Processing Side Effects (Emails & Membership IDs) if Approved
+            if (action === 'approve') {
+                const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                const { sendApprovalNotification } = await import('@/lib/utils/email');
+                const { generateMembershipIdForUser } = await import('@/lib/utils/membership');
+
+                for (const userId of targetIds) {
+                    try {
+                        const { data: userDetails } = await supabase
+                            .from('users')
+                            .select('email, name')
+                            .eq('id', userId)
+                            .single();
+
+                        if (userDetails?.email) {
+                            // Trigger welcome email
+                            await sendApprovalNotification(userDetails.email, userDetails.name || 'Devotee', `${baseUrl}/dashboard`);
+                            
+                            // Generate Membership ID
+                            try {
+                                await generateMembershipIdForUser(supabase, userId);
+                            } catch (genErr) {
+                                console.error(`Failed to generate membership ID for ${userId} in verify-data:`, genErr);
+                            }
+                        }
+                    } catch (sideEffectError) {
+                        console.error(`Error in side effects for user ${userId}:`, sideEffectError);
+                    }
+                }
+            }
+
         } else {
             // Non-user types (centers, cities, counselors) still require higher levels or super admin
             if (isCounselor && !isSuperAdmin) {

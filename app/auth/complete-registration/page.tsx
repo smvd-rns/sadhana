@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { updateUser } from '@/lib/supabase/users';
@@ -32,13 +32,21 @@ export default function CompleteRegistrationPage() {
         center: '',
         otherCenter: '',
         otherTemple: '',
+        parentTemple: '',
+        parentTempleId: '',
+        otherParentTemple: '',
+        parentCenter: '',
+        otherParentCenter: '',
+        introducedToKcIn: '',
     });
 
     const [centers, setCenters] = useState<Array<{ id: string; name: string }>>([]);
+    const [parentCenters, setParentCenters] = useState<Array<{ id: string; name: string }>>([]);
     const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string }>>([]);
     const [temples, setTemples] = useState<Array<{ id: string; name: string }>>([]);
 
     const [loadingCenters, setLoadingCenters] = useState(false);
+    const [loadingParentCenters, setLoadingParentCenters] = useState(false);
     const [loadingCounselors, setLoadingCounselors] = useState(true);
     const [loadingTemples, setLoadingTemples] = useState(true);
 
@@ -50,7 +58,7 @@ export default function CompleteRegistrationPage() {
         'Nityananda Sabha',
         'Brahmachari',
         'Grihastha',
-        'Staying Single (Not planing to Marry)',
+        'Staying Single (Not planning to Marry)',
     ];
 
     // Load initial data
@@ -60,9 +68,31 @@ export default function CompleteRegistrationPage() {
                 ...prev,
                 name: userData?.name || user.user_metadata?.full_name || '',
                 email: user.email || '',
+                // Initialize spiritual fields if they exist in userData
+                introducedToKcIn: userData?.hierarchy?.introducedToKcIn || (userData as any)?.introducedToKcIn || '',
+                parentTemple: userData?.hierarchy?.parentTemple || (userData as any)?.parentTemple || '',
+                parentTempleId: '', // Will be resolved if parentTemple exists
+                otherParentTemple: userData?.hierarchy?.otherParentTemple || (userData as any)?.otherTemple || '',
+                parentCenter: userData?.hierarchy?.parentCenter || (userData as any)?.parentCenter || '',
+                otherParentCenter: userData?.hierarchy?.otherParentCenter || (userData as any)?.otherParentCenter || '',
+                ashram: userData?.hierarchy?.ashram || '',
+                temple: userData?.hierarchy?.currentTemple || (userData as any)?.currentTemple || '',
+                center: userData?.hierarchy?.currentCenter || (userData as any)?.currentCenter || '',
+                counselor: userData?.hierarchy?.counselor || '',
+                counselorId: userData?.hierarchy?.counselorId || '',
             }));
         }
     }, [user, userData]);
+
+    // Auto-resolve parentTempleId if parentTemple exists
+    useEffect(() => {
+        if (formData.parentTemple && !formData.parentTempleId && temples.length > 0) {
+            const match = temples.find(t => t.name === formData.parentTemple);
+            if (match) {
+                setFormData(prev => ({ ...prev, parentTempleId: match.id }));
+            }
+        }
+    }, [temples, formData.parentTemple, formData.parentTempleId]);
 
     // Load temples from Supabase
     useEffect(() => {
@@ -81,13 +111,31 @@ export default function CompleteRegistrationPage() {
             try {
                 const { data, error } = await supabase
                     .from('counselors')
-                    .select('id, name, email')
+                    .select(`
+                        id, 
+                        name, 
+                        email,
+                        current_temple,
+                        parent_temple,
+                        user:user_id (
+                            current_temple,
+                            parent_temple
+                        )
+                    `)
+                    .eq('is_verified', true)
                     .order('name');
 
                 if (error) {
                     console.error('Error loading counselors:', error);
                 } else if (data) {
-                    setCounselors(data);
+                    // Normalize data to include temple info for easier filtering
+                    const normalized = data.map((c: any) => ({
+                        id: c.id,
+                        name: c.name,
+                        email: c.email,
+                        temple: c.current_temple || c.parent_temple || c.user?.current_temple || c.user?.parent_temple || ''
+                    }));
+                    setCounselors(normalized);
                 }
             } finally {
                 setLoadingCounselors(false);
@@ -96,6 +144,21 @@ export default function CompleteRegistrationPage() {
 
         loadCounselors();
     }, []);
+
+    // Filter counselors based on selected temple or parent temple
+    const memoizedFilteredCounselors = useMemo(() => {
+        const connectedTemple = formData.temple === 'Other' ? formData.otherTemple : formData.temple;
+        const parentTemple = formData.parentTemple === 'Other' ? formData.otherParentTemple : formData.parentTemple;
+
+        if (!connectedTemple && !parentTemple) return [];
+
+        return counselors.filter((c: any) => {
+            const cTemple = (c as any).temple || '';
+            const matchesConnected = connectedTemple && cTemple.toLowerCase() === connectedTemple.toLowerCase();
+            const matchesParent = parentTemple && cTemple.toLowerCase() === parentTemple.toLowerCase();
+            return matchesConnected || matchesParent;
+        });
+    }, [counselors, formData.temple, formData.otherTemple, formData.parentTemple, formData.otherParentTemple]);
 
     // Auto-resolve counselorId if missing but counselor name exists
     useEffect(() => {
@@ -122,6 +185,19 @@ export default function CompleteRegistrationPage() {
             setCenters([]);
         }
     }, [formData.templeId]);
+
+    // Load parent centers when parent temple changes
+    useEffect(() => {
+        if (formData.parentTempleId) {
+            setLoadingParentCenters(true);
+            getCentersByTempleFromSupabase(formData.parentTempleId)
+                .then(data => setParentCenters(data.map(c => ({ id: c.id, name: c.name }))))
+                .catch(err => console.error('Error loading parent centers:', err))
+                .finally(() => setLoadingParentCenters(false));
+        } else {
+            setParentCenters([]);
+        }
+    }, [formData.parentTempleId]);
 
     const handleNextStep = (e: React.FormEvent) => {
         e.preventDefault();
@@ -172,6 +248,13 @@ export default function CompleteRegistrationPage() {
             if (formData.ashram) hierarchy.ashram = formData.ashram;
             if (formData.temple) hierarchy.currentTemple = formData.temple;
 
+            // New spiritual fields
+            if (formData.introducedToKcIn) hierarchy.introducedToKcIn = formData.introducedToKcIn;
+            if (formData.parentTemple) hierarchy.parentTemple = formData.parentTemple;
+            if (formData.parentTemple === 'Other') hierarchy.otherParentTemple = formData.otherParentTemple;
+            if (formData.parentCenter) hierarchy.parentCenter = formData.parentCenter;
+            if (formData.parentCenter === 'Other') hierarchy.otherParentCenter = formData.otherParentCenter;
+
             // Update user with all data and set status to pending
             await updateUser(user.id, {
                 email: formData.email, // Required for new user creation
@@ -183,6 +266,12 @@ export default function CompleteRegistrationPage() {
                 otherTemple: formData.temple === 'Other' ? formData.otherTemple : undefined,
                 currentCenter: formData.center !== 'None' ? formData.center : undefined,
                 otherCenter: formData.center === 'Other' ? formData.otherCenter : undefined,
+
+                // Add top-level fields for new spiritual columns
+                introducedToKcIn: formData.introducedToKcIn || undefined,
+                parentTemple: formData.parentTemple || undefined,
+                parentCenter: formData.parentCenter || undefined,
+
                 verificationStatus: 'pending', // Set to pending for admin approval
                 rejectionReason: null as any, // Clear previous rejection reason
                 reviewedBy: null as any,
@@ -200,6 +289,20 @@ export default function CompleteRegistrationPage() {
                 });
             } catch (emailErr: any) {
                 console.error('Failed to trigger registration email:', emailErr);
+            }
+
+            // Generate Membership ID immediately after joining
+            try {
+                await fetch('/api/membership/generate', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${(await supabase?.auth.getSession())?.data.session?.access_token}`
+                    }
+                });
+            } catch (genErr: any) {
+                console.error('Failed to auto-generate membership ID:', genErr);
+                // Don't block registration for ID generation failure
             }
 
             setSuccess('Registration submitted! Redirecting...');
@@ -434,101 +537,236 @@ export default function CompleteRegistrationPage() {
                                 </select>
                             </div>
 
-                            {/* Temple Selection */}
-                            <div className="group">
-                                <label htmlFor="temple" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
-                                    Connected Temple
-                                </label>
-                                <div className="relative">
-                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                        <Building2 className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
-                                    </div>
-                                    <select
-                                        id="temple"
-                                        value={formData.temple}
-                                        onChange={(e) => {
-                                            const selectedTemple = temples.find(t => t.name === e.target.value);
-                                            setFormData({
-                                                ...formData,
-                                                temple: e.target.value,
-                                                templeId: selectedTemple?.id || '',
-                                                center: '',
-                                                otherTemple: e.target.value === 'Other' ? formData.otherTemple : ''
-                                            });
-                                        }}
-                                        className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
-                                        disabled={loadingTemples}
-                                    >
-                                        <option value="">Select Temple</option>
-                                        {temples.map((t) => (
-                                            <option key={t.id} value={t.name}>{t.name}</option>
-                                        ))}
-                                        <option value="Other">Other</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Other Temple Input */}
-                            {formData.temple === 'Other' && (
-                                <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                                    <label htmlFor="otherTemple" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
-                                        Other Temple Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        id="otherTemple"
-                                        value={formData.otherTemple}
-                                        onChange={(e) => setFormData({ ...formData, otherTemple: e.target.value })}
-                                        className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6"
-                                        placeholder="Enter temple name"
-                                    />
-                                </div>
-                            )}
-
-                            {/* Center Selection */}
-                            {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && (
-                                <div className="group animate-in slide-in-from-top-2 fade-in duration-200">
-                                    <label htmlFor="center" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
-                                        Connected Center
+                            {/* Connected Location Group - Green Theme */}
+                            <div className="bg-emerald-100/40 border border-emerald-200 rounded-xl p-4 space-y-4">
+                                <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                    Current Location
+                                </h3>
+                                
+                                {/* Temple Selection */}
+                                <div className="group">
+                                    <label htmlFor="temple" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-emerald-600 transition-colors">
+                                        Connected Temple
                                     </label>
                                     <div className="relative">
                                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                            <Home className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                                            <Building2 className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
                                         </div>
                                         <select
-                                            id="center"
-                                            value={formData.center}
-                                            onChange={(e) => setFormData({ ...formData, center: e.target.value })}
-                                            className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all"
-                                            disabled={loadingCenters}
+                                            id="temple"
+                                            value={formData.temple}
+                                            onChange={(e) => {
+                                                const selectedTemple = temples.find(t => t.name === e.target.value);
+                                                setFormData({
+                                                    ...formData,
+                                                    temple: e.target.value,
+                                                    templeId: selectedTemple?.id || '',
+                                                    center: '',
+                                                    otherTemple: e.target.value === 'Other' ? formData.otherTemple : ''
+                                                });
+                                            }}
+                                            className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-all"
+                                            disabled={loadingTemples}
                                         >
-                                            <option value="">Select Center</option>
-                                            {centers.map((c) => (
-                                                <option key={c.id} value={c.name}>{c.name}</option>
+                                            <option value="">Select Temple</option>
+                                            {temples.map((t) => (
+                                                <option key={t.id} value={t.name}>{t.name}</option>
                                             ))}
-                                            <option value="None">None</option>
                                             <option value="Other">Other</option>
                                         </select>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Other Center Input */}
-                            {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && formData.center === 'Other' && (
-                                <div className="animate-in slide-in-from-top-2 fade-in duration-200">
-                                    <label htmlFor="otherCenter" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
-                                        Other Center Name
+                                {/* Other Temple Input */}
+                                {formData.temple === 'Other' && (
+                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="otherTemple" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
+                                            Other Temple Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="otherTemple"
+                                            value={formData.otherTemple}
+                                            onChange={(e) => setFormData({ ...formData, otherTemple: e.target.value })}
+                                            className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6"
+                                            placeholder="Enter temple name"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Center Selection */}
+                                {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && (
+                                    <div className="group animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="center" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-emerald-600 transition-colors">
+                                            Connected Center
+                                        </label>
+                                        <div className="relative">
+                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                <Home className="h-5 w-5 text-gray-400 group-focus-within:text-emerald-500 transition-colors" />
+                                            </div>
+                                            <select
+                                                id="center"
+                                                value={formData.center}
+                                                onChange={(e) => setFormData({ ...formData, center: e.target.value })}
+                                                className="block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-all"
+                                                disabled={loadingCenters}
+                                            >
+                                                <option value="">Select Center</option>
+                                                {centers.map((c) => (
+                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                ))}
+                                                <option value="None">None</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Other Center Input */}
+                                {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && formData.center === 'Other' && (
+                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="otherCenter" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
+                                            Other Center Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="otherCenter"
+                                            value={formData.otherCenter}
+                                            onChange={(e) => setFormData({ ...formData, otherCenter: e.target.value })}
+                                            className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6"
+                                            placeholder="Enter center name"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Parent Location Group */}
+                            <div className="bg-purple-100/40 border border-purple-200 rounded-xl p-4 space-y-4">
+                                <h3 className="text-sm font-bold text-purple-800 flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                    Parent Location
+                                </h3>
+
+                                {/* Parent Temple Selection */}
+                                <div className="group">
+                                    <label htmlFor="parentTemple" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-purple-600 transition-colors">
+                                        Parent Temple
                                     </label>
+                                    <div className="relative">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                            <Building2 className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                                        </div>
+                                        <select
+                                            id="parentTemple"
+                                            value={formData.parentTemple}
+                                            disabled={loadingTemples || !!(userData?.hierarchy?.parentTemple || (userData as any)?.parentTemple)}
+                                            onChange={(e) => {
+                                                const selectedTemple = temples.find(t => t.name === e.target.value);
+                                                setFormData({
+                                                    ...formData,
+                                                    parentTemple: e.target.value,
+                                                    parentTempleId: selectedTemple?.id || '',
+                                                    parentCenter: '',
+                                                    otherParentTemple: e.target.value === 'Other' ? formData.otherParentTemple : ''
+                                                });
+                                            }}
+                                            className={`block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm sm:leading-6 transition-all ${(userData?.hierarchy?.parentTemple || (userData as any)?.parentTemple) ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
+                                        >
+                                            <option value="">Select Parent Temple</option>
+                                            {temples.map((t) => (
+                                                <option key={t.id} value={t.name}>{t.name}</option>
+                                            ))}
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Other Parent Temple Input */}
+                                {formData.parentTemple === 'Other' && (
+                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="otherParentTemple" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
+                                            Other Parent Temple Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="otherParentTemple"
+                                            value={formData.otherParentTemple}
+                                            disabled={!!(userData?.hierarchy?.otherParentTemple || (userData as any)?.otherParentTemple)}
+                                            onChange={(e) => setFormData({ ...formData, otherParentTemple: e.target.value })}
+                                            className={`block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm sm:leading-6 ${(userData?.hierarchy?.otherParentTemple || (userData as any)?.otherParentTemple) ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
+                                            placeholder="Enter parent temple name"
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Parent Center Selection */}
+                                {formData.parentTemple && (
+                                    <div className="group animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="parentCenter" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-purple-600 transition-colors">
+                                            Parent Center
+                                        </label>
+                                        <div className="relative">
+                                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                <Home className="h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                                            </div>
+                                            <select
+                                                id="parentCenter"
+                                                value={formData.parentCenter}
+                                                disabled={loadingParentCenters || !!(userData?.hierarchy?.parentCenter || (userData as any)?.parentCenter)}
+                                                onChange={(e) => setFormData({ ...formData, parentCenter: e.target.value })}
+                                                className={`block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm sm:leading-6 transition-all ${(userData?.hierarchy?.parentCenter || (userData as any)?.parentCenter) ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
+                                            >
+                                                <option value="">Select Parent Center</option>
+                                                {parentCenters.map((c) => (
+                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                ))}
+                                                <option value="None">None</option>
+                                                <option value="Other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Other Parent Center Input */}
+                                {formData.parentTemple && formData.parentCenter === 'Other' && (
+                                    <div className="animate-in slide-in-from-top-2 fade-in duration-200">
+                                        <label htmlFor="otherParentCenter" className="block text-sm font-medium leading-6 text-gray-900 mb-1">
+                                            Other Parent Center Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="otherParentCenter"
+                                            value={formData.otherParentCenter}
+                                            disabled={!!(userData?.hierarchy?.otherParentCenter || (userData as any)?.otherParentCenter)}
+                                            onChange={(e) => setFormData({ ...formData, otherParentCenter: e.target.value })}
+                                            className={`block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-purple-600 sm:text-sm sm:leading-6 ${(userData?.hierarchy?.otherParentCenter || (userData as any)?.otherParentCenter) ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
+                                            placeholder="Enter parent center name"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Introduced to KC */}
+                            <div className="group">
+                                <label htmlFor="introducedToKcIn" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-orange-600 transition-colors">
+                                    Introduced to KC Since
+                                </label>
+                                <div className="relative">
+                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <Calendar className="h-5 w-5 text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+                                    </div>
                                     <input
-                                        type="text"
-                                        id="otherCenter"
-                                        value={formData.otherCenter}
-                                        onChange={(e) => setFormData({ ...formData, otherCenter: e.target.value })}
-                                        className="block w-full rounded-lg border-0 py-3 pl-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6"
-                                        placeholder="Enter center name"
+                                        type="date"
+                                        id="introducedToKcIn"
+                                        value={formData.introducedToKcIn}
+                                        max={new Date().toISOString().split('T')[0]}
+                                        disabled={!!(userData?.hierarchy?.introducedToKcIn || (userData as any)?.introducedToKcIn)}
+                                        onChange={(e) => setFormData({ ...formData, introducedToKcIn: e.target.value })}
+                                        className={`block w-full rounded-lg border-0 py-3 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-orange-600 sm:text-sm sm:leading-6 transition-all ${(userData?.hierarchy?.introducedToKcIn || (userData as any)?.introducedToKcIn) ? 'opacity-70 cursor-not-allowed bg-gray-50' : ''}`}
                                     />
                                 </div>
-                            )}
+                            </div>
 
                             {/* Counselor Selection */}
                             <div className="group">
@@ -537,7 +775,7 @@ export default function CompleteRegistrationPage() {
                                 </label>
                                 <SearchableSelect
                                     options={[
-                                        ...counselors.map(c => ({ id: c.id, name: c.name })),
+                                        ...memoizedFilteredCounselors.map((c: any) => ({ id: c.id, name: c.name })),
                                         { id: 'None', name: 'None' },
                                         { id: 'Other', name: 'Other' }
                                     ]}

@@ -97,6 +97,10 @@ export interface CounselorData {
   ashram?: string;
   role?: string;
   is_verified?: boolean;
+  temple_id?: string;
+  user_id?: string;
+  current_temple?: string;
+  parent_temple?: string;
 }
 
 // Get all verified counselors from Supabase
@@ -108,7 +112,7 @@ export const getCounselorsFromSupabase = async (): Promise<CounselorData[]> => {
   try {
     const { data, error } = await supabase
       .from('counselors')
-      .select('id, name, city, ashram, role')
+      .select('*')
       .eq('is_verified', true)
       .order('name');
 

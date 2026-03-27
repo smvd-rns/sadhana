@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import crypto from 'crypto';
 import { sendApprovalNotification } from '@/lib/utils/email';
+import { generateMembershipIdForUser } from '@/lib/utils/membership';
 
 export async function GET(request: Request) {
     try {
@@ -89,6 +90,13 @@ export async function GET(request: Request) {
 
         if (userData?.email) {
             await sendApprovalNotification(userData.email, userData.name || 'Devotee', `${baseUrl}/dashboard`);
+            
+            // Also generate Membership ID if missing
+            try {
+                await generateMembershipIdForUser(supabase, userId);
+            } catch (genErr) {
+                console.error('Failed to generate membership ID during email approval:', genErr);
+            }
         }
 
         const html = `

@@ -307,6 +307,9 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
     if ((updates as any).rejectionReason !== undefined) dbUpdates.rejection_reason = (updates as any).rejectionReason;
     if ((updates as any).reviewedBy !== undefined) dbUpdates.reviewed_by = (updates as any).reviewedBy;
     if ((updates as any).reviewedAt !== undefined) dbUpdates.reviewed_at = (updates as any).reviewedAt;
+    if ((updates as any).introducedToKcIn !== undefined) dbUpdates.introduced_to_kc_in = (updates as any).introducedToKcIn;
+    if ((updates as any).parentTemple !== undefined) dbUpdates.parent_temple = (updates as any).parentTemple;
+    if ((updates as any).parentCenter !== undefined) dbUpdates.parent_center = (updates as any).parentCenter;
 
 
     // Handle hierarchy updates - update separate columns

@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
         // Check target user in one go if scoping applies
         let targetUser = null;
-        const requiredUserFields = 'id, name, email, phone, city, ashram, role, hierarchy, current_temple';
+        const requiredUserFields = 'id, name, email, phone, city, ashram, role, hierarchy, current_temple, parent_temple';
 
         if (isManagingDirector && !isSuperAdmin) {
             const { data: targetData, error: targetError } = await supabase
@@ -142,6 +142,8 @@ export async function POST(request: Request) {
                 role: roleType,
                 is_verified: true,
                 user_id: targetUser.id, // Store the actual user UUID for stable linkage
+                current_temple: targetUser.current_temple || targetUser.hierarchy?.currentTemple?.name || targetUser.hierarchy?.currentTemple || '',
+                parent_temple: targetUser.parent_temple || targetUser.hierarchy?.parentTemple?.name || targetUser.hierarchy?.parentTemple || ''
             };
 
             // 3. Upsert into Counselors Table FIRST

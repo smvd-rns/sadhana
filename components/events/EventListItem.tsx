@@ -9,11 +9,13 @@ interface EventListItemProps {
     isActive: boolean;
     onClick: () => void;
     onPinToggle: (pinned: boolean) => void;
+    onImportanceToggle: (dismissed: boolean) => void;
 }
 
 
-export default function EventListItem({ event, isActive, onClick, onPinToggle }: EventListItemProps) {
-    const formattedEventDate = new Date(event.eventDate).toLocaleDateString('en-IN', {
+export default function EventListItem({ event, isActive, onClick, onPinToggle, onImportanceToggle }: EventListItemProps) {
+    const dateToDisplay = event.eventDate ? new Date(event.eventDate) : new Date(event.createdAt);
+    const formattedEventDate = dateToDisplay.toLocaleDateString('en-IN', {
         day: 'numeric',
         month: 'short',
     });
@@ -42,14 +44,28 @@ export default function EventListItem({ event, isActive, onClick, onPinToggle }:
                     ? 'bg-orange-50/80 border-l-4 border-l-orange-600'
                     : hasBeenSeen
                         ? 'bg-gray-100/60 hover:bg-gray-200/50 border-l-4 border-l-transparent'
-                        : 'bg-white hover:bg-gray-50 border-l-4 border-l-blue-600 shadow-[inset_4px_0_0_0_#2563eb]'
+                        : event.type === 'event'
+                            ? 'bg-orange-50/30 hover:bg-orange-50/60 border-l-4 border-l-orange-500 shadow-[inset_4px_0_0_0_#f97316]'
+                            : 'bg-white hover:bg-gray-50 border-l-4 border-l-blue-600 shadow-[inset_4px_0_0_0_#2563eb]'
                     }`}
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start mb-1">
                         <div className="flex items-center gap-2 min-w-0">
                             {event.isImportant && (
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onImportanceToggle(!event.isImportantDismissed);
+                                    }}
+                                    className={`p-1 rounded transition-colors ${event.isImportantDismissed 
+                                        ? 'text-gray-300 hover:text-amber-400' 
+                                        : 'text-amber-400 hover:bg-amber-50'
+                                    }`}
+                                    title={event.isImportantDismissed ? "Mark as important" : "Remove importance star"}
+                                >
+                                    <Star className={`h-3.5 w-3.5 ${!event.isImportantDismissed ? 'fill-current' : ''}`} />
+                                </button>
                             )}
                             <h4 className={`text-sm tracking-tight transition-colors ${isActive
                                 ? 'text-orange-600 font-black'
@@ -59,12 +75,21 @@ export default function EventListItem({ event, isActive, onClick, onPinToggle }:
                                 } truncate`}>
                                 {event.title}
                             </h4>
+                            {event.type === 'event' ? (
+                                <div className="px-1.5 py-0.5 bg-orange-100 text-orange-600 rounded text-[7px] font-black uppercase tracking-widest shrink-0">
+                                    Event
+                                </div>
+                            ) : (
+                                <div className="px-1.5 py-0.5 bg-blue-100 text-blue-600 rounded text-[7px] font-black uppercase tracking-widest shrink-0">
+                                    Announcement
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-col items-end gap-0.5 shrink-0 ml-2">
                             <span className={`text-[9px] font-bold uppercase tracking-widest ${isActive ? 'text-orange-400' : 'text-gray-400'}`}>
                                 Sent: {formattedSentDate}
                             </span>
-                            <span className={`text-[10px] items-center gap-1 transition-colors flex ${isActive ? 'text-orange-600 font-black' : hasBeenSeen ? 'text-gray-500 font-bold' : 'text-blue-600 font-black'
+                             <span className={`text-[10px] items-center gap-1 transition-colors flex ${isActive ? 'text-orange-600 font-black' : hasBeenSeen ? 'text-gray-500 font-bold' : event.type === 'event' ? 'text-orange-600 font-black' : 'text-blue-600 font-black'
                                 }`}>
                                 <Calendar className="h-2.5 w-2.5" />
                                 {formattedEventDate}

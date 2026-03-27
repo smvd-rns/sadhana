@@ -128,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const baseNavigation = [
       { name: 'Dashboard', href: '/dashboard', icon: Home },
       { name: 'Sadhana', href: '/dashboard/sadhana', icon: BookOpen },
-      { name: 'Events', href: '/dashboard/events', icon: Calendar },
+      { name: 'Communications', href: '/dashboard/events', icon: Calendar },
       { name: 'Data Center', href: '/dashboard/data-center', icon: Globe },
       { name: 'Policies', href: '/dashboard/policies', icon: BookOpen },
       { name: 'Donations', href: '/dashboard/donations', icon: CreditCard },

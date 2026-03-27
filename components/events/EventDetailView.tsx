@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ManagedEvent, ManagedEventAttachment } from '@/types';
-import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage, Share2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage, Share2, Info } from 'lucide-react';
 import NextImage from 'next/image';
 import { submitEventResponse } from '@/lib/actions/events';
 import { getThumbnailUrl } from '@/lib/utils/google-drive';
@@ -25,7 +25,14 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21))
     );
 
-    const handleResponse = async (status: 'coming' | 'not_coming', reason?: string) => {
+    useEffect(() => {
+        // Auto-record 'seen' status when opening an announcement
+        if (event.type === 'announcement' && !event.userResponse && userData) {
+            handleResponse('seen');
+        }
+    }, [event.id, event.type, event.userResponse, userData]);
+
+    const handleResponse = async (status: 'coming' | 'not_coming' | 'seen' | 'understood', reason?: string) => {
         if (!userData) return;
         setIsSubmitting(true);
         try {
@@ -54,12 +61,12 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         return url.endsWith('.jpg') || url.endsWith('.jpeg') || url.endsWith('.png') || url.endsWith('.gif') || url.endsWith('.webp') || url.includes('export=view');
     };
 
-    const formattedEventDate = new Date(event.eventDate).toLocaleDateString('en-IN', {
+    const formattedEventDate = event.eventDate ? new Date(event.eventDate).toLocaleDateString('en-IN', {
         weekday: 'long',
         day: 'numeric',
         month: 'long',
         year: 'numeric'
-    });
+    }) : '';
 
     const formattedSentDate = new Date(event.createdAt).toLocaleDateString('en-IN', {
         weekday: 'long',
@@ -69,9 +76,9 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
     });
 
     const handleShare = () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('eventId', event.id);
-        navigator.clipboard.writeText(url.toString());
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+        const shareUrl = `${baseUrl}/dashboard/events?eventId=${event.id}`;
+        navigator.clipboard.writeText(shareUrl);
         toast.success('Link copied to clipboard!');
     };
 
@@ -88,9 +95,15 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                                     Important
                                 </div>
                             )}
-                            <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-600 text-white rounded-md text-[9px] font-black uppercase tracking-widest">
-                                Announcement
-                            </div>
+                             {event.type === 'event' ? (
+                                <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-600 text-white rounded-md text-[9px] font-black uppercase tracking-widest">
+                                    Event
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-600 text-white rounded-md text-[9px] font-black uppercase tracking-widest">
+                                    Announcement
+                                </div>
+                            )}
                         </div>
                         <h2 className="text-2xl md:text-3xl font-black text-gray-900 leading-tight tracking-tight">
                             {event.title}
@@ -107,15 +120,17 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                 </div>
 
                 <div className="flex flex-wrap gap-x-8 gap-y-3 text-gray-500">
-                    <div className="flex items-center gap-3 group">
-                        <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100 text-orange-600 transition-colors group-hover:bg-orange-600 group-hover:text-white">
-                            <Calendar className="h-4 w-4" />
+                    {event.type === 'event' && formattedEventDate && (
+                        <div className="flex items-center gap-3 group">
+                            <div className="p-2 bg-white rounded-xl shadow-sm border border-orange-100 text-orange-600 transition-colors group-hover:bg-orange-600 group-hover:text-white">
+                                <Calendar className="h-4 w-4" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Event Date</span>
+                                <span className="text-xs font-black text-gray-900 tracking-tight">{formattedEventDate}</span>
+                            </div>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Event Date</span>
-                            <span className="text-xs font-black text-gray-900 tracking-tight">{formattedEventDate}</span>
-                        </div>
-                    </div>
+                    )}
 
                     <div className="flex items-center gap-3 group">
                         <div className="p-2 bg-white rounded-xl shadow-sm border border-blue-100 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
@@ -217,7 +232,7 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
                 )}
 
                 {/* Administrative Tracking Section */}
-                {isAdmin && (
+                {isAdmin && event.type === 'event' && (
                     <div className="pt-8 border-t border-gray-100">
                         <EventAudienceTracking event={event} />
                     </div>
@@ -226,7 +241,27 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
 
             {/* Footer Actions */}
             <div className="p-6 border-t border-gray-100 bg-white shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-                {event.userResponse && (event.userResponse.status === 'coming' || event.userResponse.status === 'not_coming') ? (
+                {event.type === 'announcement' ? (
+                    <div className="flex items-center justify-between p-4 bg-blue-50/50 border border-blue-100 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white rounded-xl shadow-sm border border-blue-200 text-blue-600">
+                                <Info className="h-4 w-4" />
+                            </div>
+                            <p className="text-[10px] font-black text-blue-900 uppercase tracking-widest">Announcement</p>
+                        </div>
+                        <button 
+                            onClick={() => handleResponse('understood')}
+                            disabled={isSubmitting || event.userResponse?.status === 'understood'}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                                event.userResponse?.status === 'understood'
+                                ? 'bg-white text-gray-400 border border-gray-100 cursor-default' 
+                                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md active:scale-95'
+                            }`}
+                        >
+                            {event.userResponse?.status === 'understood' ? 'Acknowledged' : 'I have read & understood this message'}
+                        </button>
+                    </div>
+                ) : event.userResponse && (event.userResponse.status === 'coming' || event.userResponse.status === 'not_coming') ? (
                     <div className={`p-4 rounded-2xl border flex items-center justify-between transition-all duration-500 ${event.userResponse.status === 'coming'
                         ? 'bg-emerald-50/50 border-emerald-100'
                         : 'bg-rose-50/50 border-rose-100'

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Plus, Calendar, Users, BarChart3, ChevronRight, MessageSquare, Paperclip, Check, X, Info } from 'lucide-react';
-import { getEventsForUser, getEventStats, submitEventResponse, getRecentResponses } from '@/lib/actions/events';
+import { getEventsForUser, getEventStats, submitEventResponse, getRecentResponses, toggleEventPin, toggleEventImportance } from '@/lib/actions/events';
 import { ManagedEvent, ManagedEventResponse } from '@/types';
 import EventCard from '@/components/events/EventCard';
 import EventLogsTable from '@/components/events/EventLogsTable';
@@ -15,8 +15,6 @@ import { supabase } from '@/lib/supabase/config';
 import EventListItem from '@/components/events/EventListItem';
 import EventDetailView from '@/components/events/EventDetailView';
 import { Search, Pin, Clock, ChevronLeft } from 'lucide-react';
-
-import { toggleEventPin } from '@/lib/actions/events';
 
 function EventsPageContent() {
     const { userData } = useAuth();
@@ -123,12 +121,16 @@ function EventsPageContent() {
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
 
-                // 2. Important
-                if (a.isImportant && !b.isImportant) return -1;
-                if (!a.isImportant && b.isImportant) return 1;
+                // 2. Important (if not personally dismissed)
+                const aImp = a.isImportant && !a.isImportantDismissed;
+                const bImp = b.isImportant && !b.isImportantDismissed;
+                if (aImp && !bImp) return -1;
+                if (!aImp && bImp) return 1;
 
-                // 3. Date
-                return new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime();
+                // 3. Date (Event Date for events, Creation Date for announcements)
+                const aDate = a.eventDate ? new Date(a.eventDate).getTime() : new Date(a.createdAt).getTime();
+                const bDate = b.eventDate ? new Date(b.eventDate).getTime() : new Date(b.createdAt).getTime();
+                return bDate - aDate;
             });
 
             setEvents(sortedData);
@@ -214,19 +216,23 @@ function EventsPageContent() {
         if (!userData) return;
         try {
             await toggleEventPin(eventId, userData.id, pinned);
-            setEvents(prev => prev.map(e =>
-                e.id === eventId ? { ...e, isPinned: pinned } : e
-            ).sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1;
-                if (!a.isPinned && b.isPinned) return 1;
-                if (a.isImportant && !b.isImportant) return -1;
-                if (!a.isImportant && b.isImportant) return 1;
-                return new Date(b.eventDate).getTime() - new Date(a.eventDate).getTime();
-            }));
-            toast.success(pinned ? 'Pinned to top' : 'Unpinned');
+            setEvents(prev => prev.map(e => e.id === eventId ? { ...e, isPinned: pinned } : e));
+            toast.success(pinned ? 'Announcement Pinned' : 'Announcement Unpinned');
         } catch (error) {
             console.error('Error toggling pin:', error);
             toast.error('Failed to update pin');
+        }
+    };
+
+    const handleImportanceToggle = async (eventId: string, dismissed: boolean) => {
+        if (!userData) return;
+        try {
+            await toggleEventImportance(eventId, userData.id, dismissed);
+            setEvents(prev => prev.map(e => e.id === eventId ? { ...e, isImportantDismissed: dismissed } : e));
+            toast.success(dismissed ? 'Importance Removed' : 'Importance Restored');
+        } catch (error) {
+            console.error('Error toggling importance:', error);
+            toast.error('Failed to update importance');
         }
     };
 
@@ -239,7 +245,7 @@ function EventsPageContent() {
 
         if (dateFilter === 'all') return matchesSearch;
 
-        const eventDate = new Date(event.eventDate);
+        const eventDate = event.eventDate ? new Date(event.eventDate) : new Date(event.createdAt);
         const now = new Date();
         const diffDays = Math.ceil((now.getTime() - eventDate.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -286,7 +292,7 @@ function EventsPageContent() {
                         <div className="flex flex-wrap justify-between items-center gap-4 px-2 sm:px-6">
                             <div className="flex flex-col">
                                 <h1 className="text-3xl font-black tracking-tight text-gray-900">Management Hub</h1>
-                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Announcements & Event Tracking</p>
+                                <p className="text-gray-400 font-bold text-xs uppercase tracking-widest mt-1">Announcements & Communications</p>
                             </div>
                             <button
                                 onClick={() => setShowComposer(!showComposer)}
@@ -351,7 +357,7 @@ function EventsPageContent() {
                                     <span className="text-[9px] font-black text-white uppercase tracking-widest">Community Hub</span>
                                 </div>
                                 <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-gray-900">
-                                    Events & <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Gatherings</span>
+                                    Communications & <span className="bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Announcements</span>
                                 </h1>
                             </div>
                         </div>
@@ -426,6 +432,7 @@ function EventsPageContent() {
                                                 isActive={selectedEventId === event.id}
                                                 onClick={() => handleEventSelect(event.id)}
                                                 onPinToggle={(pinned) => handlePinToggle(event.id, pinned)}
+                                                onImportanceToggle={(dismissed) => handleImportanceToggle(event.id, dismissed)}
                                             />
                                         ))}
                                     </div>

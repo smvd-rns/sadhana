@@ -714,17 +714,26 @@ export default function ProjectManagerDashboard() {
     const handleUserVerification = async (userId: string, status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase) return;
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
-                    verification_status: status,
-                    rejection_reason: reason || null,
-                    reviewed_at: new Date().toISOString(),
-                    reviewed_by: userData?.id
-                })
-                .eq('id', userId);
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            if (!token) throw new Error('No auth token');
 
-            if (error) throw error;
+            const res = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    ids: [userId],
+                    action: status === 'approved' ? 'approve' : 'reject',
+                    reason
+                })
+            });
+
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to update user status');
 
             toast.success(`User ${status} successfully`);
             loadPendingUsers();
@@ -739,17 +748,26 @@ export default function ProjectManagerDashboard() {
     const handleBulkVerification = async (status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase || selectedPendingUserIds.length === 0) return;
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
-                    verification_status: status,
-                    rejection_reason: reason || null,
-                    reviewed_at: new Date().toISOString(),
-                    reviewed_by: userData?.id
-                })
-                .in('id', selectedPendingUserIds);
+            const session = await supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            if (!token) throw new Error('No auth token');
 
-            if (error) throw error;
+            const res = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    ids: selectedPendingUserIds,
+                    action: status === 'approved' ? 'approve' : 'reject',
+                    reason
+                })
+            });
+
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Bulk update failed');
 
             toast.success(`${selectedPendingUserIds.length} users ${status} successfully`);
             loadPendingUsers();

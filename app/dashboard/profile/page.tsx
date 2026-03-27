@@ -15,7 +15,8 @@ import { EducationEntry, WorkExperienceEntry, LanguageEntry, SkillEntry, Service
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; user_id?: string }>>([]);
+  const [counselors, setCounselors] = useState<Array<{ id: string; name: string; email: string; user_id?: string; current_temple?: string; parent_temple?: string }>>([]);
+  const [allCounselors, setAllCounselors] = useState<Array<{ id: string; name: string; email: string; user_id?: string; current_temple?: string; parent_temple?: string }>>([]);
   const [loadingCounselors, setLoadingCounselors] = useState(true);
   const [temples, setTemples] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingTemples, setLoadingTemples] = useState(true);
@@ -344,13 +345,33 @@ export default function ProfilePage() {
       try {
         const { data, error } = await supabase
           .from('counselors')
-          .select('id, name, email')
+          .select(`
+            id, 
+            name, 
+            email, 
+            current_temple, 
+            parent_temple,
+            user:user_id (
+              current_temple,
+              parent_temple
+            )
+          `)
           .order('name');
 
         if (error) {
           console.error('Error loading counselors:', error);
         } else if (data) {
-          setCounselors(data);
+          // Normalize data to include temple info for easier filtering
+          const normalized = data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            email: c.email,
+            current_temple: c.current_temple,
+            parent_temple: c.parent_temple,
+            temple: c.current_temple || c.parent_temple || c.user?.current_temple || c.user?.parent_temple || ''
+          }));
+          setAllCounselors(normalized);
+          setCounselors(normalized);
         }
       } catch (error) {
         console.error('Error in fetchCounselors:', error);
@@ -360,6 +381,32 @@ export default function ProfilePage() {
     };
     fetchCounselors();
   }, []);
+
+  // Filter counselors based on selected temple
+  useEffect(() => {
+    if (allCounselors.length > 0) {
+      const currentT = formData.currentTemple || '';
+      const parentT = formData.parentTemple || '';
+
+      if (!currentT && !parentT) {
+        setCounselors([]);
+        return;
+      }
+
+      const filtered = allCounselors.filter(c => {
+        const cTemple = (c as any).temple || '';
+        
+        const matchesCurrent = currentT && cTemple.toLowerCase().includes(currentT.toLowerCase());
+        const matchesParent = parentT && cTemple.toLowerCase().includes(parentT.toLowerCase());
+        
+        return matchesCurrent || matchesParent;
+      });
+      
+      setCounselors(filtered);
+    } else {
+      setCounselors([]);
+    }
+  }, [formData.currentTemple, formData.parentTemple, allCounselors]);
 
   // Auto-resolve counselorId if missing but counselor name exists
   useEffect(() => {
@@ -1836,7 +1883,7 @@ export default function ProfilePage() {
                       <option value="Nityananda Sabha">Nityananda Sabha</option>
                       <option value="Grihastha">Grihastha Ashram</option>
                       <option value="Brahmachari">Brahmachari Ashram</option>
-                      <option value="Staying Single (Not planing to Marry)">Staying Single (Not planning to Marry)</option>
+                      <option value="Staying Single (Not planning to Marry)">Staying Single (Not planning to Marry)</option>
                     </select>
                     {fieldErrors.ashram && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.ashram}</p>

@@ -72,7 +72,9 @@ export default function DashboardPage() {
         today.setHours(0, 0, 0, 0);
 
         const upcomingEvents = fetchedEvents.filter(event => {
-          const eventDate = new Date(event.eventDate);
+          const dateToUse = event.eventDate || event.createdAt;
+          if (!dateToUse) return false;
+          const eventDate = new Date(dateToUse);
           return eventDate >= today;
         });
 
@@ -128,7 +130,7 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      name: 'Upcoming Events',
+      name: 'Communications',
       value: events.length.toString(),
       icon: Calendar,
       gradient: 'from-orange-500 to-amber-600',
@@ -344,7 +346,7 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Events</h3>
+                    <h3 className="text-lg font-bold text-white mb-0.5 group-hover:text-blue-300 transition-colors">Communications</h3>
                     <p className="text-xs text-slate-400 font-medium">Community Gatherings</p>
                   </div>
                   <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">

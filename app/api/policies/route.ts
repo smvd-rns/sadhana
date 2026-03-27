@@ -45,7 +45,7 @@ export async function GET(request: Request) {
         const seesAll = numericRoles.some(r => [8, 9, 10].includes(r)) || roles.includes('super_admin');
 
         let query = supabase.from('policies')
-            .select('id, title, applicable_date, file_name, file_url, file_id, file_type, target_roles')
+            .select('id, title, description, applicable_date, file_name, file_url, file_id, file_type, target_roles')
             .order('applicable_date', { ascending: false });
 
 
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
         }
 
         const body = await request.json();
-        const { title, applicable_date, file_name, file_url, file_id, file_type, target_roles } = body;
+        const { title, description, applicable_date, file_name, file_url, file_id, file_type, target_roles } = body;
 
         if (!title || !applicable_date || !file_name || !file_url || !file_id || !target_roles) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -129,6 +129,7 @@ export async function POST(request: Request) {
             .from('policies')
             .insert([{
                 title,
+                description,
                 applicable_date,
                 file_name,
                 file_url,

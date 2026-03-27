@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { sendApprovalNotification } from '@/lib/utils/email';
+import { generateMembershipIdForUser } from '@/lib/utils/membership';
 
 export const dynamic = 'force-dynamic';
 
@@ -257,6 +259,35 @@ export async function PATCH(
             if (updateUserError) {
                 log(`User update error: ${updateUserError.message}`);
                 return NextResponse.json({ error: 'Failed to apply changes to user profile', debug: debugLogs }, { status: 500 });
+            }
+
+            // --- Post-Approval Actions (Email & Membership ID) ---
+            try {
+                // Fetch user data again to ensure we have the latest (including email for notification)
+                const { data: approvedUser } = await supabaseAdmin
+                    .from('users')
+                    .select('email, name, verification_status')
+                    .eq('id', userId)
+                    .single();
+
+                if (approvedUser?.email) {
+                    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+                    
+                    // 1. Send Approval Email
+                    await sendApprovalNotification(approvedUser.email, approvedUser.name || 'Devotee', `${baseUrl}/dashboard`);
+                    log('Approval email sent');
+
+                    // 2. Generate Membership ID (if required fields are present and ID is missing)
+                    try {
+                        await generateMembershipIdForUser(supabaseAdmin, userId);
+                        log('Membership ID generated/verified');
+                    } catch (genErr: any) {
+                        log(`Membership ID generation skipped/failed: ${genErr.message}`);
+                    }
+                }
+            } catch (postErr: any) {
+                log(`Error in post-approval actions: ${postErr.message}`);
+                // Don't fail the whole request if email/ID fails
             }
         }
 

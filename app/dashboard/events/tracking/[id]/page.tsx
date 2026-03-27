@@ -17,7 +17,8 @@ import {
     ArrowLeft,
     Users,
     CheckCircle2,
-    X,
+    ChevronDown,
+    ChevronUp,
     User as UserIcon
 } from 'lucide-react';
 import { getEventById, getEventStats } from '@/lib/actions/events';
@@ -34,9 +35,10 @@ export default function EventTrackingPage() {
     const [reachedUsers, setReachedUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'no_reply'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'understood' | 'no_reply'>('all');
     const [filterTemple, setFilterTemple] = useState('all');
     const [filterCenter, setFilterCenter] = useState('all');
+    const [showHierarchy, setShowHierarchy] = useState(true);
 
     const userRoles = Array.isArray(userData?.role) ? userData.role : [userData?.role].filter(Boolean);
     const isPM = userRoles.some(r => ['project_manager', 15].includes(r as any));
@@ -154,6 +156,7 @@ export default function EventTrackingPage() {
             if (filterStatus === 'coming') matchesStatus = response?.status === 'coming';
             else if (filterStatus === 'not_coming') matchesStatus = response?.status === 'not_coming';
             else if (filterStatus === 'seen') matchesStatus = response?.status === 'seen';
+            else if (filterStatus === 'understood') matchesStatus = response?.status === 'understood';
             else if (filterStatus === 'no_reply') matchesStatus = !response;
 
             const matchesTemple = filterTemple === 'all' || userTemple === filterTemple;
@@ -162,6 +165,36 @@ export default function EventTrackingPage() {
             return matchesSearch && matchesStatus && matchesTemple && matchesCenter;
         });
     }, [reachedUsers, responses, searchTerm, filterStatus, filterTemple, filterCenter]);
+ 
+     const centerBreakdown = useMemo(() => {
+         const groupings: Record<string, { 
+             center: string, 
+             temple: string, 
+             total: number, 
+             positive: number,
+             seen: number
+         }> = {};
+ 
+         reachedUsers.forEach(user => {
+             const center = user.center || user.current_center || user.hierarchy?.center || user.hierarchy?.currentCenter || 'Unknown Center';
+             const temple = user.current_temple || user.parent_temple || user.hierarchy?.temple || user.hierarchy?.currentTemple || 'Unknown Temple';
+             const response = responses.find(r => r.userId === user.id);
+ 
+             if (!groupings[center]) {
+                 groupings[center] = { center, temple, total: 0, positive: 0, seen: 0 };
+             }
+ 
+             groupings[center].total++;
+             if (event?.type === 'announcement') {
+                 if (response?.status === 'understood') groupings[center].positive++;
+             } else {
+                 if (response?.status === 'coming') groupings[center].positive++;
+             }
+             if (response?.status === 'seen') groupings[center].seen++;
+         });
+ 
+         return Object.values(groupings).sort((a, b) => b.total - a.total);
+     }, [reachedUsers, responses, event?.type]);
 
     if (loading && !event) {
         return (
@@ -209,23 +242,105 @@ export default function EventTrackingPage() {
             <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6">
                 {/* Stats Section - High Visibility Blocks */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                        { label: 'Coming', value: responses.filter(r => r.status === 'coming').length, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
-                        { label: 'Not Coming', value: responses.filter(r => r.status === 'not_coming').length, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
-                        { label: 'Seen Only', value: responses.filter(r => r.status === 'seen').length, icon: Eye, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
-                        { label: 'Pending', value: Math.max(0, reachedUsers.length - responses.length), icon: Clock, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200' }
-                    ].map((s, i) => (
-                        <div key={i} className={`${s.bg} ${s.border} border-2 p-4 md:p-6 rounded-[1.5rem] shadow-sm flex items-center justify-between transition-transform hover:-translate-y-0.5`}>
-                            <div>
-                                <p className={`text-[10px] font-black uppercase tracking-widest ${s.color} mb-1 opacity-80`}>{s.label}</p>
-                                <h3 className="text-2xl md:text-3xl font-black text-slate-900">{s.value}</h3>
+                    {event.type === 'announcement' ? (
+                        <>
+                            {[
+                                { label: 'Understood', value: responses.filter(r => r.status === 'understood').length, icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                                { label: 'Seen Only', value: responses.filter(r => r.status === 'seen').length, icon: Eye, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
+                                { label: 'Pending', value: Math.max(0, reachedUsers.length - responses.length), icon: Clock, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200' }
+                            ].map((s, i) => (
+                                <div key={i} className={`${s.bg} ${s.border} border-2 p-4 md:p-6 rounded-[1.5rem] shadow-sm flex items-center justify-between transition-transform hover:-translate-y-0.5`}>
+                                    <div>
+                                        <p className={`text-[10px] font-black uppercase tracking-widest ${s.color} mb-1 opacity-80`}>{s.label}</p>
+                                        <h3 className="text-2xl md:text-3xl font-black text-slate-900">{s.value}</h3>
+                                    </div>
+                                    <div className={`p-2 bg-white rounded-xl shadow-sm ${s.color}`}>
+                                        <s.icon className="h-5 w-5 md:h-6 md:w-6" />
+                                    </div>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        [
+                            { label: 'Coming', value: responses.filter(r => r.status === 'coming').length, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+                            { label: 'Not Coming', value: responses.filter(r => r.status === 'not_coming').length, icon: XCircle, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-200' },
+                            { label: 'Seen Only', value: responses.filter(r => r.status === 'seen').length, icon: Eye, color: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
+                            { label: 'Pending', value: Math.max(0, reachedUsers.length - responses.length), icon: Clock, color: 'text-slate-600', bg: 'bg-white', border: 'border-slate-200' }
+                        ].map((s, i) => (
+                            <div key={i} className={`${s.bg} ${s.border} border-2 p-4 md:p-6 rounded-[1.5rem] shadow-sm flex items-center justify-between transition-transform hover:-translate-y-0.5`}>
+                                <div>
+                                    <p className={`text-[10px] font-black uppercase tracking-widest ${s.color} mb-1 opacity-80`}>{s.label}</p>
+                                    <h3 className="text-2xl md:text-3xl font-black text-slate-900">{s.value}</h3>
+                                </div>
+                                <div className={`p-2 bg-white rounded-xl shadow-sm ${s.color}`}>
+                                    <s.icon className="h-5 w-5 md:h-6 md:w-6" />
+                                </div>
                             </div>
-                            <div className={`p-2 bg-white rounded-xl shadow-sm ${s.color}`}>
-                                <s.icon className="h-5 w-5 md:h-6 md:w-6" />
-                            </div>
-                        </div>
-                    ))}
+                        ))
+                    )}
                 </div>
+ 
+                 {/* Center-wise Breakdown - Hierarchy Insights */}
+                 <div className="bg-white border-2 border-indigo-100 rounded-[2rem] shadow-xl shadow-indigo-50/50 overflow-hidden">
+                     <button 
+                         onClick={() => setShowHierarchy(!showHierarchy)}
+                         className="w-full p-4 bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 flex items-center justify-between hover:from-indigo-800 hover:to-slate-800 transition-all group/header"
+                     >
+                         <div className="flex items-center gap-2">
+                             <div className="p-1.5 bg-white/10 rounded-lg group-hover/header:bg-white/20 transition-colors">
+                                 <Building className="h-4 w-4 text-indigo-400" />
+                             </div>
+                             <h2 className="text-xs font-black text-white uppercase tracking-widest">Hierarchy Insights</h2>
+                         </div>
+                         <div className="flex items-center gap-4">
+                             <span className="text-[9px] font-black text-indigo-200 uppercase tracking-widest bg-white/5 border border-white/10 px-3 py-1 rounded-full">{centerBreakdown.length} Centers Tracked</span>
+                             {showHierarchy ? <ChevronUp className="h-4 w-4 text-indigo-500" /> : <ChevronDown className="h-4 w-4 text-indigo-500" />}
+                         </div>
+                     </button>
+ 
+                     {showHierarchy && (
+                         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-in slide-in-from-top-2 duration-300">
+                             {centerBreakdown.map((item, idx) => {
+                             const percentage = Math.round((item.positive / item.total) * 100) || 0;
+                             return (
+                                 <div key={idx} className="bg-white border border-slate-100 p-4 rounded-2xl hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-50 transition-all group relative overflow-hidden">
+                                     <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50/50 rounded-full -mr-12 -mt-12 group-hover:bg-indigo-100/50 transition-colors" />
+                                     
+                                     <div className="relative flex justify-between items-start mb-4">
+                                         <div className="flex-1 min-w-0 pr-2">
+                                             <h4 className="text-xs font-black text-slate-900 truncate uppercase tracking-tight group-hover:text-indigo-600 transition-colors">{item.center}</h4>
+                                             <p className="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">{item.temple}</p>
+                                         </div>
+                                         <div className="text-right shrink-0">
+                                             <div className="text-xs font-black text-slate-900">{item.positive} <span className="text-slate-300">/ {item.total}</span></div>
+                                             <div className={`text-[9px] font-black mt-0.5 ${percentage > 70 ? 'text-emerald-500' : percentage > 30 ? 'text-orange-500' : 'text-slate-400'}`}>
+                                                 {percentage}% {event?.type === 'announcement' ? 'Understood' : 'Coming'}
+                                             </div>
+                                         </div>
+                                     </div>
+ 
+                                     <div className="relative">
+                                         <div className="flex justify-between text-[8px] font-extrabold text-slate-300 uppercase tracking-widest mb-1.5">
+                                             <span>Engagement</span>
+                                             <span>{percentage}%</span>
+                                         </div>
+                                         <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden p-0.5">
+                                             <div 
+                                                 className={`h-full rounded-full transition-all duration-1000 ${
+                                                     percentage > 70 ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 
+                                                     percentage > 30 ? 'bg-gradient-to-r from-orange-400 to-orange-600' : 
+                                                     'bg-slate-300'
+                                                 }`}
+                                                 style={{ width: `${percentage}%` }}
+                                             />
+                                         </div>
+                                     </div>
+                                 </div>
+                             );
+                         })}
+                     </div>
+                     )}
+                 </div>
 
                 {/* Filters Row - Distinct Segment */}
                 <div className="bg-white border-2 border-slate-100 rounded-[1.5rem] shadow-sm overflow-hidden p-4">
@@ -244,16 +359,16 @@ export default function EventTrackingPage() {
                             <div className="flex-[3] flex items-center gap-2 overflow-x-auto scrollbar-hide">
                                 <Filter className="h-4 w-4 text-slate-400 shrink-0" />
                                 <div className="flex gap-2">
-                                    {(['all', 'coming', 'not_coming', 'seen', 'no_reply'] as const).map(s => (
+                                    {(event.type === 'announcement' ? ['all', 'understood', 'seen', 'no_reply'] : ['all', 'coming', 'not_coming', 'seen', 'no_reply']).map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => setFilterStatus(s)}
+                                            onClick={() => setFilterStatus(s as any)}
                                             className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all shrink-0 border-2 ${filterStatus === s
                                                 ? 'bg-slate-900 border-slate-900 text-white shadow-lg'
                                                 : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                 }`}
                                         >
-                                            {s.replace('_', ' ')}
+                                            {s === 'understood' ? 'Understood' : s.replace('_', ' ')}
                                         </button>
                                     ))}
                                 </div>
@@ -357,12 +472,14 @@ export default function EventTrackingPage() {
                                                     <div className="flex flex-col gap-1">
                                                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border-2 ${response.status === 'coming' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
                                                             response.status === 'not_coming' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                                                                'bg-sky-50 border-sky-100 text-sky-700'
+                                                                response.status === 'understood' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                                                    'bg-sky-50 border-sky-100 text-sky-700'
                                                             }`}>
                                                             {response.status === 'coming' && <CheckCircle className="h-3 w-3" />}
                                                             {response.status === 'not_coming' && <XCircle className="h-3 w-3" />}
+                                                            {response.status === 'understood' && <CheckCircle2 className="h-3 w-3" />}
                                                             {response.status === 'seen' && <Eye className="h-3 w-3" />}
-                                                            {response.status.replace('_', ' ')}
+                                                            {response.status === 'understood' ? 'Understood' : response.status.replace('_', ' ')}
                                                         </span>
                                                         {response.isBulk && (
                                                             <span className="text-[8px] font-black text-slate-300 uppercase tracking-widest ml-1">PM Verified</span>

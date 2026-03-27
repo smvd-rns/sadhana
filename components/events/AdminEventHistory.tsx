@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ManagedEvent } from '@/types';
 import { format } from 'date-fns';
-import { Mail, Users, CheckCircle, Clock, ChevronDown, Search, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Edit2, Calendar, X, Save, RefreshCw } from 'lucide-react';
+import { Mail, Users, CheckCircle, Clock, ChevronDown, Search, ArrowUpDown, ChevronLeft, ChevronRight, Filter, Edit2, Calendar, X, Save, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { updateEventDeadline } from '@/lib/actions/events';
@@ -222,8 +222,16 @@ export default function AdminEventHistory({ events, onRefresh }: AdminEventHisto
                                     </div>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2 max-w-md">
-                                        <span className="text-xs font-black text-gray-700 group-hover:text-purple-700 transition-colors uppercase tracking-tight line-clamp-1">{event.title}</span>
+                                    <div className="flex flex-col gap-1 max-w-md">
+                                        <div className="flex items-center gap-2">
+                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border ${event.type === 'announcement'
+                                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                                : 'bg-blue-50 text-blue-600 border-blue-100'
+                                                }`}>
+                                                {event.type}
+                                            </span>
+                                            <span className="text-xs font-black text-gray-700 group-hover:text-purple-700 transition-colors uppercase tracking-tight line-clamp-1">{event.title}</span>
+                                        </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 hidden md:table-cell">
@@ -253,10 +261,16 @@ export default function AdminEventHistory({ events, onRefresh }: AdminEventHisto
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 text-center">
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-[10px] font-black border border-blue-100/50">
-                                        <Users className="h-3 w-3" />
-                                        <span className="text-blue-900 font-black">{event.comingCount || 0}</span>
-                                        <span className="text-blue-300 mx-0.5">/</span>
+                                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black border ${
+                                        event.type === 'event' 
+                                            ? 'bg-blue-50 text-blue-700 border-blue-100/50' 
+                                            : 'bg-emerald-50 text-emerald-700 border-emerald-100/50'
+                                    }`}>
+                                        {event.type === 'event' ? <Users className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                                        <span className={`${event.type === 'event' ? 'text-blue-900' : 'text-emerald-900'} font-black`}>
+                                            {event.type === 'event' ? (event.comingCount || 0) : (event.understoodCount || 0)}
+                                        </span>
+                                        <span className={`${event.type === 'event' ? 'text-blue-300' : 'text-emerald-300'} mx-0.5`}>/</span>
                                         <span className="font-bold opacity-70">{event.reachedCount || 0}</span>
                                     </div>
                                 </td>

@@ -21,7 +21,7 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
     const [stats, setStats] = useState<any>(null);
     const [reachedUsers, setReachedUsers] = useState<any[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'no_reply'>('all');
+    const [filterStatus, setFilterStatus] = useState<'all' | 'coming' | 'not_coming' | 'seen' | 'understood' | 'no_reply'>('all');
     const [filterTemple, setFilterTemple] = useState('all');
     const [filterCenter, setFilterCenter] = useState('all');
 
@@ -138,6 +138,7 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
             if (filterStatus === 'coming') matchesStatus = response?.status === 'coming';
             else if (filterStatus === 'not_coming') matchesStatus = response?.status === 'not_coming';
             else if (filterStatus === 'seen') matchesStatus = response?.status === 'seen';
+            else if (filterStatus === 'understood') matchesStatus = response?.status === 'understood';
             else if (filterStatus === 'no_reply') matchesStatus = !response;
 
             const matchesTemple = filterTemple === 'all' || userTemple === filterTemple;
@@ -184,41 +185,74 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
 
                 {/* Micro Summary Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 px-4 py-3 md:px-6 md:py-3.5 bg-gray-50 border-b border-gray-100">
-                    {/* Coming */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-emerald-100 shadow-sm">
-                        <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tight">Coming</span>
-                            <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'coming').length}</span>
-                        </div>
-                        <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    </div>
+                    {event.type === 'announcement' ? (
+                        <>
+                            {/* Understood */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-emerald-100 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tight">Understood</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'understood').length}</span>
+                                </div>
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                            </div>
 
-                    {/* Not Coming */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-rose-100 shadow-sm">
-                        <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-rose-600 uppercase tracking-tight">Not Coming</span>
-                            <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'not_coming').length}</span>
-                        </div>
-                        <XCircle className="h-4 w-4 text-rose-500" />
-                    </div>
+                            {/* Seen */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-sky-100 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-sky-600 uppercase tracking-tight">Seen Only</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'seen').length}</span>
+                                </div>
+                                <Eye className="h-4 w-4 text-sky-500" />
+                            </div>
 
-                    {/* Seen */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-sky-100 shadow-sm">
-                        <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-sky-600 uppercase tracking-tight">Seen</span>
-                            <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'seen').length}</span>
-                        </div>
-                        <Eye className="h-4 w-4 text-sky-500" />
-                    </div>
+                            {/* No Response */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-tight">Pending</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{Math.max(0, (event.reachedCount || reachedUsers.length) - responses.length)}</span>
+                                </div>
+                                <Clock className="h-4 w-4 text-slate-400" />
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            {/* Coming */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-emerald-100 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-emerald-600 uppercase tracking-tight">Coming</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'coming').length}</span>
+                                </div>
+                                <CheckCircle className="h-4 w-4 text-emerald-500" />
+                            </div>
 
-                    {/* No Response */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
-                        <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-tight">Pending</span>
-                            <span className="text-base font-black text-gray-900 leading-none">{Math.max(0, (event.reachedCount || reachedUsers.length) - responses.length)}</span>
-                        </div>
-                        <Clock className="h-4 w-4 text-slate-400" />
-                    </div>
+                            {/* Not Coming */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-rose-100 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-rose-600 uppercase tracking-tight">Not Coming</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'not_coming').length}</span>
+                                </div>
+                                <XCircle className="h-4 w-4 text-rose-500" />
+                            </div>
+
+                            {/* Seen */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-sky-100 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-sky-600 uppercase tracking-tight">Seen</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{responses.filter(r => r.status === 'seen').length}</span>
+                                </div>
+                                <Eye className="h-4 w-4 text-sky-500" />
+                            </div>
+
+                            {/* No Response */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                                <div className="flex flex-col">
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-tight">Pending</span>
+                                    <span className="text-base font-black text-gray-900 leading-none">{Math.max(0, (event.reachedCount || reachedUsers.length) - responses.length)}</span>
+                                </div>
+                                <Clock className="h-4 w-4 text-slate-400" />
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-hidden flex flex-col p-4 md:p-5">
@@ -238,14 +272,14 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
                                 <Filter className="h-4 w-4 text-gray-400 shrink-0" />
                                 <div className="flex gap-1.5">
-                                    {(['all', 'coming', 'not_coming', 'seen', 'no_reply'] as const).map(s => (
+                                    {(event.type === 'announcement' ? ['all', 'understood', 'seen', 'no_reply'] : ['all', 'coming', 'not_coming', 'seen', 'no_reply']).map(s => (
                                         <button
                                             key={s}
-                                            onClick={() => setFilterStatus(s)}
+                                            onClick={() => setFilterStatus(s as any)}
                                             className={`px-2.5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all shrink-0 ${filterStatus === s ? 'bg-orange-600 text-white shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                                                 }`}
                                         >
-                                            {s.replace('_', ' ')}
+                                            {s === 'understood' ? 'Understood' : s.replace('_', ' ')}
                                         </button>
                                     ))}
                                 </div>
@@ -380,10 +414,10 @@ export default function EventStatsModal({ isOpen, event, onClose }: EventStatsMo
                                             </td>
                                             <td className="px-3 py-2">
                                                 {response ? (
-                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${response.status === 'coming' ? 'bg-emerald-100 text-emerald-700' :
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${response.status === 'coming' || response.status === 'understood' ? 'bg-emerald-100 text-emerald-700' :
                                                         response.status === 'not_coming' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
                                                         }`}>
-                                                        {response.status.replace('_', ' ')}
+                                                        {response.status === 'understood' ? 'Understood' : response.status.replace('_', ' ')}
                                                     </span>
                                                 ) : (
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter bg-gray-100 text-gray-400">

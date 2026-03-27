@@ -64,28 +64,31 @@ export default function UserApprovalsPage() {
         if (confirmApprove.userId) setProcessingId(confirmApprove.userId);
 
         try {
-            await Promise.all(userIdsToApprove.map(id => updateUser(id, {
-                verificationStatus: 'approved',
-                reviewedBy: userData.id,
-                reviewedAt: new Date().toISOString()
-            })));
+            const session = await (window as any).supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            if (!token) throw new Error('No auth token');
+
+            const res = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    ids: userIdsToApprove,
+                    action: 'approve'
+                })
+            });
+
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to approve user(s)');
 
             setUsers(prev => prev.filter(u => !userIdsToApprove.includes(u.id)));
             setSelectedUserIds(prev => {
                 const newSet = new Set(prev);
                 userIdsToApprove.forEach(id => newSet.delete(id));
                 return newSet;
-            });
-
-            // Trigger approval emails
-            userIdsToApprove.forEach(id => {
-                fetch('/api/emails/approved', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: id })
-                }).then(res => {
-                    if (!res.ok) console.error(`Failed to send approval email for ${id}:`, res.statusText);
-                }).catch(err => console.error(`Failed to send approval email for ${id}:`, err));
             });
         } catch (error) {
             console.error('Failed to approve user(s):', error);
@@ -110,32 +113,32 @@ export default function UserApprovalsPage() {
         if (rejectionDialog.userId) setProcessingId(rejectionDialog.userId);
 
         try {
-            await Promise.all(userIdsToReject.map(id => updateUser(id, {
-                verificationStatus: 'rejected',
-                rejectionReason: rejectionReason.trim(),
-                reviewedBy: userData.id,
-                reviewedAt: new Date().toISOString()
-            })));
+            const session = await (window as any).supabase.auth.getSession();
+            const token = session.data.session?.access_token;
+            if (!token) throw new Error('No auth token');
+
+            const res = await fetch('/api/admin/verify-data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    type: 'user',
+                    ids: userIdsToReject,
+                    action: 'reject',
+                    reason: rejectionReason.trim()
+                })
+            });
+
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Failed to reject user(s)');
 
             setUsers(prev => prev.filter(u => !userIdsToReject.includes(u.id)));
             setSelectedUserIds(prev => {
                 const newSet = new Set(prev);
                 userIdsToReject.forEach(id => newSet.delete(id));
                 return newSet;
-            });
-
-            // Trigger rejection emails
-            userIdsToReject.forEach(id => {
-                fetch('/api/emails/rejected', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        userId: id,
-                        rejectionReason: rejectionReason.trim()
-                    })
-                }).then(res => {
-                    if (!res.ok) console.error(`Failed to send rejection email for ${id}:`, res.statusText);
-                }).catch(err => console.error(`Failed to send rejection email for ${id}:`, err));
             });
         } catch (error) {
             console.error('Failed to reject user(s):', error);
