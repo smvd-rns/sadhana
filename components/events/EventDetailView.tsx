@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ManagedEvent, ManagedEventAttachment } from '@/types';
 import { Calendar, MapPin, Users, Paperclip, Check, X, ExternalLink, Play, Music, Image as ImageIcon, Star, Clock, Image as LucideImage, Share2, Info } from 'lucide-react';
 import NextImage from 'next/image';
@@ -30,9 +30,9 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         if (event.type === 'announcement' && !event.userResponse && userData) {
             handleResponse('seen');
         }
-    }, [event.id, event.type, event.userResponse, userData]);
+    }, [event.id, event.type, event.userResponse, userData, handleResponse]);
 
-    const handleResponse = async (status: 'coming' | 'not_coming' | 'seen' | 'understood', reason?: string) => {
+    const handleResponse = useCallback(async (status: 'coming' | 'not_coming' | 'seen' | 'understood', reason?: string) => {
         if (!userData) return;
         setIsSubmitting(true);
         try {
@@ -52,7 +52,7 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         } finally {
             setIsSubmitting(false);
         }
-    };
+    }, [event.id, userData, onResponseUpdate]);
 
     const isImage = (att: ManagedEventAttachment) => {
         if (att.type === 'image') return true;

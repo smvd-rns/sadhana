@@ -62,7 +62,7 @@ export default function EventCard({ event, isAdmin, onResponseUpdate }: EventCar
                         <div className="flex items-center gap-2 px-3 py-1 bg-orange-600 rounded-lg w-fit">
                             <Calendar className="h-3 w-3 text-white" />
                             <span className="text-[9px] font-black text-white uppercase tracking-widest">
-                                {new Date(event.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                                {event.eventDate ? new Date(event.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'N/A'}
                             </span>
                         </div>
                         <h3 className="text-xl font-black text-gray-900 leading-tight group-hover:text-orange-600 transition-colors tracking-tight uppercase">
