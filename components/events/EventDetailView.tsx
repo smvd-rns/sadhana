@@ -25,13 +25,6 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
         (typeof role === 'number' && ((role >= 4 && role <= 8) || (role >= 11 && role <= 16) || role === 21))
     );
 
-    useEffect(() => {
-        // Auto-record 'seen' status when opening an announcement
-        if (event.type === 'announcement' && !event.userResponse && userData) {
-            handleResponse('seen');
-        }
-    }, [event.id, event.type, event.userResponse, userData, handleResponse]);
-
     const handleResponse = useCallback(async (status: 'coming' | 'not_coming' | 'seen' | 'understood', reason?: string) => {
         if (!userData) return;
         setIsSubmitting(true);
@@ -53,6 +46,13 @@ export default function EventDetailView({ event, onResponseUpdate }: EventDetail
             setIsSubmitting(false);
         }
     }, [event.id, userData, onResponseUpdate]);
+
+    useEffect(() => {
+        // Auto-record 'seen' status when opening an announcement
+        if (event.type === 'announcement' && !event.userResponse && userData) {
+            handleResponse('seen');
+        }
+    }, [event.id, event.type, event.userResponse, userData, handleResponse]);
 
     const isImage = (att: ManagedEventAttachment) => {
         if (att.type === 'image') return true;
