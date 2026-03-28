@@ -22,6 +22,7 @@ export async function POST(request: Request) {
             supabaseUrl,
             serviceRoleKey,
             {
+                // Set reasonable timeouts
                 auth: {
                     autoRefreshToken: false,
                     persistSession: false
@@ -30,7 +31,6 @@ export async function POST(request: Request) {
         );
 
         // Authenticate the user making the request
-        // We need to verify the user owns the profile they are updating
         const authHeader = request.headers.get('Authorization');
         if (!authHeader) {
             return NextResponse.json({ error: 'Missing authorization header' }, { status: 401 });
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         // Fetch current user data to check for role and center changes
         const { data: currentUser, error: fetchError } = await supabaseAdmin
             .from('users')
-            .select('role, hierarchy, center') // select center directly if it's a column or inside hierarchy
+            .select('role, hierarchy, center')
             .eq('id', userId)
             .single();
 
@@ -77,43 +77,59 @@ export async function POST(request: Request) {
         let updatedRoles = currentUser.role;
 
         // Check if Center is being changed
-        // The center might be in 'updates.center' or 'updates.hierarchy.center' depending on frontend structure.
-        // Based on ProfilePage, it sends: hierarchy.center AND direct column 'center'
         const newCenter = updates.center;
         const currentCenter = currentUser.center || currentUser.hierarchy?.center;
 
-        // Logic: If Center changes AND User has Role 3
         if (newCenter && newCenter !== currentCenter) {
             const hasVoiceManagerRole = Array.isArray(currentUser.role)
                 ? currentUser.role.includes(VOICE_MANAGER_ROLE)
                 : currentUser.role === VOICE_MANAGER_ROLE;
 
             if (hasVoiceManagerRole) {
-                console.log(`User ${userId} changed center from ${currentCenter} to ${newCenter}. Revoking role ${VOICE_MANAGER_ROLE}.`);
-
                 if (Array.isArray(currentUser.role)) {
                     updatedRoles = currentUser.role.filter((r: any) => r !== VOICE_MANAGER_ROLE);
                 } else {
-                    // If it was a single role and it matched, they now have no role (or default 'student'?)
-                    // Best to remove it or set to default if logic requires.
-                    // Assuming array structure is preferred, or empty/default.
-                    // If role was just '3', now it should likely be null or 'student'. 
-                    // Let's assume we just remove it. if it was single value, we might need checking schema.
-                    // For safety, let's look at how roles are stored. Usually JSONB or array.
-                    // If simply 'number', we might need to change it.
-                    // Safe bet: If array, filter. If scalar number 3, change to standard default 'student' or null.
-                    updatedRoles = ['student']; // Default fallback
+                    updatedRoles = [1]; // Default fallback to student
                 }
-
-                // Add the modified role to the updates object
                 updates.role = updatedRoles;
             }
         }
 
-        // Perform the update
+        // Perform the update - Split logic for Flat Columns (Strictly to user_profile_details)
+        const detailsUpdates: any = {
+            user_id: userId,
+            updated_at: new Date().toISOString()
+        };
+        const userUpdates: any = {};
+        let hasDetailsUpdates = false;
+
+        Object.keys(updates).forEach(key => {
+            // Profile fields to be moved to user_profile_details (Flat Columns)
+            if (
+                key.startsWith('edu_') || 
+                key.startsWith('work_') || 
+                key.startsWith('language_') || 
+                key.startsWith('skill_') || 
+                key.startsWith('service_') || 
+                key.startsWith('camp_') || 
+                key.startsWith('spbook_')
+            ) {
+                detailsUpdates[key] = updates[key];
+                hasDetailsUpdates = true;
+                // NO LONGER updating users table for these legacy columns
+            } else if (key === 'name') {
+                detailsUpdates.user_name = updates[key];
+                hasDetailsUpdates = true;
+                userUpdates[key] = updates[key];
+            } else {
+                userUpdates[key] = updates[key];
+            }
+        });
+
+        // 1. Update main users table
         const { data: updatedData, error: updateError } = await supabaseAdmin
             .from('users')
-            .update(updates)
+            .update(userUpdates)
             .eq('id', userId)
             .select()
             .single();
@@ -121,6 +137,17 @@ export async function POST(request: Request) {
         if (updateError) {
             console.error('Error updating profile:', updateError);
             return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
+        }
+
+        // 2. Update user_profile_details table (Flat Columns Upsert)
+        if (hasDetailsUpdates) {
+            const { error: detailsError } = await supabaseAdmin
+                .from('user_profile_details')
+                .upsert(detailsUpdates, { onConflict: 'user_id' });
+
+            if (detailsError) {
+                console.error('Error updating profile details:', detailsError);
+            }
         }
 
         return NextResponse.json({ success: true, user: updatedData });

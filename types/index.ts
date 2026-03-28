@@ -79,10 +79,13 @@ export interface User {
   campSankalpa?: boolean;
   campSphurti?: boolean;
   campUtkarsh?: boolean;
-  campFaithAndDoubt?: boolean;
   campSrcgdWorkshop?: boolean;
-  campNistha?: boolean;
-  campAshray?: boolean;
+  campNishtha?: boolean;
+  campFtec?: boolean;
+  campAshraya?: boolean;
+  campMtec?: boolean;
+  campSharanagati?: boolean;
+  campIdc?: boolean;
   // SP Books Study Course fields
   spbookThirdSsr15?: boolean;
   spbookThirdComingBack?: boolean;
@@ -158,13 +161,15 @@ export interface User {
 
 export interface EducationEntry {
   institution: string;
-  field: string;
-  year: number | null;
+  degreeBranch: string;
+  startYear: number | null;
+  endYear: number | null;
 }
 
 export interface WorkExperienceEntry {
   company: string;
   position: string;
+  location: string;
   startDate: string | null; // ISO date string or null
   endDate: string | null; // ISO date string or null, null if current
   current: boolean; // true if currently working here

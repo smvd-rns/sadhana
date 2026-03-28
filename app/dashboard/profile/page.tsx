@@ -11,6 +11,7 @@ import PhotoUpload from '@/components/ui/PhotoUpload';
 import SearchableSelect from '@/components/ui/SearchableSelect';
 import { getSmallThumbnailUrl } from '@/lib/utils/google-drive';
 import { EducationEntry, WorkExperienceEntry, LanguageEntry, SkillEntry, ServiceEntry } from '@/types';
+import { SPIRITUAL_MASTERS } from '@/lib/utils/spiritual-masters';
 
 export default function ProfilePage() {
   const { user, userData, loading: authLoading, refreshUserData } = useAuth();
@@ -131,10 +132,10 @@ export default function ProfilePage() {
 
   // Education and Work Experience arrays
   const [education, setEducation] = useState<EducationEntry[]>([
-    { institution: '', field: '', year: null }
+    { institution: '', degreeBranch: '', startYear: null, endYear: null }
   ]);
   const [workExperience, setWorkExperience] = useState<WorkExperienceEntry[]>([
-    { company: '', position: '', startDate: null, endDate: null, current: false }
+    { company: '', position: '', location: '', startDate: null, endDate: null, current: false }
   ]);
   // Language, Skills, and Services arrays
   const [languages, setLanguages] = useState<LanguageEntry[]>([
@@ -597,10 +598,13 @@ export default function ProfilePage() {
         campSankalpa: userData.campSankalpa || false,
         campSphurti: userData.campSphurti || false,
         campUtkarsh: userData.campUtkarsh || false,
-        campFaithAndDoubt: userData.campFaithAndDoubt || false,
         campSrcgdWorkshop: userData.campSrcgdWorkshop || false,
-        campNistha: userData.campNistha || false,
-        campAshray: userData.campAshray || false,
+        campNishtha: userData.campNishtha || false,
+        campFtec: userData.campFtec || false,
+        campAshraya: userData.campAshraya || false,
+        campMtec: userData.campMtec || false,
+        campSharanagati: userData.campSharanagati || false,
+        campIdc: userData.campIdc || false,
         
         // SP Books Study Course fields
         spbookThirdSsr15: userData.spbookThirdSsr15 || false,
@@ -659,15 +663,17 @@ export default function ProfilePage() {
 
       // Load education and work experience
       if (userData.education && userData.education.length > 0) {
-        const filteredEdu = userData.education.filter(edu => edu.institution || edu.field);
-        setEducation(filteredEdu.length > 0 ? filteredEdu : [{ institution: '', field: '', year: null }]);
+        const filteredEdu = userData.education.filter(edu => edu.institution || edu.degreeBranch);
+        setEducation(filteredEdu.length > 0 ? filteredEdu : [{ institution: '', degreeBranch: '', startYear: null, endYear: null }]);
       } else {
-        setEducation([{ institution: '', field: '', year: null }]);
+        setEducation([{ institution: '', degreeBranch: '', startYear: null, endYear: null }]);
       }
 
       if (userData.workExperience && userData.workExperience.length > 0) {
-        const filteredWork = userData.workExperience.filter(work => work.company || work.position);
-        setWorkExperience(filteredWork.length > 0 ? filteredWork : [{ company: '', position: '', startDate: null, endDate: null, current: false }]);
+        const filteredWork = userData.workExperience.filter(work => work.company || work.position || work.location);
+        setWorkExperience(filteredWork.length > 0 ? filteredWork : [{ company: '', position: '', location: '', startDate: null, endDate: null, current: false }]);
+      } else {
+        setWorkExperience([{ company: '', position: '', location: '', startDate: null, endDate: null, current: false }]);
       }
       // Load languages, skills, and services
       if (userData.languages && userData.languages.length > 0) {
@@ -831,16 +837,17 @@ export default function ProfilePage() {
           educationErrors.push(instValidation.error || `Invalid institution name in entry ${index + 1}`);
         }
       }
-      if (edu.field?.trim()) {
-        const fieldValidation = validateEducationField(edu.field, `Education ${index + 1} - Field`);
-        if (!fieldValidation.valid) {
-          educationErrors.push(fieldValidation.error || `Invalid field name in entry ${index + 1}`);
+      if (edu.degreeBranch?.trim()) {
+        const branchValidation = validateEducationField(edu.degreeBranch, `Education ${index + 1} - Degree-Branch`);
+        if (!branchValidation.valid) {
+          educationErrors.push(branchValidation.error || `Invalid degree-branch name in entry ${index + 1}`);
         }
       }
       return {
         institution: edu.institution ? sanitizeTextInput(edu.institution.trim()) : '',
-        field: edu.field ? sanitizeTextInput(edu.field.trim()) : '',
-        year: edu.year
+        degreeBranch: edu.degreeBranch ? sanitizeTextInput(edu.degreeBranch.trim()) : '',
+        startYear: edu.startYear,
+        endYear: edu.endYear
       };
     });
     if (educationErrors.length > 0) {
@@ -860,14 +867,21 @@ export default function ProfilePage() {
         }
       }
       if (work.position?.trim()) {
-        const positionValidation = validateWorkField(work.position, `Work ${index + 1} - Position`);
+        const positionValidation = validateWorkField(work.position, `Work ${index + 1} - Title/Position`);
         if (!positionValidation.valid) {
-          workErrors.push(positionValidation.error || `Invalid position name in entry ${index + 1}`);
+          workErrors.push(positionValidation.error || `Invalid title/position name in entry ${index + 1}`);
+        }
+      }
+      if (work.location?.trim()) {
+        const locationValidation = validateWorkField(work.location, `Work ${index + 1} - Location`);
+        if (!locationValidation.valid) {
+          workErrors.push(locationValidation.error || `Invalid location in entry ${index + 1}`);
         }
       }
       return {
         company: work.company ? sanitizeTextInput(work.company.trim()) : '',
         position: work.position ? sanitizeTextInput(work.position.trim()) : '',
+        location: work.location ? sanitizeTextInput(work.location.trim()) : '',
         startDate: work.startDate,
         endDate: work.endDate,
         current: work.current
@@ -914,25 +928,28 @@ export default function ProfilePage() {
 
       // Build expanded update objects (education, work, etc.)
       const educationUpdate: any = {};
-      const validEducation = sanitizedEducation.filter(edu => edu.institution?.trim() || edu.field?.trim());
+      const validEducation = sanitizedEducation.filter(edu => edu.institution?.trim() || edu.degreeBranch?.trim());
       validEducation.slice(0, 5).forEach((edu, index) => {
         const num = index + 1;
         educationUpdate[`edu_${num}_institution`] = edu.institution?.trim() || null;
-        educationUpdate[`edu_${num}_field`] = edu.field?.trim() || null;
-        educationUpdate[`edu_${num}_year`] = edu.year || null;
+        educationUpdate[`edu_${num}_degree_branch`] = edu.degreeBranch?.trim() || null;
+        educationUpdate[`edu_${num}_start_year`] = edu.startYear || null;
+        educationUpdate[`edu_${num}_end_year`] = edu.endYear || null;
       });
       for (let i = validEducation.length + 1; i <= 5; i++) {
         educationUpdate[`edu_${i}_institution`] = null;
-        educationUpdate[`edu_${i}_field`] = null;
-        educationUpdate[`edu_${i}_year`] = null;
+        educationUpdate[`edu_${i}_degree_branch`] = null;
+        educationUpdate[`edu_${i}_start_year`] = null;
+        educationUpdate[`edu_${i}_end_year`] = null;
       }
 
       const workUpdate: any = {};
-      const validWork = sanitizedWork.filter(work => work.company?.trim() || work.position?.trim());
+      const validWork = sanitizedWork.filter(work => work.company?.trim() || work.position?.trim() || work.location?.trim());
       validWork.slice(0, 5).forEach((work, index) => {
         const num = index + 1;
         workUpdate[`work_${num}_company`] = work.company?.trim() || null;
         workUpdate[`work_${num}_position`] = work.position?.trim() || null;
+        workUpdate[`work_${num}_location`] = work.location?.trim() || null;
         workUpdate[`work_${num}_start_date`] = work.startDate || null;
         workUpdate[`work_${num}_end_date`] = work.current ? null : (work.endDate || null);
         workUpdate[`work_${num}_current`] = work.current || false;
@@ -940,6 +957,7 @@ export default function ProfilePage() {
       for (let i = validWork.length + 1; i <= 5; i++) {
         workUpdate[`work_${i}_company`] = null;
         workUpdate[`work_${i}_position`] = null;
+        workUpdate[`work_${i}_location`] = null;
         workUpdate[`work_${i}_start_date`] = null;
         workUpdate[`work_${i}_end_date`] = null;
         workUpdate[`work_${i}_current`] = false;
@@ -1025,10 +1043,13 @@ export default function ProfilePage() {
         camp_sankalpa: formData.campSankalpa || false,
         camp_sphurti: formData.campSphurti || false,
         camp_utkarsh: formData.campUtkarsh || false,
-        camp_faith_and_doubt: formData.campFaithAndDoubt || false,
         camp_srcgd_workshop: formData.campSrcgdWorkshop || false,
-        camp_nistha: formData.campNistha || false,
-        camp_ashray: formData.campAshray || false,
+        camp_nishtha: formData.campNishtha || false,
+        camp_ftec: formData.campFtec || false,
+        camp_ashraya: formData.campAshraya || false,
+        camp_mtec: formData.campMtec || false,
+        camp_sharanagati: formData.campSharanagati || false,
+        camp_idc: formData.campIdc || false,
         // SP Books fields
         spbook_third_ssr_1_5: formData.spbookThirdSsr15 || false,
         spbook_third_coming_back: formData.spbookThirdComingBack || false,
@@ -1784,13 +1805,11 @@ export default function ProfilePage() {
                         <label htmlFor="spiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                           Spiritual Master Name
                         </label>
-                        <input
-                          id="spiritualMasterName"
-                          type="text"
+                        <SearchableSelect
+                          options={SPIRITUAL_MASTERS.map(name => ({ id: name, name }))}
                           value={formData.spiritualMasterName}
-                          onChange={(e) => {
-                            const sanitized = sanitizeTextInput(e.target.value);
-                            setFormData({ ...formData, spiritualMasterName: sanitized });
+                          onChange={(value) => {
+                            setFormData({ ...formData, spiritualMasterName: value });
                             if (fieldErrors.spiritualMasterName) {
                               setFieldErrors(prev => {
                                 const newErrors = { ...prev };
@@ -1799,9 +1818,8 @@ export default function ProfilePage() {
                               });
                             }
                           }}
-                          required
-                          placeholder="Enter your spiritual master name"
-                          className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.spiritualMasterName
+                          placeholder="Select Spiritual Master"
+                          triggerClassName={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors.spiritualMasterName
                             ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
                             : 'border-indigo-100 focus:ring-indigo-500 focus:border-indigo-500'
                             }`}
@@ -1819,13 +1837,11 @@ export default function ProfilePage() {
                       <label htmlFor="aspiringSpiritualMasterName" className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
                         Aspiring Spiritual Master Name
                       </label>
-                      <input
-                        id="aspiringSpiritualMasterName"
-                        type="text"
+                      <SearchableSelect
+                        options={SPIRITUAL_MASTERS.map(name => ({ id: name, name }))}
                         value={formData.aspiringSpiritualMasterName}
-                        onChange={(e) => {
-                          const sanitized = sanitizeTextInput(e.target.value);
-                          setFormData({ ...formData, aspiringSpiritualMasterName: sanitized });
+                        onChange={(value) => {
+                          setFormData({ ...formData, aspiringSpiritualMasterName: value });
                           if (fieldErrors.aspiringSpiritualMasterName) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
@@ -1834,8 +1850,8 @@ export default function ProfilePage() {
                             });
                           }
                         }}
-                        placeholder="Enter aspiring spiritual master name (optional)"
-                        className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 placeholder:text-gray-400 focus:scale-[1.02] focus:shadow-md ${fieldErrors.aspiringSpiritualMasterName
+                        placeholder="Select Aspiring Spiritual Master"
+                        triggerClassName={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors.aspiringSpiritualMasterName
                           ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
                           : 'border-indigo-100 focus:ring-indigo-500 focus:border-indigo-500'
                           }`}
@@ -1883,7 +1899,7 @@ export default function ProfilePage() {
                       <option value="Nityananda Sabha">Nityananda Sabha</option>
                       <option value="Grihastha">Grihastha Ashram</option>
                       <option value="Brahmachari">Brahmachari Ashram</option>
-                      <option value="Staying Single (Not planning to Marry)">Staying Single (Not planning to Marry)</option>
+                      <option value="Staying Single (Not planning to marry)">Staying Single (Not planning to marry)</option>
                     </select>
                     {fieldErrors.ashram && (
                       <p className="mt-1 text-xs text-red-600">{fieldErrors.ashram}</p>
@@ -2218,7 +2234,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setEducation(prev => [...prev, { institution: '', field: '', year: null }]);
+                      setEducation(prev => [...prev, { institution: '', degreeBranch: '', startYear: null, endYear: null }]);
                     }}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white font-medium transition-all duration-300 hover:scale-110 hover:rotate-2 active:scale-95 whitespace-nowrap transform shadow-lg hover:shadow-xl"
                   >
@@ -2252,9 +2268,9 @@ export default function ProfilePage() {
                     )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                        🏛️ Institution/University
+                    <div className="flex flex-col h-full">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start">
+                        <span className="flex items-center gap-1">🏛️ Institution/University</span>
                       </label>
                       <input
                         type="text"
@@ -2264,7 +2280,6 @@ export default function ProfilePage() {
                           const updated = [...education];
                           updated[index] = { ...updated[index], institution: sanitized };
                           setEducation(updated);
-                          // Clear error when user starts typing
                           if (fieldErrors[`edu_${index}_institution`]) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
@@ -2294,65 +2309,85 @@ export default function ProfilePage() {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                        🎓 Field/Degree
+                    <div className="flex flex-col h-full">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start">
+                        <span className="flex items-center gap-1">🎓 Degree-Branch</span>
+                        <span className="text-[10px] sm:text-xs font-normal text-gray-500">eg. B.Tech. Electronics Engineering</span>
                       </label>
                       <input
                         type="text"
-                        value={edu.field}
+                        value={edu.degreeBranch}
                         onChange={(e) => {
                           const sanitized = sanitizeTextInput(e.target.value);
                           const updated = [...education];
-                          updated[index] = { ...updated[index], field: sanitized };
+                          updated[index] = { ...updated[index], degreeBranch: sanitized };
                           setEducation(updated);
-                          // Clear error when user starts typing
-                          if (fieldErrors[`edu_${index}_field`]) {
+                          if (fieldErrors[`edu_${index}_degreeBranch`]) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
-                              delete newErrors[`edu_${index}_field`];
+                              delete newErrors[`edu_${index}_degreeBranch`];
                               return newErrors;
                             });
                           }
                         }}
                         onBlur={() => {
-                          if (edu.field && edu.field.trim()) {
-                            const validation = validateEducationField(edu.field, `Education ${index + 1} - Field`);
+                          if (edu.degreeBranch && edu.degreeBranch.trim()) {
+                            const validation = validateEducationField(edu.degreeBranch, `Education ${index + 1} - Degree-Branch`);
                             if (!validation.valid) {
-                              setFieldErrors(prev => ({ ...prev, [`edu_${index}_field`]: validation.error || 'Invalid text' }));
+                              setFieldErrors(prev => ({ ...prev, [`edu_${index}_degreeBranch`]: validation.error || 'Invalid text' }));
                             }
                           }
                         }}
-                        placeholder="e.g., B.Tech Computer Science"
-                        className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200 ${fieldErrors[`edu_${index}_field`]
+                        placeholder="e.g., B.Tech. Electronics Engineering"
+                        className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200 ${fieldErrors[`edu_${index}_degreeBranch`]
                           ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
                           : 'border-gray-200 focus:ring-amber-500 focus:border-amber-500'
                           }`}
                       />
-                      {fieldErrors[`edu_${index}_field`] && (
+                      {fieldErrors[`edu_${index}_degreeBranch`] && (
                         <p className="mt-1 text-xs text-red-600 flex items-center gap-1 animate-fadeIn">
                           <X className="h-2 w-2" />
-                          {fieldErrors[`edu_${index}_field`]}
+                          {fieldErrors[`edu_${index}_degreeBranch`]}
                         </p>
                       )}
                     </div>
-                    <div className="sm:col-span-2 lg:col-span-1">
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                        📅 Year
+                    <div className="flex flex-col h-full sm:col-span-2 lg:col-span-1">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start">
+                        <span className="flex items-center gap-1">📅 Time Period (From - To)</span>
                       </label>
-                      <input
-                        type="number"
-                        value={edu.year || ''}
-                        onChange={(e) => {
-                          const updated = [...education];
-                          updated[index] = { ...updated[index], year: e.target.value ? parseInt(e.target.value) : null };
-                          setEducation(updated);
-                        }}
-                        placeholder="e.g., 2020"
-                        min="1900"
-                        max={new Date().getFullYear() + 5}
-                        className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200"
-                      />
+                      <div className="flex items-center gap-2 h-full">
+                        <div className="relative flex-1 group">
+                          <input
+                            type="number"
+                            value={edu.startYear || ''}
+                            onChange={(e) => {
+                              const updated = [...education];
+                              updated[index] = { ...updated[index], startYear: e.target.value ? parseInt(e.target.value) : null };
+                              setEducation(updated);
+                            }}
+                            placeholder="From"
+                            min="1900"
+                            max={new Date().getFullYear() + 10}
+                            className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200"
+                          />
+                        </div>
+                        <span className="text-gray-400 font-bold">-</span>
+                        <div className="relative flex-1 group">
+                          <input
+                            type="number"
+                            value={edu.endYear || ''}
+                            onChange={(e) => {
+                              const updated = [...education];
+                              updated[index] = { ...updated[index], endYear: e.target.value ? parseInt(e.target.value) : null };
+                              setEducation(updated);
+                            }}
+                            placeholder="To"
+                            min="1900"
+                            max={new Date().getFullYear() + 10}
+                            className="w-full px-3 py-2 sm:py-2.5 text-sm sm:text-base border-2 border-gray-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-white hover:bg-gray-50 transition-all duration-200"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2380,7 +2415,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      setWorkExperience(prev => [...prev, { company: '', position: '', startDate: null, endDate: null, current: false }]);
+                      setWorkExperience(prev => [...prev, { company: '', position: '', location: '', startDate: null, endDate: null, current: false }]);
                     }}
                     className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-lg text-white font-medium transition-all duration-300 hover:scale-110 hover:rotate-2 active:scale-95 whitespace-nowrap transform shadow-lg hover:shadow-xl"
                   >
@@ -2413,10 +2448,10 @@ export default function ProfilePage() {
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1 transform transition-all duration-200 group-hover:translate-x-1">
-                        🏢 Company Name
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-3 sm:mb-4">
+                    <div className="flex flex-col h-full">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start transform transition-all duration-200 group-hover:translate-x-1">
+                        <span className="flex items-center gap-1">🏢 Company Name</span>
                       </label>
                       <input
                         type="text"
@@ -2426,7 +2461,6 @@ export default function ProfilePage() {
                           const updated = [...workExperience];
                           updated[index] = { ...updated[index], company: sanitized };
                           setWorkExperience(updated);
-                          // Clear error when user starts typing
                           if (fieldErrors[`work_${index}_company`]) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
@@ -2456,9 +2490,9 @@ export default function ProfilePage() {
                         </p>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1 transform transition-all duration-200 group-hover:translate-x-1">
-                        💼 Position/Role
+                    <div className="flex flex-col h-full">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start transform transition-all duration-200 group-hover:translate-x-1">
+                        <span className="flex items-center gap-1">💼 Title/Position</span>
                       </label>
                       <input
                         type="text"
@@ -2468,7 +2502,6 @@ export default function ProfilePage() {
                           const updated = [...workExperience];
                           updated[index] = { ...updated[index], position: sanitized };
                           setWorkExperience(updated);
-                          // Clear error when user starts typing
                           if (fieldErrors[`work_${index}_position`]) {
                             setFieldErrors(prev => {
                               const newErrors = { ...prev };
@@ -2479,7 +2512,7 @@ export default function ProfilePage() {
                         }}
                         onBlur={() => {
                           if (work.position && work.position.trim()) {
-                            const validation = validateWorkField(work.position, `Work ${index + 1} - Position`);
+                            const validation = validateWorkField(work.position, `Work ${index + 1} - Title/Position`);
                             if (!validation.valid) {
                               setFieldErrors(prev => ({ ...prev, [`work_${index}_position`]: validation.error || 'Invalid text' }));
                             }
@@ -2495,6 +2528,47 @@ export default function ProfilePage() {
                         <p className="mt-1 text-xs text-red-600 flex items-center gap-1 animate-fadeIn">
                           <X className="h-2 w-2" />
                           {fieldErrors[`work_${index}_position`]}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-col h-full sm:col-span-2 lg:col-span-1">
+                      <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2 min-h-[2.5rem] flex flex-col justify-start transform transition-all duration-200 group-hover:translate-x-1">
+                        <span className="flex items-center gap-1">📍 Location(City, State, Country)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={work.location}
+                        onChange={(e) => {
+                          const sanitized = sanitizeTextInput(e.target.value);
+                          const updated = [...workExperience];
+                          updated[index] = { ...updated[index], location: sanitized };
+                          setWorkExperience(updated);
+                          if (fieldErrors[`work_${index}_location`]) {
+                            setFieldErrors(prev => {
+                              const newErrors = { ...prev };
+                              delete newErrors[`work_${index}_location`];
+                              return newErrors;
+                            });
+                          }
+                        }}
+                        onBlur={() => {
+                          if (work.location && work.location.trim()) {
+                            const validation = validateWorkField(work.location, `Work ${index + 1} - Location`);
+                            if (!validation.valid) {
+                              setFieldErrors(prev => ({ ...prev, [`work_${index}_location`]: validation.error || 'Invalid text' }));
+                            }
+                          }
+                        }}
+                        placeholder="e.g., Pune, Maharashtra, India"
+                        className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base border-2 rounded-lg sm:rounded-xl focus:ring-2 text-gray-900 bg-white hover:bg-indigo-50/50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md ${fieldErrors[`work_${index}_location`]
+                          ? 'border-red-300 focus:ring-red-400 focus:border-red-400'
+                          : 'border-gray-200 focus:ring-amber-500 focus:border-amber-500'
+                          }`}
+                      />
+                      {fieldErrors[`work_${index}_location`] && (
+                        <p className="mt-1 text-xs text-red-600 flex items-center gap-1 animate-fadeIn">
+                          <X className="h-2 w-2" />
+                          {fieldErrors[`work_${index}_location`]}
                         </p>
                       )}
                     </div>
@@ -2588,10 +2662,13 @@ export default function ProfilePage() {
                   { key: 'campSankalpa', label: 'Sankalpa', emoji: '🌱' },
                   { key: 'campSphurti', label: 'Sphurti', emoji: '⚡' },
                   { key: 'campUtkarsh', label: 'Utkarsh', emoji: '🚀' },
-                  { key: 'campFaithAndDoubt', label: 'Faith and Doubt', emoji: '🤔' },
                   { key: 'campSrcgdWorkshop', label: 'SRCGD Workshop', emoji: '🎯' },
-                  { key: 'campNistha', label: 'Nistha', emoji: '💎' },
-                  { key: 'campAshray', label: 'Ashray', emoji: '🛡️' },
+                  { key: 'campNishtha', label: 'Nishtha', emoji: '💎' },
+                  { key: 'campFtec', label: 'FTEC', emoji: '🏗️' },
+                  { key: 'campAshraya', label: 'Ashraya', emoji: '🛡️' },
+                  { key: 'campMtec', label: 'MTEC', emoji: '📈' },
+                  { key: 'campSharanagati', label: 'Sharanagati', emoji: '🙏' },
+                  { key: 'campIdc', label: 'IDC', emoji: '🔑' },
                 ].map((camp, index) => (
                   <label
                     key={camp.key}
@@ -3049,7 +3126,7 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Skills Section Card with Animations */}
+          {/* Skills Section Card - Hidden for now
           <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1">
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-4 sm:px-6 py-3 sm:py-4 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -3124,9 +3201,9 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
-          {/* Services Rendered Section Card with Animations */}
+          {/* Services Rendered Section Card - Hidden for now
           <div className="animate-on-scroll bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-100 overflow-hidden transform transition-all duration-500 hover:shadow-2xl hover:scale-[1.01] hover:-translate-y-1">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-4 sm:px-6 py-3 sm:py-4 relative overflow-hidden group">
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -3201,7 +3278,7 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Submit Button - Devotional Colors with Enhanced Animations */}
           <div className="flex justify-center pt-4 sm:pt-6 animate-on-scroll">

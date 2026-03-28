@@ -58,7 +58,7 @@ export default function CompleteRegistrationPage() {
         'Nityananda Sabha',
         'Brahmachari',
         'Grihastha',
-        'Staying Single (Not planning to Marry)',
+        'Staying Single (Not planning to marry)',
     ];
 
     // Load initial data
