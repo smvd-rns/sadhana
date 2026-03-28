@@ -31,10 +31,13 @@ const CAMP_OPTIONS = [
   { label: 'Sankalpa', value: 'campSankalpa' },
   { label: 'Sphurti', value: 'campSphurti' },
   { label: 'Utkarsh', value: 'campUtkarsh' },
-  { label: 'Faith & Doubt', value: 'campFaithAndDoubt' },
   { label: 'SRCGD Workshop', value: 'campSrcgdWorkshop' },
-  { label: 'Nistha', value: 'campNistha' },
-  { label: 'Ashray', value: 'campAshray' },
+  { label: 'Nishtha', value: 'campNishtha' },
+  { label: 'FTEC', value: 'campFtec' },
+  { label: 'Ashraya', value: 'campAshraya' },
+  { label: 'MTEC', value: 'campMtec' },
+  { label: 'Sharanagati', value: 'campSharanagati' },
+  { label: 'IDC', value: 'campIdc' },
 ];
 
 export default function UsersPage() {

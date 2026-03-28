@@ -201,17 +201,26 @@ export default function CityManagerPage() {
                     case 'Utkarsh':
                         matchesCamp = user.campUtkarsh === true;
                         break;
-                    case 'Faith and Doubt':
-                        matchesCamp = user.campFaithAndDoubt === true;
-                        break;
                     case 'SRCGD Workshop':
                         matchesCamp = user.campSrcgdWorkshop === true;
                         break;
-                    case 'Nistha':
-                        matchesCamp = user.campNistha === true;
+                    case 'Nishtha':
+                        matchesCamp = user.campNishtha === true;
                         break;
-                    case 'Ashray':
-                        matchesCamp = user.campAshray === true;
+                    case 'FTEC':
+                        matchesCamp = user.campFtec === true;
+                        break;
+                    case 'Ashraya':
+                        matchesCamp = user.campAshraya === true;
+                        break;
+                    case 'MTEC':
+                        matchesCamp = user.campMtec === true;
+                        break;
+                    case 'Sharanagati':
+                        matchesCamp = user.campSharanagati === true;
+                        break;
+                    case 'IDC':
+                        matchesCamp = user.campIdc === true;
                         break;
                     default:
                         matchesCamp = true;
@@ -323,10 +332,13 @@ export default function CityManagerPage() {
                             <option value="Sankalpa">Sankalpa</option>
                             <option value="Sphurti">Sphurti</option>
                             <option value="Utkarsh">Utkarsh</option>
-                            <option value="Faith and Doubt">Faith and Doubt</option>
                             <option value="SRCGD Workshop">SRCGD Workshop</option>
-                            <option value="Nistha">Nistha</option>
-                            <option value="Ashray">Ashray</option>
+                            <option value="Nishtha">Nishtha</option>
+                            <option value="FTEC">FTEC</option>
+                            <option value="Ashraya">Ashraya</option>
+                            <option value="MTEC">MTEC</option>
+                            <option value="Sharanagati">Sharanagati</option>
+                            <option value="IDC">IDC</option>
                         </select>
                     </div>
                 </div>

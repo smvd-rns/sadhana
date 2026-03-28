@@ -663,17 +663,26 @@ export default function CounselorPage() {
           case 'Utkarsh':
             matchesCamp = student.campUtkarsh === true;
             break;
-          case 'Faith and Doubt':
-            matchesCamp = student.campFaithAndDoubt === true;
-            break;
           case 'SRCGD Workshop':
             matchesCamp = student.campSrcgdWorkshop === true;
             break;
-          case 'Nistha':
-            matchesCamp = student.campNistha === true;
+          case 'Nishtha':
+            matchesCamp = student.campNishtha === true;
             break;
-          case 'Ashray':
-            matchesCamp = student.campAshray === true;
+          case 'FTEC':
+            matchesCamp = student.campFtec === true;
+            break;
+          case 'Ashraya':
+            matchesCamp = student.campAshraya === true;
+            break;
+          case 'MTEC':
+            matchesCamp = student.campMtec === true;
+            break;
+          case 'Sharanagati':
+            matchesCamp = student.campSharanagati === true;
+            break;
+          case 'IDC':
+            matchesCamp = student.campIdc === true;
             break;
           default:
             matchesCamp = true;
@@ -980,7 +989,7 @@ export default function CounselorPage() {
                       className="w-full pl-10 pr-8 py-2.5 bg-white border border-gray-200 rounded-xl focus:border-orange-300 focus:ring-4 focus:ring-orange-500/5 transition-all outline-none appearance-none text-xs font-bold text-gray-700 cursor-pointer shadow-sm"
                     >
                       <option value="all">Filter: All Camps</option>
-                      {['DYS', 'Sankalpa', 'Sphurti', 'Utkarsh', 'Faith and Doubt', 'SRCGD Workshop', 'Nistha', 'Ashray'].map(camp => (
+                      {['DYS', 'Sankalpa', 'Sphurti', 'Utkarsh', 'SRCGD Workshop', 'Nishtha', 'FTEC', 'Ashraya', 'MTEC', 'Sharanagati', 'IDC'].map(camp => (
                         <option key={camp} value={camp}>{camp}</option>
                       ))}
                     </select>

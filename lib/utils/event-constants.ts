@@ -16,14 +16,17 @@ export const roleOptions = Array.from({ length: 30 }, (_, i) => i + 1).map(num =
 }));
 
 export const campOptions = [
-    { id: 'campDys', name: 'DYS (Discover Your Self)' },
+    { id: 'campDys', name: 'DYS' },
     { id: 'campSankalpa', name: 'Sankalpa' },
     { id: 'campSphurti', name: 'Sphurti' },
     { id: 'campUtkarsh', name: 'Utkarsh' },
-    { id: 'campFaithAndDoubt', name: 'Faith and Doubt' },
     { id: 'campSrcgdWorkshop', name: 'SRCGD Workshop' },
-    { id: 'campNistha', name: 'Nistha' },
-    { id: 'campAshray', name: 'Ashray' },
+    { id: 'campNishtha', name: 'Nishtha' },
+    { id: 'campFtec', name: 'FTEC' },
+    { id: 'campAshraya', name: 'Ashraya' },
+    { id: 'campMtec', name: 'MTEC' },
+    { id: 'campSharanagati', name: 'Sharanagati' },
+    { id: 'campIdc', name: 'IDC' },
     { id: 'campJigyasa', name: 'Jigyasa' },
     { id: 'campSadhana', name: 'Sadhana' }
 ];

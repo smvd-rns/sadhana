@@ -39,10 +39,13 @@ export default function StudentProgressPage() {
     { key: 'campSankalpa', label: 'Sankalpa' },
     { key: 'campSphurti', label: 'Sphurti' },
     { key: 'campUtkarsh', label: 'Utkarsh' },
-    { key: 'campFaithAndDoubt', label: 'Faith & Doubt' },
     { key: 'campSrcgdWorkshop', label: 'SRCGD Workshop' },
-    { key: 'campNistha', label: 'Nistha' },
-    { key: 'campAshray', label: 'Ashray' },
+    { key: 'campNishtha', label: 'Nishtha' },
+    { key: 'campFtec', label: 'FTEC' },
+    { key: 'campAshraya', label: 'Ashraya' },
+    { key: 'campMtec', label: 'MTEC' },
+    { key: 'campSharanagati', label: 'Sharanagati' },
+    { key: 'campIdc', label: 'IDC' },
   ];
 
   const BOOK_MAPPING: { key: keyof User; label: string }[] = [

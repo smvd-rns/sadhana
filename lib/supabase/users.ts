@@ -99,8 +99,9 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
       for (let i = 1; i <= 5; i++) {
         const edu = updates.education[i - 1];
         detailsUpdates[`edu_${i}_institution`] = edu?.institution || null;
-        detailsUpdates[`edu_${i}_field`] = edu?.field || null;
-        detailsUpdates[`edu_${i}_year`] = edu?.year || null;
+        detailsUpdates[`edu_${i}_degree_branch`] = edu?.degreeBranch || null;
+        detailsUpdates[`edu_${i}_start_year`] = edu?.startYear || null;
+        detailsUpdates[`edu_${i}_end_year`] = edu?.endYear || null;
       }
       hasDetailsUpdates = true;
     }
@@ -111,6 +112,7 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
         const work = updates.workExperience[i - 1];
         detailsUpdates[`work_${i}_company`] = work?.company || null;
         detailsUpdates[`work_${i}_position`] = work?.position || null;
+        detailsUpdates[`work_${i}_location`] = work?.location || null;
         detailsUpdates[`work_${i}_start_date`] = work?.startDate || null;
         detailsUpdates[`work_${i}_end_date`] = work?.endDate || null;
         detailsUpdates[`work_${i}_current`] = work?.current || false;
@@ -272,6 +274,21 @@ export const getPendingUsers = async () => {
     return (data || []).map((user: any) => transformUserProfile(user));
   } catch (error) {
     console.error('Error fetching pending users:', error);
+    return [];
+  }
+};
+
+export const getUsersForDropdown = async () => {
+  if (!supabase) return [];
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, email')
+      .order('name');
+    if (error) throw error;
+    return data || [];
+  } catch (error) {
+    console.error('Error fetching users for dropdown:', error);
     return [];
   }
 };

@@ -82,10 +82,13 @@ export default function ProfilePage() {
     campSankalpa: false,
     campSphurti: false,
     campUtkarsh: false,
-    campFaithAndDoubt: false,
     campSrcgdWorkshop: false,
-    campNistha: false,
-    campAshray: false,
+    campNishtha: false,
+    campFtec: false,
+    campAshraya: false,
+    campMtec: false,
+    campSharanagati: false,
+    campIdc: false,
     // SP Books Study Course fields (Third Semester)
     spbookThirdSsr15: false,
     spbookThirdComingBack: false,
@@ -282,10 +285,13 @@ export default function ProfilePage() {
       if (formData.campSankalpa !== (userData.campSankalpa || false)) return true;
       if (formData.campSphurti !== (userData.campSphurti || false)) return true;
       if (formData.campUtkarsh !== (userData.campUtkarsh || false)) return true;
-      if (formData.campFaithAndDoubt !== (userData.campFaithAndDoubt || false)) return true;
       if (formData.campSrcgdWorkshop !== (userData.campSrcgdWorkshop || false)) return true;
-      if (formData.campNistha !== (userData.campNistha || false)) return true;
-      if (formData.campAshray !== (userData.campAshray || false)) return true;
+      if (formData.campNishtha !== (userData.campNishtha || false)) return true;
+      if (formData.campFtec !== (userData.campFtec || false)) return true;
+      if (formData.campAshraya !== (userData.campAshraya || false)) return true;
+      if (formData.campMtec !== (userData.campMtec || false)) return true;
+      if (formData.campSharanagati !== (userData.campSharanagati || false)) return true;
+      if (formData.campIdc !== (userData.campIdc || false)) return true;
 
       // 7. Compare SP Books Course
       if (formData.spbookThirdSsr15 !== (userData.spbookThirdSsr15 || false)) return true;

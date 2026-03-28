@@ -40,10 +40,13 @@ const CAMP_OPTIONS = [
     { label: 'Sankalpa', value: 'campSankalpa' },
     { label: 'Sphurti', value: 'campSphurti' },
     { label: 'Utkarsh', value: 'campUtkarsh' },
-    { label: 'Faith & Doubt', value: 'campFaithAndDoubt' },
     { label: 'SRCGD Workshop', value: 'campSrcgdWorkshop' },
-    { label: 'Nistha', value: 'campNistha' },
-    { label: 'Ashray', value: 'campAshray' },
+    { label: 'Nishtha', value: 'campNishtha' },
+    { label: 'FTEC', value: 'campFtec' },
+    { label: 'Ashraya', value: 'campAshraya' },
+    { label: 'MTEC', value: 'campMtec' },
+    { label: 'Sharanagati', value: 'campSharanagati' },
+    { label: 'IDC', value: 'campIdc' },
     { label: 'Royal', value: 'royal' },
 ];
 
@@ -263,10 +266,13 @@ export default function ManagingDirectorDashboard() {
             campSankalpa: user.camp_sankalpa ?? user.campSankalpa,
             campSphurti: user.camp_sphurti ?? user.campSphurti,
             campUtkarsh: user.camp_utkarsh ?? user.campUtkarsh,
-            campFaithAndDoubt: user.camp_faith_and_doubt ?? user.campFaithAndDoubt,
             campSrcgdWorkshop: user.camp_srcgd_workshop ?? user.campSrcgdWorkshop,
-            campNistha: user.camp_nistha ?? user.campNistha,
-            campAshray: user.camp_ashray ?? user.campAshray,
+            campNishtha: user.camp_nishtha ?? user.camp_nistha ?? user.campNishtha ?? user.campNistha,
+            campFtec: user.camp_ftec ?? user.campFtec,
+            campAshraya: user.camp_ashraya ?? user.camp_ashray ?? user.campAshraya ?? user.campAshray,
+            campMtec: user.camp_mtec ?? user.campMtec,
+            campSharanagati: user.camp_sharanagati ?? user.campSharanagati,
+            campIdc: user.camp_idc ?? user.campIdc,
 
             // Map Books
             spbookThirdSsr15: user.spbook_third_ssr_1_5 ?? user.spbookThirdSsr15,

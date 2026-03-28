@@ -329,17 +329,26 @@ export default function BCVoiceManagerDashboard() {
                 case 'Utkarsh':
                     matchesCamp = dev.campUtkarsh === true;
                     break;
-                case 'Faith and Doubt':
-                    matchesCamp = dev.campFaithAndDoubt === true;
-                    break;
                 case 'SRCGD Workshop':
                     matchesCamp = dev.campSrcgdWorkshop === true;
                     break;
-                case 'Nistha':
-                    matchesCamp = dev.campNistha === true;
+                case 'Nishtha':
+                    matchesCamp = dev.campNishtha === true;
                     break;
-                case 'Ashray':
-                    matchesCamp = dev.campAshray === true;
+                case 'FTEC':
+                    matchesCamp = dev.campFtec === true;
+                    break;
+                case 'Ashraya':
+                    matchesCamp = dev.campAshraya === true;
+                    break;
+                case 'MTEC':
+                    matchesCamp = dev.campMtec === true;
+                    break;
+                case 'Sharanagati':
+                    matchesCamp = dev.campSharanagati === true;
+                    break;
+                case 'IDC':
+                    matchesCamp = dev.campIdc === true;
                     break;
                 default:
                     matchesCamp = true;
@@ -588,10 +597,13 @@ export default function BCVoiceManagerDashboard() {
                                         <option value="Sankalpa">Sankalpa</option>
                                         <option value="Sphurti">Sphurti</option>
                                         <option value="Utkarsh">Utkarsh</option>
-                                        <option value="Faith and Doubt">Faith and Doubt</option>
                                         <option value="SRCGD Workshop">SRCGD Workshop</option>
-                                        <option value="Nistha">Nistha</option>
-                                        <option value="Ashray">Ashray</option>
+                                        <option value="Nishtha">Nishtha</option>
+                                        <option value="FTEC">FTEC</option>
+                                        <option value="Ashraya">Ashraya</option>
+                                        <option value="MTEC">MTEC</option>
+                                        <option value="Sharanagati">Sharanagati</option>
+                                        <option value="IDC">IDC</option>
                                     </select>
                                 </div>
                             </div>

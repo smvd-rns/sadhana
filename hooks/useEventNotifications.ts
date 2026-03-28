@@ -30,10 +30,13 @@ export function useEventNotifications() {
                         camp_sankalpa: userData.campSankalpa,
                         camp_sphurti: userData.campSphurti,
                         camp_utkarsh: userData.campUtkarsh,
-                        camp_faith_and_doubt: userData.campFaithAndDoubt,
                         camp_srcgd_workshop: userData.campSrcgdWorkshop,
-                        camp_nistha: userData.campNistha,
-                        camp_ashray: userData.campAshray,
+                        camp_nishtha: userData.campNishtha,
+                        camp_ftec: userData.campFtec,
+                        camp_ashraya: userData.campAshraya,
+                        camp_mtec: userData.campMtec,
+                        camp_sharanagati: userData.campSharanagati,
+                        camp_idc: userData.campIdc,
                         royal_member: userData.hierarchy?.royalMember === 'yes' || userData.hierarchy?.royalMember === true
                     })
                         .filter(([_, value]) => value === true)

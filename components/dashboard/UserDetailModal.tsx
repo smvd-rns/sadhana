@@ -14,14 +14,17 @@ import { format, subDays, startOfWeek, endOfWeek, parseISO, differenceInCalendar
 import { toast } from 'react-hot-toast';
 
 const CAMP_MAPPINGS = [
-    { key: 'campDys', label: 'Discover Your Self (DYS)' },
-    { key: 'campSankalpa', label: 'Sankalpa Camp' },
-    { key: 'campSphurti', label: 'Sphurti Camp' },
-    { key: 'campUtkarsh', label: 'Utkarsh Camp' },
-    { key: 'campFaithAndDoubt', label: 'Faith & Doubt Workshop' },
+    { key: 'campDys', label: 'DYS' },
+    { key: 'campSankalpa', label: 'Sankalpa' },
+    { key: 'campSphurti', label: 'Sphurti' },
+    { key: 'campUtkarsh', label: 'Utkarsh' },
     { key: 'campSrcgdWorkshop', label: 'SRCGD Workshop' },
-    { key: 'campNistha', label: 'Nistha Camp' },
-    { key: 'campAshray', label: 'Ashray Camp' },
+    { key: 'campNishtha', label: 'Nishtha' },
+    { key: 'campFtec', label: 'FTEC' },
+    { key: 'campAshraya', label: 'Ashraya' },
+    { key: 'campMtec', label: 'MTEC' },
+    { key: 'campSharanagati', label: 'Sharanagati' },
+    { key: 'campIdc', label: 'IDC' },
 ];
 
 const BOOK_MAPPINGS = {
@@ -425,9 +428,11 @@ export default function UserDetailModal({ user, isOpen, onClose }: UserDetailMod
                                         {user.education && user.education.length > 0 ? (
                                             user.education.map((edu, i) => (
                                                 <div key={i} className="flex flex-col py-2 border-b border-gray-50 last:border-0">
-                                                    <span className="text-sm font-black text-gray-800">{edu.field}</span>
+                                                    <span className="text-sm font-black text-gray-800">{edu.degreeBranch}</span>
                                                     <span className="text-xs font-bold text-gray-500">{edu.institution}</span>
-                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">{edu.year || 'Year N/A'}</span>
+                                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                                                        {edu.startYear ? edu.startYear : 'N/A'} - {edu.endYear ? edu.endYear : 'N/A'}
+                                                    </span>
                                                 </div>
                                             ))
                                         ) : (
