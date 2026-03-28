@@ -719,8 +719,12 @@ Body %: ${avgBodyPercent}%`;
                   student.education.map((edu, idx) => (
                     <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
                       <span className="font-semibold text-gray-800">{edu.institution}</span>
-                      <span className="text-gray-600">{edu.field}</span>
-                      {edu.year && <span className="text-gray-500 text-xs">{edu.year}</span>}
+                      <span className="text-gray-600">{edu.degreeBranch}</span>
+                      {(edu.startYear || edu.endYear) && (
+                        <span className="text-gray-500 text-xs mt-1">
+                          {edu.startYear ? edu.startYear : ''} {edu.startYear && edu.endYear ? '-' : ''} {edu.endYear ? edu.endYear : ''}
+                        </span>
+                      )}
                     </div>
                   ))
                 ) : (
@@ -741,7 +745,8 @@ Body %: ${avgBodyPercent}%`;
                     <div key={idx} className="flex flex-col text-sm border-l-2 border-orange-200 pl-3">
                       <span className="font-semibold text-gray-800">{work.company}</span>
                       <span className="text-gray-600">{work.position}</span>
-                      <span className="text-gray-500 text-xs">
+                      {work.location && <span className="text-gray-500 text-xs italic">{work.location}</span>}
+                      <span className="text-gray-500 text-xs mt-1">
                         {work.current ? 'Current' : `${work.startDate ? format(new Date(work.startDate), 'MMM yyyy') : ''} - ${work.endDate ? format(new Date(work.endDate), 'MMM yyyy') : ''}`}
                       </span>
                     </div>
