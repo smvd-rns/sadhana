@@ -162,8 +162,6 @@ export interface User {
   relative3Phone?: string;
   // Health fields
   healthChronicDisease?: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface EducationEntry {
