@@ -319,8 +319,8 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
                 required
               >
                 <option value="">Select Ashram</option>
-                <option value="Student">Student</option>
-                <option value="Not decided">Not decided</option>
+                <option value="Student and Not decided">Student and Not decided</option>
+                <option value="Working and Not Decided">Working and Not Decided</option>
                 <option value="Gauranga Sabha">Gauranga Sabha</option>
                 <option value="Nityananda Sabha">Nityananda Sabha</option>
                 <option value="Grihastha">Grihastha</option>

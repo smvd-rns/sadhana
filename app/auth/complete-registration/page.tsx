@@ -51,8 +51,8 @@ export default function CompleteRegistrationPage() {
     const [loadingTemples, setLoadingTemples] = useState(true);
 
     const ashramOptions = [
-        'Student',
-        'Not decided',
+        'Student and Not decided',
+        'Working and Not Decided',
         'Gauranga Sabha',
         'Nityananda Sabha',
         'Brahmachari',
@@ -546,7 +546,7 @@ export default function CompleteRegistrationPage() {
                                 {/* Temple Selection */}
                                 <div className="group">
                                     <label htmlFor="temple" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-emerald-600 transition-colors">
-                                        Connected Temple
+                                        Temple
                                     </label>
                                     <div className="relative">
                                         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -598,7 +598,7 @@ export default function CompleteRegistrationPage() {
                                 {formData.temple && formData.ashram !== 'Brahmachari' && formData.ashram !== 'Grihastha' && (
                                     <div className="group animate-in slide-in-from-top-2 fade-in duration-200">
                                         <label htmlFor="center" className="block text-sm font-medium leading-6 text-gray-900 mb-1 group-focus-within:text-emerald-600 transition-colors">
-                                            Connected Center
+                                            Center
                                         </label>
                                         <div className="relative">
                                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
