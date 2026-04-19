@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   aspiring_spiritual_master_name TEXT,
   chanting_since DATE,
   rounds INTEGER,
-  ashram TEXT CHECK (ashram IN ('Gauranga Sabha', 'Nityananda Sabha', 'Grihastha Ashram', 'Brahmachari Ashram', 'Not Decided')),
+  ashram TEXT CHECK (ashram IN ('Student and not decided', 'Working and not decided', 'Gauranga Sabha', 'Nityananda Sabha', 'Grihastha', 'Brahmachari', 'Staying Single (Not planning to marry)')),
   royal_member TEXT CHECK (royal_member IN ('yes', 'no')),
   brahmachari_counselor TEXT,
   grihastha_counselor TEXT,
@@ -401,7 +401,7 @@ CREATE TABLE IF NOT EXISTS counselors (
   mobile TEXT NOT NULL,
   email TEXT NOT NULL,
   city TEXT NOT NULL,
-  ashram TEXT CHECK (ashram IN ('Brahmachari Ashram', 'Grihastha Ashram')),
+  ashram TEXT CHECK (ashram IN ('Brahmachari', 'Grihastha')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(email) -- One counselor per email

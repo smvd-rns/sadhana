@@ -1,8 +1,8 @@
 import { getRoleDisplayName, RoleNumber } from './roles';
 
 export const ashramOptions = [
-    { id: 'Student', name: 'Student' },
-    { id: 'Not decided', name: 'Not Decided' },
+    { id: 'Student and not decided', name: 'Student and not decided' },
+    { id: 'Working and not decided', name: 'Working and not decided' },
     { id: 'Gauranga Sabha', name: 'Gauranga Sabha' },
     { id: 'Nityananda Sabha', name: 'Nityananda Sabha' },
     { id: 'Brahmachari', name: 'Brahmachari Ashram' },

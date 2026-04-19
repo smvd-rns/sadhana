@@ -19,6 +19,12 @@ export default function PendingApprovalPage() {
             return;
         }
 
+        // Logged in but no public.users row (e.g. incomplete flow) — finish registration instead of a false "pending" UI
+        if (!loading && user && !userData) {
+            router.push('/auth/complete-registration');
+            return;
+        }
+
         // If user is approved, show approved message
         if (!loading && userData?.verificationStatus === 'approved') {
             setIsAlreadyApproved(true);

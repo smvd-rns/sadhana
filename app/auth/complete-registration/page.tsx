@@ -52,8 +52,8 @@ export default function CompleteRegistrationPage() {
 
     // Ashram options as specified by user
     const ashramOptions = [
-        'Student',
-        'Not decided',
+        'Student and not decided',
+        'Working and not decided',
         'Gauranga Sabha',
         'Nityananda Sabha',
         'Brahmachari',

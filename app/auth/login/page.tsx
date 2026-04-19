@@ -20,13 +20,13 @@ function LoginContent() {
     // Only redirect if auth check is complete and user is authenticated
     // Don't redirect while still loading auth state
     if (!loading && user) {
-      // Wait for userData to be loaded before checking status
+      // AuthProvider finishes loading only after profile fetch (and retries) complete.
+      // No row in public.users (e.g. first-time Google sign-in) => userData is null — send to registration.
       if (!userData) {
-        // userData not loaded yet, wait
+        router.push('/auth/complete-registration');
         return;
       }
 
-      // Check verification status and redirect accordingly
       // Check verification status and redirect accordingly
       if (userData.verificationStatus === 'incomplete' || userData.verificationStatus === 'unverified') {
         router.push('/auth/complete-registration');

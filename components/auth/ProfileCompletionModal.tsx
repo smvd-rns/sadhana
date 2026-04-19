@@ -319,10 +319,13 @@ export default function ProfileCompletionModal({ isOpen, onComplete }: ProfileCo
                 required
               >
                 <option value="">Select Ashram</option>
-                <option value="Brahmachari">Brahmachari</option>
-                <option value="Grihastha">Grihastha</option>
-                <option value="Vanaprastha">Vanaprastha</option>
-                <option value="Sannyasi">Sannyasi</option>
+                <option value="Student and not decided">Student and not decided</option>
+                <option value="Working and not decided">Working and not decided</option>
+                <option value="Gauranga Sabha">Gauranga Sabha</option>
+                <option value="Nityananda Sabha">Nityananda Sabha</option>
+                <option value="Grihastha">Grihastha Ashram</option>
+                <option value="Brahmachari">Brahmachari Ashram</option>
+                <option value="Staying Single (Not planning to marry)">Staying Single (Not planning to marry)</option>
               </select>
             </div>
 

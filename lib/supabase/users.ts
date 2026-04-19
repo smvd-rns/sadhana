@@ -183,20 +183,41 @@ export const updateUser = async (userId: string, updates: Partial<User>) => {
       dbUpdates.role = roleToNumber(rolesArray);
     }
 
-    // Execute updates
-    const { error: userError } = await supabase
+    // OAuth and some edge cases create auth.users without a public.users row.
+    // UPDATE with no matching row succeeds with 0 rows affected, so we must insert when missing.
+    const { data: existingUser, error: checkError } = await supabase
       .from('users')
-      .update(dbUpdates)
-      .eq('id', userId);
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
 
-    if (userError) throw userError;
+    if (checkError) throw checkError;
+
+    if (!existingUser) {
+      if (!dbUpdates.email || !dbUpdates.name) {
+        throw new Error('Cannot create profile: email and name are required for new accounts.');
+      }
+      const insertRow = {
+        ...dbUpdates,
+        hierarchy: enrichedHierarchy ?? {},
+        created_at: new Date().toISOString(),
+      };
+      const { error: insertError } = await supabase.from('users').insert(insertRow);
+      if (insertError) throw insertError;
+    } else {
+      const { error: userError } = await supabase
+        .from('users')
+        .update(dbUpdates)
+        .eq('id', userId);
+
+      if (userError) throw userError;
+    }
 
     if (hasDetailsUpdates) {
       const { error: detailsError } = await supabase
         .from('user_profile_details')
-        .upsert(detailsUpdates)
-        .eq('user_id', userId);
-      
+        .upsert(detailsUpdates);
+
       if (detailsError) console.error('Error updating details:', detailsError);
     }
 

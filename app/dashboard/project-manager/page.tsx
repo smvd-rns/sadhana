@@ -464,6 +464,11 @@ export default function ProjectManagerDashboard() {
         return 'Member';
     };
 
+    const buildCenterMatch = useCallback((centerName: string) => {
+        const normalized = centerName.trim();
+        return `current_center.eq.${normalized},center.eq.${normalized},hierarchy->>currentCenter.eq.${normalized},hierarchy->>center.eq.${normalized},hierarchy->currentCenter->>name.eq.${normalized}`;
+    }, []);
+
     const refreshCounts = useCallback(async (centersToMap: any[]) => {
         if (!supabase) return;
         const session = await supabase.auth.getSession();
@@ -493,7 +498,8 @@ export default function ProjectManagerDashboard() {
                     if (!regError && regStats) {
                         const counts: Record<string, number> = {};
                         regStats.forEach(u => {
-                            const cName = u.current_center || (u.hierarchy as any)?.currentCenter?.name || '';
+                            const uH = u.hierarchy as any;
+                            const cName = u.current_center || u.center || uH?.currentCenter?.name || (typeof uH?.currentCenter === 'string' ? uH?.currentCenter : '') || uH?.center || '';
                             if (cName) {
                                 counts[cName] = (counts[cName] || 0) + 1;
                             }
@@ -652,14 +658,30 @@ export default function ProjectManagerDashboard() {
         if (!supabase || !cName) return;
         setStats(prev => ({ ...prev, loading: true }));
         try {
-            const [devoteesCount, pendingReqCount, pendingRegCount] = await Promise.all([
-                // devotees
-                supabase.from('users').select('id', { count: 'exact', head: true }).eq('current_center', cName).then(res => res.count || 0),
+            const [devoteesRes, pendingReqRes, pendingRegRes] = await Promise.all([
+                // devotees: match users by current_center, center, or hierarchy fields
+                supabase.from('users')
+                    .select('id', { count: 'exact', head: true })
+                    .or(buildCenterMatch(cName)),
                 // pending profile requests
-                supabase.from('profile_update_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending').eq('center_name', cName).then(res => res.count || 0),
-                // pending registrations
-                supabase.from('users').select('id', { count: 'exact', head: true }).eq('verification_status', 'pending').eq('current_center', cName).then(res => res.count || 0)
+                supabase.from('profile_update_requests')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('status', 'pending')
+                    .eq('center_name', cName),
+                // pending registrations: match by current_center, center, or hierarchy fields
+                supabase.from('users')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('verification_status', 'pending')
+                    .or(buildCenterMatch(cName))
             ]);
+
+            const devoteesCount = devoteesRes.error ? 0 : devoteesRes.count ?? 0;
+            const pendingReqCount = pendingReqRes.error ? 0 : pendingReqRes.count ?? 0;
+            const pendingRegCount = pendingRegRes.error ? 0 : pendingRegRes.count ?? 0;
+
+            if (devoteesRes.error) console.error('PM Dashboard: devotees count error', devoteesRes.error);
+            if (pendingReqRes.error) console.error('PM Dashboard: pending request count error', pendingReqRes.error);
+            if (pendingRegRes.error) console.error('PM Dashboard: pending registrations count error', pendingRegRes.error);
 
             setStats({
                 devotees: devoteesCount,
@@ -671,7 +693,7 @@ export default function ProjectManagerDashboard() {
             console.error('Error loading stats:', err);
             setStats(prev => ({ ...prev, loading: false }));
         }
-    }, []);
+    }, [buildCenterMatch]);
 
     // Effect to set initial center once managedCenters is populated
     useEffect(() => {
@@ -696,7 +718,7 @@ export default function ProjectManagerDashboard() {
                 .from('users')
                 .select('*')
                 .eq('verification_status', 'pending')
-                .eq('current_center', currentCenter);
+                .or(buildCenterMatch(currentCenter));
 
             if (error) throw error;
             setPendingUsers((data || []).map(u => ({
@@ -709,7 +731,7 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingPendingUsers(false);
         }
-    }, [currentCenter]);
+    }, [buildCenterMatch, currentCenter]);
 
     const handleUserVerification = async (userId: string, status: 'approved' | 'rejected', reason?: string) => {
         if (!supabase) return;
@@ -816,13 +838,14 @@ export default function ProjectManagerDashboard() {
             // For now, fetching * is okay.
             const { data, error } = await supabase
                 .from('users')
-                .select('*');
+                .select('*')
+                .or(buildCenterMatch(currentCenter));
 
             if (error) throw error;
 
             const mappedUsers = (data || []).map((u: any) => {
                 const uH = u.hierarchy as any;
-                const uCenter = u.current_center || uH?.currentCenter?.name || (typeof uH?.currentCenter === 'string' ? uH?.currentCenter : '');
+                const uCenter = u.current_center || u.center || uH?.currentCenter?.name || (typeof uH?.currentCenter === 'string' ? uH?.currentCenter : '') || uH?.center || '';
                 if (uCenter !== currentCenter) return null;
 
                 return {
@@ -850,9 +873,7 @@ export default function ProjectManagerDashboard() {
         } finally {
             setLoadingUsers(false);
         }
-    }, [currentCenter]);
-
-    // Load Data when tab changes or context is ready
+    }, [buildCenterMatch, currentCenter]);
     useEffect(() => {
         if (!currentCenter) return;
 
