@@ -59,10 +59,10 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
           
           const isIncomplete = !userData.profileImage || 
                              !userData.aadharCardImage || 
-                             !userData.initiationStatus || 
-                             !userData.ashram || 
-                             (userData.rounds === null || userData.rounds === undefined) || 
-                             !userData.counselor ||
+                             !userData.hierarchy?.initiationStatus || 
+                             !userData.hierarchy?.ashram || 
+                             (userData.hierarchy?.rounds === null || userData.hierarchy?.rounds === undefined) || 
+                             !userData.hierarchy?.counselor ||
                              !hasAnyCamp || 
                              !hasAnyBook;
 
