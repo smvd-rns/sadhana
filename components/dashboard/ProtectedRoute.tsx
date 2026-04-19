@@ -1,41 +1,79 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { Loader2, Flower } from 'lucide-react';
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
-      console.log('ProtectedRoute Check:', {
-        user: !!user,
-        userData: !!userData,
-        verificationStatus: userData?.verificationStatus,
-        name: !!userData?.name
-      });
-
       if (!user) {
-        console.log('ProtectedRoute Redirecting to Login - No user');
         router.push('/auth/login');
-      } else if (!userData) {
-        // Redirect to registration if user exists but profile data is missing (new user)
+        return;
+      }
+      
+      if (!userData) {
         router.push('/auth/complete-registration');
-      } else if (userData?.verificationStatus === 'incomplete' || userData?.verificationStatus === 'unverified') {
-        // Redirect to registration if profile is incomplete
+        return;
+      }
+
+      // 1. Existing verification status checks
+      if (userData?.verificationStatus === 'incomplete' || userData?.verificationStatus === 'unverified') {
         router.push('/auth/complete-registration');
-      } else if (userData?.verificationStatus === 'pending') {
-        // Redirect to pending approval page if status is pending
+        return;
+      } 
+      
+      if (userData?.verificationStatus === 'pending') {
         router.push('/auth/pending');
-      } else if (userData?.verificationStatus === 'rejected') {
-        // Redirect to registration if rejected (to see reason and update)
+        return;
+      } 
+      
+      if (userData?.verificationStatus === 'rejected') {
         router.push('/auth/complete-registration');
+        return;
+      }
+
+      // 2. Mandatory profile completion check (15 days grace period)
+      // Exception: Allow access to profile itself and donations page
+      const isAllowedPath = pathname === '/dashboard/profile' || pathname === '/dashboard/donations';
+      
+      if (userData.createdAt && !isAllowedPath) {
+        const createdAt = new Date(userData.createdAt);
+        const now = new Date();
+        const diffInDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+        
+        if (diffInDays >= 15) {
+          // Check if profile is incomplete
+          const campFields = [
+            'campDys', 'campSankalpa', 'campSphurti', 'campUtkarsh', 'campSrcgdWorkshop',
+            'campNishtha', 'campFtec', 'campAshraya', 'campMtec', 'campSharanagati',
+            'campIdc', 'campBhaktiShastri', 'campPositiveThinker', 'campSelfManager', 'campProactiveLeader'
+          ];
+          const hasAnyCamp = campFields.some(field => (userData as any)[field]);
+          const hasAnyBook = Object.keys(userData).some(key => key.startsWith('spbook') && (userData as any)[key]);
+          
+          const isIncomplete = !userData.profileImage || 
+                             !userData.aadharCardImage || 
+                             !userData.initiationStatus || 
+                             !userData.ashram || 
+                             (userData.rounds === null || userData.rounds === undefined) || 
+                             !userData.counselor ||
+                             !hasAnyCamp || 
+                             !hasAnyBook;
+
+          if (isIncomplete) {
+            console.log('Redirecting to profile: Account > 15 days and profile incomplete');
+            router.push('/dashboard/profile');
+          }
+        }
       }
     }
-  }, [user, userData, loading, router]);
+  }, [user, userData, loading, router, pathname]);
 
   // Helper precise loading UI to avoid repetition
   const LoadingScreen = ({ message }: { message: string }) => (

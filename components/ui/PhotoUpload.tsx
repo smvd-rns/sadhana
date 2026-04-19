@@ -13,6 +13,7 @@ export default function PhotoUpload({
   disabled = false,
   required = false,
   showMessage = false,
+  label = 'Profile Photo',
 }: {
   onFileSelect: (file: File | null) => void;
   onUploadError?: (error: string) => void;
@@ -21,6 +22,7 @@ export default function PhotoUpload({
   disabled?: boolean;
   required?: boolean;
   showMessage?: boolean;
+  label?: string;
 }) {
   // Initialize preview with current image URL if available (convert to thumbnail)
   const getPreviewUrl = (url: string | null | undefined) => {
@@ -142,9 +144,11 @@ export default function PhotoUpload({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Profile Photo {required && <span className="text-red-500">*</span>}
-      </label>
+      {label && (
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+      )}
 
       {showMessage && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">

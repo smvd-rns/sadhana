@@ -89,6 +89,11 @@ export default function ProfilePage() {
     campMtec: false,
     campSharanagati: false,
     campIdc: false,
+    campBhaktiShastri: false,
+    campPositiveThinker: false,
+    campSelfManager: false,
+    campProactiveLeader: false,
+    aadharCardImage: '',
     // SP Books Study Course fields (Third Semester)
     spbookThirdSsr15: false,
     spbookThirdComingBack: false,
@@ -154,6 +159,8 @@ export default function ProfilePage() {
   // Profile Image State
   const [profileImage, setProfileImage] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [aadharImage, setAadharImage] = useState('');
+  const [selectedAadharPhoto, setSelectedAadharPhoto] = useState<File | null>(null);
 
   const [mounted, setMounted] = useState(false);
 
@@ -292,6 +299,10 @@ export default function ProfilePage() {
       if (formData.campMtec !== (userData.campMtec || false)) return true;
       if (formData.campSharanagati !== (userData.campSharanagati || false)) return true;
       if (formData.campIdc !== (userData.campIdc || false)) return true;
+      if (formData.campBhaktiShastri !== (userData.campBhaktiShastri || false)) return true;
+      if (formData.campPositiveThinker !== (userData.campPositiveThinker || false)) return true;
+      if (formData.campSelfManager !== (userData.campSelfManager || false)) return true;
+      if (formData.campProactiveLeader !== (userData.campProactiveLeader || false)) return true;
 
       // 7. Compare SP Books Course
       if (formData.spbookThirdSsr15 !== (userData.spbookThirdSsr15 || false)) return true;
@@ -337,13 +348,14 @@ export default function ProfilePage() {
       if (formData.spbookEighthKrishnaBook7889 !== (userData.spbookEighthKrishnaBook7889 || false)) return true;
 
       // 8. Check if photo is selected
-      if (selectedPhoto) return true;
+      if (selectedPhoto || selectedAadharPhoto) return true;
+      if (normalize(formData.aadharCardImage) !== normalize(userData.aadharCardImage)) return true;
 
       return false;
     };
 
     setIsDirty(checkChanges());
-  }, [formData, userData, education, workExperience, languages, skills, services, selectedPhoto]);
+  }, [formData, userData, education, workExperience, languages, skills, services, selectedPhoto, selectedAadharPhoto]);
 
   // Load counselors from Supabase
   useEffect(() => {
@@ -598,6 +610,7 @@ export default function ProfilePage() {
         
         // Health info
         healthChronicDisease: userData.healthChronicDisease || '',
+        aadharCardImage: userData.aadharCardImage || '',
 
         // Camp completion fields
         campDys: userData.campDys || baseHierarchy.campDys || false,
@@ -611,6 +624,10 @@ export default function ProfilePage() {
         campMtec: userData.campMtec || false,
         campSharanagati: userData.campSharanagati || false,
         campIdc: userData.campIdc || false,
+        campBhaktiShastri: userData.campBhaktiShastri || false,
+        campPositiveThinker: userData.campPositiveThinker || false,
+        campSelfManager: userData.campSelfManager || false,
+        campProactiveLeader: userData.campProactiveLeader || false,
         
         // SP Books Study Course fields
         spbookThirdSsr15: userData.spbookThirdSsr15 || false,
@@ -666,6 +683,9 @@ export default function ProfilePage() {
       // Set profile image from userData (Google Drive URL)
       const imageUrl = userData.profileImage || '';
       setProfileImage(imageUrl);
+
+      const aadharUrl = userData.aadharCardImage || '';
+      setAadharImage(aadharUrl);
 
       // Load education and work experience
       if (userData.education && userData.education.length > 0) {
@@ -723,38 +743,117 @@ export default function ProfilePage() {
       return;
     }
 
+    // Check if profile completion is mandatory (account > 7 days old)
+    const isMandatory = () => {
+      if (!userData?.createdAt) return false;
+      const createdAt = new Date(userData.createdAt);
+      const now = new Date();
+      const diffInDays = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+      return diffInDays >= 15;
+    };
+
+    const mandatory = isMandatory();
+
+    if (mandatory) {
+      // 1. Profile Photo
+      if (!profileImage && !selectedPhoto) {
+        setError('Profile Photo is mandatory for accounts older than 15 days.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 2. Aadhar Card Photo
+      if (!aadharImage && !selectedAadharPhoto) {
+        setError('Aadhar Card photo upload is mandatory for accounts older than 15 days.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // 3. Spiritual Information - full section
+      const spiritualMissing = [];
+      if (!formData.initiationStatus) spiritualMissing.push('Initiation Status');
+      if (!formData.ashram) spiritualMissing.push('Ashram');
+      if (!formData.rounds && formData.rounds !== 0) spiritualMissing.push('Rounds');
+      if (!formData.counselor) spiritualMissing.push('Counselor');
+
+      if (spiritualMissing.length > 0) {
+        setError(`Please fill all Spiritual Information (mandatory for accounts older than 15 days): ${spiritualMissing.join(', ')}`);
+        return;
+      }
+
+      if (formData.initiationStatus === 'initiated' && (!formData.initiatedName || !formData.spiritualMasterName)) {
+        setError('Initiated Name and Spiritual Master Name are mandatory for initiated devotees.');
+        return;
+      }
+
+      // 4. Camps completed (at least some)
+      const campFields = [
+        'campDys', 'campSankalpa', 'campSphurti', 'campUtkarsh', 'campSrcgdWorkshop',
+        'campNishtha', 'campFtec', 'campAshraya', 'campMtec', 'campSharanagati',
+        'campIdc', 'campBhaktiShastri', 'campPositiveThinker', 'campSelfManager', 'campProactiveLeader'
+      ];
+      const hasAnyCamp = campFields.some(field => (formData as any)[field]);
+      if (!hasAnyCamp) {
+        setError('At least one Completed Camp must be selected.');
+        return;
+      }
+
+      // 5. SP Book study (at least some)
+      const spBookFields = Object.keys(formData).filter(key => key.startsWith('spbook'));
+      const hasAnyBook = spBookFields.some(field => (formData as any)[field]);
+      if (!hasAnyBook) {
+        setError('At least one SP Book study entry must be selected.');
+        return;
+      }
+    }
+
     setSaving(true);
-    let finalProfileImageUrl = profileImage; // Default to current image
+    let finalProfileImageUrl = profileImage;
+    let finalAadharCardUrl = aadharImage;
 
-    // 0. Handle Photo Upload first if selected
+    // Parallel upload optimization
+    const uploadPromises = [];
+
     if (selectedPhoto) {
-      try {
-        const photoFormData = new FormData();
-        photoFormData.append('file', selectedPhoto);
-        photoFormData.append('userName', formData.name);
-
-        const uploadResponse = await fetch('/api/upload/google-drive', {
+      const photoFormData = new FormData();
+      photoFormData.append('file', selectedPhoto);
+      photoFormData.append('userName', formData.name);
+      uploadPromises.push(
+        fetch('/api/upload/google-drive', {
           method: 'POST',
           body: photoFormData,
-        });
+        }).then(async res => {
+          if (!res.ok) throw new Error('Profile photo upload failed');
+          const data = await res.json();
+          finalProfileImageUrl = data.data.directImageUrl || data.data.webViewLink || data.data.fileId;
+        })
+      );
+    }
 
-        if (!uploadResponse.ok) {
-          const errorData = await uploadResponse.json();
-          throw new Error(errorData.error || 'Failed to upload photo');
-        }
+    if (selectedAadharPhoto) {
+      const aadharFormData = new FormData();
+      aadharFormData.append('file', selectedAadharPhoto);
+      aadharFormData.append('userName', `${formData.name}_aadhar`);
+      uploadPromises.push(
+        fetch('/api/upload/google-drive', {
+          method: 'POST',
+          body: aadharFormData,
+        }).then(async res => {
+          if (!res.ok) throw new Error('Aadhar card upload failed');
+          const data = await res.json();
+          finalAadharCardUrl = data.data.directImageUrl || data.data.webViewLink || data.data.fileId;
+        })
+      );
+    }
 
-        const uploadData = await uploadResponse.json();
-
-        if (uploadData.success && uploadData.data) {
-          finalProfileImageUrl = uploadData.data.directImageUrl || uploadData.data.webViewLink || uploadData.data.webContentLink || uploadData.data.fileId;
-        } else {
-          throw new Error('Upload failed: No data returned');
-        }
-      } catch (error: any) {
-        console.error('Photo upload error:', error);
-        setError(`Failed to upload profile photo: ${error.message || 'Unknown error'}`);
+    if (uploadPromises.length > 0) {
+      try {
+        await Promise.all(uploadPromises);
+      } catch (uploadError: any) {
+        console.error('Upload error:', uploadError);
+        setError(`Failed to upload photo(s): ${uploadError.message}`);
         setSaving(false);
-        return; // Stop saving if photo upload fails
+        return;
       }
     }
 
@@ -1010,6 +1109,7 @@ export default function ProfilePage() {
         phone: sanitizedPhone,
         birth_date: formData.birthDate || null,
         profile_image: finalProfileImageUrl || null,
+        aadhar_card_image: finalAadharCardUrl || null,
         state: hierarchy.state || null,
         city: hierarchy.city || null,
         center: hierarchy.center || null,
@@ -1056,6 +1156,10 @@ export default function ProfilePage() {
         camp_mtec: formData.campMtec || false,
         camp_sharanagati: formData.campSharanagati || false,
         camp_idc: formData.campIdc || false,
+        camp_bhakti_shastri: formData.campBhaktiShastri || false,
+        camp_positive_thinker: formData.campPositiveThinker || false,
+        camp_self_manager: formData.campSelfManager || false,
+        camp_proactive_leader: formData.campProactiveLeader || false,
         // SP Books fields
         spbook_third_ssr_1_5: formData.spbookThirdSsr15 || false,
         spbook_third_coming_back: formData.spbookThirdComingBack || false,
@@ -1444,30 +1548,84 @@ export default function ProfilePage() {
               </h2>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-              <div className="flex justify-center mb-4 sm:mb-6">
-                <PhotoUpload
-                  onFileSelect={(file) => {
-                    console.log('ProfilePage: onFileSelect called', file);
-                    setSelectedPhoto(file);
-                    // Update preview temporarily if file is selected, or revert if null
-                    if (file) {
-                      // Use createObjectURL for instant preview instead of FileReader
-                      const objectUrl = URL.createObjectURL(file);
-                      setProfileImage(objectUrl);
+            {userData?.createdAt && (new Date().getTime() - new Date(userData.createdAt).getTime()) / (1000 * 60 * 60 * 24) >= 15 && (
+              (() => {
+                const campFields = [
+                  'campDys', 'campSankalpa', 'campSphurti', 'campUtkarsh', 'campSrcgdWorkshop',
+                  'campNishtha', 'campFtec', 'campAshraya', 'campMtec', 'campSharanagati',
+                  'campIdc', 'campBhaktiShastri', 'campPositiveThinker', 'campSelfManager', 'campProactiveLeader'
+                ];
+                const hasAnyCamp = campFields.some(field => (formData as any)[field]);
+                const hasAnyBook = Object.keys(formData).some(key => key.startsWith('spbook') && (formData as any)[key]);
+                
+                const isIncomplete = (!profileImage && !selectedPhoto) || 
+                                   (!aadharImage && !selectedAadharPhoto) || 
+                                   !formData.initiationStatus || 
+                                   !formData.ashram || 
+                                   (formData.rounds === null || formData.rounds === undefined || formData.rounds === '') || 
+                                   !formData.counselor ||
+                                   !hasAnyCamp || 
+                                   !hasAnyBook;
+                
+                if (!isIncomplete) return null;
 
-                      // Cleanup previous object URL if any (optional but good practice)
-                      // We can just let it be GC'd or revoke it later, but for now simple is better.
-                    } else if (userData?.profileImage) {
-                      setProfileImage(userData.profileImage);
-                    } else {
-                      setProfileImage(''); // Clear preview if no file and no existing image
-                    }
-                  }}
-                  userName={formData.name || userData?.name || 'user'}
-                  currentImageUrl={profileImage}
-                  disabled={saving}
-                />
+                return (
+                  <div className="px-4 sm:px-6 pt-4">
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-amber-800">
+                        <span className="font-bold">Mandatory Profile Update:</span> Your account is more than 15 days old and some required information is missing. 
+                        Profile Photo, Aadhar Card, Spiritual Info, and at least one Camp/Book completion are now required.
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+
+            <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 mb-4 sm:mb-6">
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-sm font-bold text-gray-700">Profile Photo</span>
+                  <PhotoUpload
+                    onFileSelect={(file) => {
+                      setSelectedPhoto(file);
+                      if (file) {
+                        const objectUrl = URL.createObjectURL(file);
+                        setProfileImage(objectUrl);
+                      } else if (userData?.profileImage) {
+                        setProfileImage(userData.profileImage);
+                      } else {
+                        setProfileImage('');
+                      }
+                    }}
+                    userName={formData.name || userData?.name || 'user'}
+                    currentImageUrl={profileImage}
+                    disabled={saving}
+                    label=""
+                  />
+                </div>
+
+                <div className="flex flex-col items-center gap-3">
+                  <span className="text-sm font-bold text-gray-700">Aadhar Card</span>
+                  <PhotoUpload
+                    onFileSelect={(file) => {
+                      setSelectedAadharPhoto(file);
+                      if (file) {
+                        const objectUrl = URL.createObjectURL(file);
+                        setAadharImage(objectUrl);
+                      } else if (userData?.aadharCardImage) {
+                        setAadharImage(userData.aadharCardImage);
+                      } else {
+                        setAadharImage('');
+                      }
+                    }}
+                    userName={`${formData.name || userData?.name || 'user'}_aadhar`}
+                    currentImageUrl={aadharImage}
+                    disabled={saving}
+                    label=""
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -2675,6 +2833,10 @@ export default function ProfilePage() {
                   { key: 'campMtec', label: 'MTEC', emoji: '📈' },
                   { key: 'campSharanagati', label: 'Sharanagati', emoji: '🙏' },
                   { key: 'campIdc', label: 'IDC', emoji: '🔑' },
+                  { key: 'campBhaktiShastri', label: 'Bhakti Shastri', emoji: '📜' },
+                  { key: 'campPositiveThinker', label: 'Positive Thinker', emoji: '🧠' },
+                  { key: 'campSelfManager', label: 'Self Manager', emoji: '⌚' },
+                  { key: 'campProactiveLeader', label: 'Proactive Leader', emoji: '👑' },
                 ].map((camp, index) => (
                   <label
                     key={camp.key}

@@ -9,7 +9,9 @@ export const transformUserProfile = (data: any): User => {
   // Convert role numbers back to role names
   const normalizedRole = normalizeRoleFromFirestore(data.role);
 
-  const details = data.user_profile_details;
+  const details = Array.isArray(data.user_profile_details) 
+    ? data.user_profile_details[0] 
+    : data.user_profile_details;
 
   // Build hierarchy object from separate columns (preferred) or JSONB (fallback)
   const hierarchy = {
@@ -58,6 +60,7 @@ export const transformUserProfile = (data: any): User => {
     role: normalizedRole,
     phone: data.phone,
     profileImage: data.profile_image,
+    aadharCardImage: data.aadhar_card_image,
     birthDate: data.birth_date,
     hierarchy: hierarchy,
     // Relative contact fields
@@ -85,6 +88,10 @@ export const transformUserProfile = (data: any): User => {
     campMtec: details?.camp_mtec ?? false,
     campSharanagati: details?.camp_sharanagati ?? false,
     campIdc: details?.camp_idc ?? false,
+    campBhaktiShastri: details?.camp_bhakti_shastri ?? false,
+    campPositiveThinker: details?.camp_positive_thinker ?? false,
+    campSelfManager: details?.camp_self_manager ?? false,
+    campProactiveLeader: details?.camp_proactive_leader ?? false,
     
     // SP Books Study Course fields (Strictly from user_profile_details)
     spbookThirdSsr15: details?.spbook_third_ssr_1_5 ?? false,

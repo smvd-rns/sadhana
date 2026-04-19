@@ -71,6 +71,7 @@ export interface User {
   role: UserRole | UserRole[]; // Support both single role (backward compatible) and multiple roles
   phone?: string;
   profileImage?: string;
+  aadharCardImage?: string;
   birthDate?: string;
   pushTokens?: string[];
   hierarchy: HierarchyLocation;
@@ -86,6 +87,10 @@ export interface User {
   campMtec?: boolean;
   campSharanagati?: boolean;
   campIdc?: boolean;
+  campBhaktiShastri?: boolean;
+  campPositiveThinker?: boolean;
+  campSelfManager?: boolean;
+  campProactiveLeader?: boolean;
   // SP Books Study Course fields
   spbookThirdSsr15?: boolean;
   spbookThirdComingBack?: boolean;
@@ -133,6 +138,8 @@ export interface User {
   skills?: SkillEntry[];
   // Services rendered fields (up to 5 entries)
   services?: ServiceEntry[];
+  createdAt?: Date;
+  updatedAt?: Date;
   // Temple and Center fields
   parentTemple?: string;
   parentCenter?: string;
