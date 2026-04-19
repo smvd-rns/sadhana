@@ -773,7 +773,7 @@ export default function ProfilePage() {
       const spiritualMissing = [];
       if (!formData.initiationStatus) spiritualMissing.push('Initiation Status');
       if (!formData.ashram) spiritualMissing.push('Ashram');
-      if (!formData.rounds && formData.rounds !== 0) spiritualMissing.push('Rounds');
+      if (!formData.rounds && formData.rounds !== '0') spiritualMissing.push('Rounds');
       if (!formData.counselor) spiritualMissing.push('Counselor');
 
       if (spiritualMissing.length > 0) {
