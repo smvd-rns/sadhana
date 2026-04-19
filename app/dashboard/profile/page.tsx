@@ -1899,12 +1899,12 @@ export default function ProfilePage() {
                       className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border-2 border-amber-100 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-gray-900 bg-amber-50/50 hover:bg-amber-50 transition-all duration-300 focus:scale-[1.02] focus:shadow-md appearance-none bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik02IDlMMTIgMTVMMTggOSIgc3Ryb2tlPSIjOUNBM0FGIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=')] bg-[length:16px] sm:bg-[length:20px] bg-[right_0.75rem_center] sm:bg-[right_1rem_center] bg-no-repeat cursor-pointer"
                     >
                       <option value="">Select Ashram</option>
-                      <option value="Student and not decided">Student and not decided</option>
-                      <option value="Working and not decided">Working and not decided</option>
+                      <option value="Student">Student</option>
+                      <option value="Not decided">Not decided</option>
                       <option value="Gauranga Sabha">Gauranga Sabha</option>
                       <option value="Nityananda Sabha">Nityananda Sabha</option>
-                      <option value="Grihastha">Grihastha Ashram</option>
-                      <option value="Brahmachari">Brahmachari Ashram</option>
+                      <option value="Grihastha">Grihastha</option>
+                      <option value="Brahmachari">Brahmachari</option>
                       <option value="Staying Single (Not planning to marry)">Staying Single (Not planning to marry)</option>
                     </select>
                     {fieldErrors.ashram && (

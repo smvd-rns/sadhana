@@ -491,7 +491,7 @@ export default function ProjectManagerDashboard() {
                     // Group users by current_center where verification_status is 'pending'
                     const { data: regStats, error: regError } = await supabase
                         .from('users')
-                        .select('current_center, hierarchy')
+                        .select('current_center, center, hierarchy')
                         .eq('verification_status', 'pending');
 
                     const centersWithRegCounts: { name: string, _count: number }[] = [];

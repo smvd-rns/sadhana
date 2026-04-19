@@ -50,10 +50,9 @@ export default function CompleteRegistrationPage() {
     const [loadingCounselors, setLoadingCounselors] = useState(true);
     const [loadingTemples, setLoadingTemples] = useState(true);
 
-    // Ashram options as specified by user
     const ashramOptions = [
-        'Student and not decided',
-        'Working and not decided',
+        'Student',
+        'Not decided',
         'Gauranga Sabha',
         'Nityananda Sabha',
         'Brahmachari',
